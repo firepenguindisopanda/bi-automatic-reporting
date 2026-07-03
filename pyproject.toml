@@ -1,0 +1,48 @@
+[project]
+name = "business-intelligence"
+version = "0.1.0"
+description = "Automated business intelligence system — scrape, analyze, report."
+requires-python = ">=3.13"
+
+[project.optional-dependencies]
+sendgrid = ["sendgrid>=6.0"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+ignore_missing_imports = true
+exclude = ["tests/", ".venv/"]
+
+[[tool.mypy.overrides]]
+module = "app.scraper.engine"
+# BeautifulSoup returns dynamic types — AttributeValueList is runtime-only
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "app.report.generator"
+# python-docx uses runtime dynamic attributes (font, italic)
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "app.llm.client"
+# langchain_nvidia_ai_endpoints returns untyped Dict/Any
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 50
+show_missing = true

@@ -1,4 +1,4 @@
-"""E2E smoke test — requires a real NVIDIA_API_KEY in .env and the server running.
+"""E2E smoke test - requires a real NVIDIA_API_KEY in .env and the server running.
 
 Usage:
     # Terminal 1: Start the server
@@ -26,7 +26,7 @@ MAX_WAIT = 120
 
 @pytest.mark.skipif(
     not os.environ.get("NVIDIA_API_KEY"),
-    reason="NVIDIA_API_KEY not set — skip real-LLM smoke test",
+    reason="NVIDIA_API_KEY not set - skip real-LLM smoke test",
 )
 class TestSmokeE2E:
     def test_full_pipeline(self) -> None:

@@ -8,7 +8,7 @@ A standalone service at `/home/nicho_unix/code/business-intelligence/`:
 
 ### The key reframe (vs. the prior plan)
 
-The prior plan assumed a greenfield build. **It is not.** The reference project at `/home/nicho_unix/code/interactive_nvidia_nims/multi-sotware-team/backend/` already ships a complete, working BI backend that is **fully self-contained from the spec-generator system** — BI imports nothing from `app/agents/*`, `app/orchestrator/pipeline.py`, `app/orchestrator/context.py`, `app/models/artifacts.py`, `app/models/requests.py`, or `app/prompts/templates.py`.
+The prior plan assumed a greenfield build. **It is not.** The reference project at `/home/nicho_unix/code/interactive_nvidia_nims/multi-sotware-team/backend/` already ships a complete, working BI backend that is **fully self-contained from the spec-generator system** - BI imports nothing from `app/agents/*`, `app/orchestrator/pipeline.py`, `app/orchestrator/context.py`, `app/models/artifacts.py`, `app/models/requests.py`, or `app/prompts/templates.py`.
 
 So the real work is **port + harden + extend + frontend**, not author-from-scratch. This cuts implementation effort roughly in half and lets us spend that budget on bug fixes, security, alignment with the richer report template, and quality tooling.
 
@@ -44,13 +44,13 @@ So the real work is **port + harden + extend + frontend**, not author-from-scrat
 
 The reference `multi-sotware-team/.env` contains what looks like a **live NVIDIA API key** committed to disk.
 
-- Do **NOT** copy `.env` into the new repo — copy only `.env.example`.
+- Do **NOT** copy `.env` into the new repo - copy only `.env.example`.
 - **Rotate the exposed key** in your NVIDIA console immediately.
 - Add `.env` and `reports/` to `.gitignore` from the first commit.
 
 ## Known issues to fix during the port (folded into tasks)
 
-Carried over from the source audit — each is mapped to a task below:
+Carried over from the source audit - each is mapped to a task below:
 1. `BusinessProfile.website` referenced in report template but absent from model → **Task 4**
 2. `BIJobStatus.progress` field never populated; `events` list discarded → **Task 6**
 3. Async BI agents call sync `invoke_structured` (block the event loop) → **Task 5**
@@ -144,11 +144,11 @@ TO_PORT (reference, self-contained) ──┐
 
 ---
 
-## Phase A — Port & Micro-fix the Backend (verbatim where possible)
+## Phase A - Port & Micro-fix the Backend (verbatim where possible)
 
 ### Task 1: Repo init, security hardening, dependencies
 
-**Description:** Create the standalone project scaffold (package dirs, `pyproject.toml`, `requirements.txt`, `.gitignore`, `.env.example`). Copy only `.env.example` (never `.env`). Add quality deps (`pytest-cov`, `ruff`, `mypy`) on top of the 16 BI deps from the reference. **Add `aiosqlite`** (Q2 decision — SQLite job store). Add a `jobs_db` config field (e.g. `jobs.db`) in `config.py`.
+**Description:** Create the standalone project scaffold (package dirs, `pyproject.toml`, `requirements.txt`, `.gitignore`, `.env.example`). Copy only `.env.example` (never `.env`). Add quality deps (`pytest-cov`, `ruff`, `mypy`) on top of the 16 BI deps from the reference. **Add `aiosqlite`** (Q2 decision - SQLite job store). Add a `jobs_db` config field (e.g. `jobs.db`) in `config.py`.
 
 **Acceptance criteria:**
 - [ ] `.gitignore` excludes `.env`, `reports/`, `frontend/node_modules`, `.venv`, `__pycache__`, `*.db`
@@ -175,7 +175,7 @@ TO_PORT (reference, self-contained) ──┐
 **Acceptance criteria:**
 - [ ] `Settings` exposes only BI fields (no `critic_*`)
 - [ ] `uvicorn app.main:app --reload` starts without errors
-- [ ] `GET /api/health` returns `{"status":"ok"}` (router not yet wired is fine in this task; health can be added in Task 10 — coordinate)
+- [ ] `GET /api/health` returns `{"status":"ok"}` (router not yet wired is fine in this task; health can be added in Task 10 - coordinate)
 - [ ] `NVIDIA_API_KEY` loads from `.env`
 
 **Verification:**
@@ -229,7 +229,7 @@ TO_PORT (reference, self-contained) ──┐
 
 ### Task 5: Port `analysis/agents.py` + `email/service.py` with async hardening
 
-**Description:** Port the 5 BI agents (`BusinessProfileAgent`, `MarketAnalysisAgent`, `CompetitiveAnalysisAgent`, `SWOTAgent`, `BIReportWriterAgent`) and `EmailService`. **Fix the blocking-event-loop bug (issues #3, #4):** the agents' `async analyze`/`write` call `invoke_structured` synchronously — wrap in `await asyncio.to_thread(self._llm.invoke_structured, ...)`. Same for `EmailService`: wrap `sg.send()` and `smtplib` calls in `to_thread`. Keep SMTP fallback as-is (issue #5) but add a module docstring noting it is a dev-only stub expecting a local MTA on `localhost:25`.
+**Description:** Port the 5 BI agents (`BusinessProfileAgent`, `MarketAnalysisAgent`, `CompetitiveAnalysisAgent`, `SWOTAgent`, `BIReportWriterAgent`) and `EmailService`. **Fix the blocking-event-loop bug (issues #3, #4):** the agents' `async analyze`/`write` call `invoke_structured` synchronously - wrap in `await asyncio.to_thread(self._llm.invoke_structured, ...)`. Same for `EmailService`: wrap `sg.send()` and `smtplib` calls in `to_thread`. Keep SMTP fallback as-is (issue #5) but add a module docstring noting it is a dev-only stub expecting a local MTA on `localhost:25`.
 
 **Acceptance criteria:**
 - [ ] All 5 agents wrap `invoke_structured` in `to_thread` (no event-loop blocking)
@@ -258,7 +258,7 @@ jobs(job_id TEXT PRIMARY KEY, url TEXT, email TEXT, status TEXT,
 ```
 Methods: `init()` (CREATE TABLE IF NOT EXISTS), `create(job)`, `get(job_id)`, `update(job_id, **fields)` (status, progress, artifact, paths, error, updated_at). Serialize `AnalysisArtifact` with Pydantic `model_dump_json()` / `model_validate_json()`; serialize `progress` as JSON; store paths as strings.
 
-`BIPipeline` now: `submit()` inserts a row + fires `asyncio.create_task(self._run(job))`; `_run()` writes progress events and status transitions to the DB at each stage (fixes issue #2 — progress is now persisted and queryable); `get_job()` reads from the DB. Recommended status transitions: `pending → scraping → analyzing → complete | error`. Wrap DB init in `main.py` lifespan startup. This also resolves issue #7 (persistence across restarts).
+`BIPipeline` now: `submit()` inserts a row + fires `asyncio.create_task(self._run(job))`; `_run()` writes progress events and status transitions to the DB at each stage (fixes issue #2 - progress is now persisted and queryable); `get_job()` reads from the DB. Recommended status transitions: `pending → scraping → analyzing → complete | error`. Wrap DB init in `main.py` lifespan startup. This also resolves issue #7 (persistence across restarts).
 
 **Acceptance criteria:**
 - [ ] `jobs.db` created on startup with the schema above
@@ -285,7 +285,7 @@ Methods: `init()` (CREATE TABLE IF NOT EXISTS), `create(job)`, `get(job_id)`, `u
 **Description:** Port `ReportGenerator` (PDF via Jinja2→WeasyPrint, DOCX via python-docx). Apply fixes:
 - **(issue #6)** Sanitize the company name before using it in filenames (strip path separators / control chars, collapse spaces, cap length).
 - **(issue #8)** Replace inline `__import__("datetime").datetime.now()` with a normal `from datetime import datetime` import; hoist `from weasyprint import HTML` to module level (or keep lazy import only once, clearly).
-- **(issue #1)** Fix `profile.website` reference — now that `BusinessProfile.website` exists (Task 4), use it.
+- **(issue #1)** Fix `profile.website` reference - now that `BusinessProfile.website` exists (Task 4), use it.
 - Move the inline `HTML_TEMPLATE` string into `app/report/templates/report.html` (Jinja2 `FileSystemLoader`) so marketing sections can be added in Phase C without editing Python.
 
 **Acceptance criteria:**
@@ -309,18 +309,18 @@ Methods: `init()` (CREATE TABLE IF NOT EXISTS), `create(job)`, `get(job_id)`, `u
 
 - [ ] `uvicorn app.main:app --reload` starts
 - [ ] `GET /api/health` → 200 `{"status":"ok"}`
-- [ ] `pytest tests/ -v` — all ported tests green with mocked LLM
+- [ ] `pytest tests/ -v` - all ported tests green with mocked LLM
 - [ ] No spec-generator modules remain in the tree
 - [ ] No bare sync LLM/email calls (grep check)
 
 ---
 
-## Phase B — Wire the API and Smoke-test End-to-End
+## Phase B - Wire the API and Smoke-test End-to-End
 
 ### Task 8: Port BI API routes (drop spec-gen) + tests
 
 **Description:** Copy `app/api/routes.py` and **delete** all spec-generator routes (`/api/generate`, `/api/generate/stream`, `/api/tech-stack/*`) and the `_agent_to_artifact_type` helper. Keep only:
-- `POST /api/bi/submit` — `body: BISubmitRequest` → `BIPipeline.submit` → `BISubmitResponse`
+- `POST /api/bi/submit` - `body: BISubmitRequest` → `BIPipeline.submit` → `BISubmitResponse`
 - `GET /api/bi/status/{job_id}` → `BIJobStatus` (now with `progress`); 404 if unknown
 - `GET /api/bi/download/{job_id}?format=pdf|docx` → `FileResponse`; 404 unknown, 400 not complete
 - `GET /api/health`
@@ -346,13 +346,13 @@ Rename the router tag from `["generate"]` to `["bi"]`. The module-level `_bi_pip
 
 ### Task 9: End-to-end smoke test with real LLM (manual)
 
-**Description:** With a valid `.env` (`NVIDIA_API_KEY` set), run the full pipeline once against a real public URL via the API and confirm PDF + DOCX land in `reports/` (skip email by leaving `SENDGRID_API_KEY` empty so the SMTP fallback is exercised — requires a local MTA, or skip email verification). Capture any remaining runtime issues for a follow-up task.
+**Description:** With a valid `.env` (`NVIDIA_API_KEY` set), run the full pipeline once against a real public URL via the API and confirm PDF + DOCX land in `reports/` (skip email by leaving `SENDGRID_API_KEY` empty so the SMTP fallback is exercised - requires a local MTA, or skip email verification). Capture any remaining runtime issues for a follow-up task.
 
 **Acceptance criteria:**
 - [ ] `curl -X POST .../api/bi/submit -d '{"url":"https://example.com","email":"x@y.com"}'` returns a `job_id`
 - [ ] Polling `.../api/bi/status/{id}` reaches `complete` within ~60s
 - [ ] `reports/` contains a `.pdf` and `.docx` for the requested company
-- [ ] PDF visually inspected — sections render, SWOT table present
+- [ ] PDF visually inspected - sections render, SWOT table present
 
 **Verification:**
 - [ ] Manual run; attach screenshots/links to the task
@@ -373,11 +373,11 @@ Rename the router tag from `["generate"]` to `["bi"]`. The module-level `_bi_pip
 
 ---
 
-## Phase C — Align Report with the Marketing Template
+## Phase C - Align Report with the Marketing Template
 
 ### Task 10: Extend BI data models with marketing sections
 
-**Description:** Add Pydantic v2 models that mirror `business_analysis_report_template.md` placeholders: `CompanyInfo` (client_name, country, language, website, company_description), `TargetAudiencePersonas`, `BrandPersonalityMatrix`, `UniqueValueProposition`, `PeopleAlsoAsk`, `CustomerJourney`, `CustomerPersonaTrait`, `EEATSignalIntegration`, `GEOTactic`, `CallToAction`. Compose a new `MarketingReport` model (or extend `BIReport` with these as nested fields — prefer composition to avoid breaking existing tests). Add API response model exposure only if needed.
+**Description:** Add Pydantic v2 models that mirror `business_analysis_report_template.md` placeholders: `CompanyInfo` (client_name, country, language, website, company_description), `TargetAudiencePersonas`, `BrandPersonalityMatrix`, `UniqueValueProposition`, `PeopleAlsoAsk`, `CustomerJourney`, `CustomerPersonaTrait`, `EEATSignalIntegration`, `GEOTactic`, `CallToAction`. Compose a new `MarketingReport` model (or extend `BIReport` with these as nested fields - prefer composition to avoid breaking existing tests). Add API response model exposure only if needed.
 
 **Acceptance criteria:**
 - [ ] New models use Pydantic v2 syntax
@@ -424,7 +424,7 @@ Rename the router tag from `["generate"]` to `["bi"]`. The module-level `_bi_pip
 
 **Verification:**
 - [ ] `pytest tests/test_bi_pipeline.py tests/test_report.py -v` green
-- [ ] Manual smoke (Task 9 steps) — PDF visually shows the marketing sections
+- [ ] Manual smoke (Task 9 steps) - PDF visually shows the marketing sections
 
 **Dependencies:** Tasks 10, 11
 **Files likely touched:** `app/orchestrator/bi_pipeline.py`, `app/models/bi.py` (`AnalysisArtifact`), `app/report/generator.py`, `app/report/templates/report.html`
@@ -439,7 +439,7 @@ Rename the router tag from `["generate"]` to `["bi"]`. The module-level `_bi_pip
 
 ---
 
-## Phase D — Frontend (React 19 + Vite + Tailwind v4)
+## Phase D - Frontend (React 19 + Vite + Tailwind v4)
 
 ### Task 13: Scaffold fresh frontend
 
@@ -481,7 +481,7 @@ Rename the router tag from `["generate"]` to `["bi"]`. The module-level `_bi_pip
 
 ---
 
-## Phase E — Quality, Security, Ship
+## Phase E - Quality, Security, Ship
 
 ### Task 15: Lint, type-check, coverage, pre-commit, CI
 
@@ -509,13 +509,13 @@ Rename the router tag from `["generate"]` to `["bi"]`. The module-level `_bi_pip
 
 ### Task 16: README + final end-to-end test + ship
 
-**Description:** Write `README.md` (setup, `.env` keys, WeasyPrint system deps — libpango/libcairo, how to run backend+frontend, limitations: in-memory jobs, SMTP stub). Run the full system end-to-end (backend + frontend) against a real URL with email delivery via real SendGrid (or documented SMTP stub). Confirm all automated checks pass.
+**Description:** Write `README.md` (setup, `.env` keys, WeasyPrint system deps - libpango/libcairo, how to run backend+frontend, limitations: in-memory jobs, SMTP stub). Run the full system end-to-end (backend + frontend) against a real URL with email delivery via real SendGrid (or documented SMTP stub). Confirm all automated checks pass.
 
 **Acceptance criteria:**
 - [ ] `README.md` documents setup, env vars, system deps, run commands, known limitations
 - [ ] `python -m pytest tests/ -v` all green
 - [ ] `npm run build` succeeds
-- [ ] Full end-to-end through the UI delivers PDF + DOCX to an inbox (SendGrid) — or documents the SMTP-stub fallback path
+- [ ] Full end-to-end through the UI delivers PDF + DOCX to an inbox (SendGrid) - or documents the SMTP-stub fallback path
 - [ ] No TypeScript errors
 
 **Verification:**
@@ -535,7 +535,7 @@ Rename the router tag from `["generate"]` to `["bi"]`. The module-level `_bi_pip
 - [ ] CI green on the default branch
 - [ ] End-to-end delivery verified
 - [ ] Known limitations documented (in-memory jobs, SMTP stub)
-- [ ] Review with human — ready to release
+- [ ] Review with human - ready to release
 
 ---
 
@@ -548,7 +548,7 @@ Rename the router tag from `["generate"]` to `["bi"]`. The module-level `_bi_pip
 | JS-heavy sites don't scrape well | Low | httpx/BS4 first; Playwright is documented upgrade path |
 | NVIDIA rate-limits / key missing | High | `MockLLM` pattern keeps tests offline; document demo fallback |
 | Async agents blocked sync LLM (port bug) | Medium | Task 5 wraps all LLM/email calls in `to_thread` |
-| In-memory jobs lost on restart | Low | **Resolved by Q2** — SQLite `JobStore` (Task 6) persists across restarts |
+| In-memory jobs lost on restart | Low | **Resolved by Q2** - SQLite `JobStore` (Task 6) persists across restarts |
 | SMTP stub unusable in prod | Low | Immediate SendGrid path; stub is dev-only, documented |
 | Marketing template scope creep (Phase C) | Medium | Confirmed scope (Q1=b); Phase C is planned, not surprise work |
 
@@ -567,11 +567,11 @@ Rename the router tag from `["generate"]` to `["bi"]`. The module-level `_bi_pip
 
 | Phase | Effort vs. prior greenfield plan |
 |-------|----------------------------------|
-| A (Port + micro-fix) | ~50% smaller — copy verbatim, apply targeted fixes |
+| A (Port + micro-fix) | ~50% smaller - copy verbatim, apply targeted fixes |
 | B (API + smoke) | Same |
 | C (marketing template) | New work (optional) |
 | D (Frontend) | Same |
-| E (Quality/Ship) | New — adds lint/types/cov/CI per `AGENTS.md` |
+| E (Quality/Ship) | New - adds lint/types/cov/CI per `AGENTS.md` |
 
 ---
 

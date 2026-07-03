@@ -58,7 +58,7 @@ app = FastAPI(
     title=settings.app_title,
     version=settings.app_version,
     description=(
-        "Business Intelligence System — scrape any website, extract key data, "
+        "Business Intelligence System - scrape any website, extract key data, "
         "and generate comprehensive AI analysis reports delivered to your inbox."
     ),
     lifespan=lifespan,

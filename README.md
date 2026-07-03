@@ -34,12 +34,12 @@ cd frontend && npm install && npm run dev
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `NVIDIA_API_KEY` | ✅ | — | NVIDIA NIM API key |
-| `NVIDIA_MODEL` | — | `meta/llama-3.1-8b-instruct` | LLM model ID |
-| `SENDGRID_API_KEY` | — | — | SendGrid API key for email |
-| `FROM_EMAIL` | — | `reports@bisystem.com` | Sender email |
-| `REPORT_OUTPUT_DIR` | — | `reports` | Report output directory |
-| `JOBS_DB` | — | `jobs.db` | SQLite database path |
+| `NVIDIA_API_KEY` | ✅ | - | NVIDIA NIM API key |
+| `NVIDIA_MODEL` | - | `meta/llama-3.1-8b-instruct` | LLM model ID |
+| `SENDGRID_API_KEY` | - | - | SendGrid API key for email |
+| `FROM_EMAIL` | - | `reports@bisystem.com` | Sender email |
+| `REPORT_OUTPUT_DIR` | - | `reports` | Report output directory |
+| `JOBS_DB` | - | `jobs.db` | SQLite database path |
 
 ## Tests
 

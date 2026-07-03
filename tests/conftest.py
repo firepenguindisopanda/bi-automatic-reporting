@@ -1,6 +1,6 @@
 """Shared test fixtures and mock LLM helpers.
 
-All tests use mocked LLM calls — never hit a real API.
+All tests use mocked LLM calls - never hit a real API.
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ class MockLLM:
 def mock_llm_client() -> LLMClient:
     """Return an LLMClient whose underlying ChatNVIDIA is replaced with a MockLLM.
 
-    The mock returns empty content by default — override ``mock_llm.return_value``
+    The mock returns empty content by default - override ``mock_llm.return_value``
     in individual tests to control what ``invoke_structured`` returns.
     """
     client = LLMClient(model="test-model")

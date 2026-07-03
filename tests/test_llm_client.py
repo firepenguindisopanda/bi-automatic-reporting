@@ -8,7 +8,7 @@ from app.llm.client import LLMClient
 
 
 class TestWithModel:
-    """5.1 — LLMClient.with_model() isolation."""
+    """5.1 - LLMClient.with_model() isolation."""
 
     def test_with_model_creates_new_instance(self) -> None:
         original = LLMClient(model="meta/llama-3.1-8b-instruct")

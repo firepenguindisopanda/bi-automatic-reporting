@@ -221,7 +221,7 @@ HTML_TEMPLATE = Template("""
   {% endif %}
 
   <div class="footer">
-    <p>Business Intelligence System — Automated Analysis Report</p>
+    <p>Business Intelligence System - Automated Analysis Report</p>
     <p>Source: {{ profile.website or 'N/A' }}</p>
   </div>
 </body>
@@ -284,7 +284,7 @@ class ReportGenerator:
 
         doc.add_heading("Business Intelligence Report", level=1)
         p = doc.add_paragraph(
-            f"{company or profile.company_name} — Generated "
+            f"{company or profile.company_name} - Generated "
             f"{datetime.now().strftime('%B %d, %Y')}"
         )
         p.italic = True

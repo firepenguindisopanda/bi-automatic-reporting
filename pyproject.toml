@@ -1,7 +1,7 @@
 [project]
 name = "business-intelligence"
 version = "0.1.0"
-description = "Automated business intelligence system — scrape, analyze, report."
+description = "Automated business intelligence system - scrape, analyze, report."
 requires-python = ">=3.13"
 
 [project.optional-dependencies]
@@ -22,7 +22,7 @@ exclude = ["tests/", ".venv/"]
 
 [[tool.mypy.overrides]]
 module = "app.scraper.engine"
-# BeautifulSoup returns dynamic types — AttributeValueList is runtime-only
+# BeautifulSoup returns dynamic types - AttributeValueList is runtime-only
 ignore_errors = true
 
 [[tool.mypy.overrides]]

@@ -176,7 +176,7 @@ class SWOTAgent:
                 f"Market Gaps: {', '.join(competitive.market_gaps)}\n"
                 f"Threat Assessment: {competitive.threat_assessment}\n\n"
                 "Generate a SWOT analysis with at least 4 items per category. "
-                "Be specific to this business — not generic SWOT items."
+                "Be specific to this business - not generic SWOT items."
             ),
         )
 
@@ -201,7 +201,7 @@ class SWOTAgent:
                 f"Market Gaps: {', '.join(competitive.market_gaps)}\n"
                 f"Threat Assessment: {competitive.threat_assessment}\n\n"
                 "Generate a SWOT analysis with at least 4 items per category. "
-                "Be specific to this business — not generic SWOT items."
+                "Be specific to this business - not generic SWOT items."
             ),
         )
 
@@ -292,7 +292,7 @@ class MarketingAnalysisAgent:
                 "(experience, expertise, authoritativeness, trustworthiness), "
                 "GEO (Generative Engine Optimization) tactics, "
                 "and a clear call to action. "
-                "Be specific to this business — not generic."
+                "Be specific to this business - not generic."
             ),
         )
 
@@ -321,6 +321,6 @@ class MarketingAnalysisAgent:
                 "(experience, expertise, authoritativeness, trustworthiness), "
                 "GEO (Generative Engine Optimization) tactics, "
                 "and a clear call to action. "
-                "Be specific to this business — not generic."
+                "Be specific to this business - not generic."
             ),
         )

@@ -66,7 +66,7 @@ class BIPipeline:
         return await self._store.delete_brief(job_id)
 
     def _run_sync(self, job_id: str, url: str, email: str) -> None:
-        """Synchronous pipeline runner — runs in a thread pool.
+        """Synchronous pipeline runner - runs in a thread pool.
 
         All LLM client + agent objects are created fresh inside this thread
         so that ChatNVIDIA's httpx client lives in the same thread context.
@@ -177,7 +177,7 @@ class BIPipeline:
             await self._store.update_status(job_id, "error", str(e))
 
     async def _run_async(self, job_id: str, url: str, email: str) -> None:
-        """Fully async pipeline runner — runs in the event loop via create_task.
+        """Fully async pipeline runner - runs in the event loop via create_task.
 
         Uses the pipeline's own agents (no thread-local hacks) and async LLM
         calls to avoid httpx connection-pool mixing between threads.

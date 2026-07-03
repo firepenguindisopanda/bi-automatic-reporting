@@ -18,7 +18,7 @@ Known to fail:
 
 ## Step 1: Root cause isolation
 
-Create `tests/repro_thread_loop.py` — minimal reproduction of the exact thread+loop nesting:
+Create `tests/repro_thread_loop.py` - minimal reproduction of the exact thread+loop nesting:
 
 ```python
 """
@@ -35,7 +35,7 @@ Tests combinations:
 
 Run each combination and compare. If C fails but A and B pass, the `run_until_complete` context is the trigger. If D passes but C fails, it's specifically `run_until_complete` running. If E also fails, it's the thread+loop combo itself.
 
-## Step 2: Fix — primary approach (fully async pipeline)
+## Step 2: Fix - primary approach (fully async pipeline)
 
 Move from threadpool-async hybrid to a purely async background task on the main event loop:
 
@@ -47,8 +47,8 @@ This is architecturally correct: LLM calls are I/O bound (HTTP POSTs to NVIDIA A
 
 **Risks:**
 - Background task runs on the main event loop. This is fine for I/O-bound work.
-- If the pipeline has CPU-heavy steps, those should still be in `to_thread` — but all current steps are I/O (HTTP scrape + LLM calls + file writes).
-- `asyncio.create_task` is fire-and-forget — FastAPI's lifespan must wait for pending tasks on shutdown.
+- If the pipeline has CPU-heavy steps, those should still be in `to_thread` - but all current steps are I/O (HTTP scrape + LLM calls + file writes).
+- `asyncio.create_task` is fire-and-forget - FastAPI's lifespan must wait for pending tasks on shutdown.
 
 **Acceptance criteria:**
 - [ ] Agents use `ainvoke_structured`, pipeline runs via `create_task`
@@ -59,10 +59,10 @@ This is architecturally correct: LLM calls are I/O bound (HTTP POSTs to NVIDIA A
 
 If async pipeline doesn't work (e.g., httpx client state corruption across concurrent tasks):
 
-1. Create `app/orchestrator/worker.py` — standalone script that takes `job_id` as CLI arg
+1. Create `app/orchestrator/worker.py` - standalone script that takes `job_id` as CLI arg
 2. `BIPipeline.submit()` spawns `subprocess.Popen([sys.executable, "-m", "app.orchestrator.worker", job_id])`
 3. Worker reads job from SQLite, runs pipeline, writes results back
-4. Completely isolated process heap — no thread-safety issues
+4. Completely isolated process heap - no thread-safety issues
 
 **Trade-off:** ~200ms subprocess spawn overhead per job.
 
@@ -81,5 +81,5 @@ Write finding to AGENTS.md so future sessions know:
 | `app/orchestrator/bi_pipeline.py` | Rewrite `submit()`/`_run()` to use `create_task` |
 | `app/analysis/agents.py` | Convert all agents back to `async def` with `ainvoke_structured` |
 | `app/llm/client.py` | No changes needed (ainvoke_structured already exists) |
-| `app/orchestrator/worker.py` | New file — only if fallback needed |
+| `app/orchestrator/worker.py` | New file - only if fallback needed |
 | `app/main.py` | Maybe: lifespan awaits pending tasks |

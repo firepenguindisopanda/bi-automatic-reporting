@@ -126,7 +126,7 @@ class LLMClient:
         text = text.removeprefix("```json").removeprefix("```").strip()
         if text.endswith("```"):
             text = text[:-3].strip()
-        # Find ALL JSON objects — model sometimes echoes the schema before outputting data
+        # Find ALL JSON objects - model sometimes echoes the schema before outputting data
         objects: list[str] = []
         i = 0
         while True:
@@ -146,7 +146,7 @@ class LLMClient:
                         break
             else:
                 break
-        # Try each object — take the last valid one (model may echo schema first)
+        # Try each object - take the last valid one (model may echo schema first)
         for candidate in reversed(objects):
             try:
                 data = json.loads(candidate)

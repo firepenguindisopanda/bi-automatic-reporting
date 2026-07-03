@@ -67,8 +67,7 @@ class MarketAnalysisAgent:
         return self._llm.invoke_structured(
             output_model=MarketAnalysis,
             system_prompt=(
-                "You are a Market Research Analyst. Analyze the market "
-                "positioning and target market for this business."
+                "You are a Market Research Analyst. Analyze the market positioning and target market for this business."
             ),
             user_prompt=(
                 f"Company: {profile.company_name}\n"
@@ -87,8 +86,7 @@ class MarketAnalysisAgent:
         return await self._llm.ainvoke_structured(
             output_model=MarketAnalysis,
             system_prompt=(
-                "You are a Market Research Analyst. Analyze the market "
-                "positioning and target market for this business."
+                "You are a Market Research Analyst. Analyze the market positioning and target market for this business."
             ),
             user_prompt=(
                 f"Company: {profile.company_name}\n"
@@ -108,14 +106,11 @@ class CompetitiveAnalysisAgent:
     def __init__(self, llm: LLMClient) -> None:
         self._llm = llm
 
-    def analyze(
-        self, profile: BusinessProfile, market: MarketAnalysis, scraped: ScrapedContent
-    ) -> CompetitiveAnalysis:
+    def analyze(self, profile: BusinessProfile, market: MarketAnalysis, scraped: ScrapedContent) -> CompetitiveAnalysis:
         return self._llm.invoke_structured(
             output_model=CompetitiveAnalysis,
             system_prompt=(
-                "You are a Competitive Intelligence Analyst. Identify "
-                "competitors and analyze competitive positioning."
+                "You are a Competitive Intelligence Analyst. Identify competitors and analyze competitive positioning."
             ),
             user_prompt=(
                 f"Company: {profile.company_name}\n"
@@ -135,8 +130,7 @@ class CompetitiveAnalysisAgent:
         return await self._llm.ainvoke_structured(
             output_model=CompetitiveAnalysis,
             system_prompt=(
-                "You are a Competitive Intelligence Analyst. Identify "
-                "competitors and analyze competitive positioning."
+                "You are a Competitive Intelligence Analyst. Identify competitors and analyze competitive positioning."
             ),
             user_prompt=(
                 f"Company: {profile.company_name}\n"
@@ -163,10 +157,7 @@ class SWOTAgent:
     ) -> SWOTAnalysis:
         return self._llm.invoke_structured(
             output_model=SWOTAnalysis,
-            system_prompt=(
-                "You are a Strategic Analyst. Generate a comprehensive "
-                "SWOT analysis for this business."
-            ),
+            system_prompt=("You are a Strategic Analyst. Generate a comprehensive SWOT analysis for this business."),
             user_prompt=(
                 f"Company: {profile.company_name}\n"
                 f"Offerings: {', '.join(profile.offerings)}\n"
@@ -188,10 +179,7 @@ class SWOTAgent:
     ) -> SWOTAnalysis:
         return await self._llm.ainvoke_structured(
             output_model=SWOTAnalysis,
-            system_prompt=(
-                "You are a Strategic Analyst. Generate a comprehensive "
-                "SWOT analysis for this business."
-            ),
+            system_prompt=("You are a Strategic Analyst. Generate a comprehensive SWOT analysis for this business."),
             user_prompt=(
                 f"Company: {profile.company_name}\n"
                 f"Offerings: {', '.join(profile.offerings)}\n"

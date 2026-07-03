@@ -29,9 +29,7 @@ class SMTPProvider(ProviderBase):
 
             with open(pdf_path, "rb") as f:
                 pdf_attachment = MIMEApplication(f.read(), _subtype="pdf")
-                pdf_attachment.add_header(
-                    "Content-Disposition", "attachment", filename=pdf_path.name
-                )
+                pdf_attachment.add_header("Content-Disposition", "attachment", filename=pdf_path.name)
                 msg.attach(pdf_attachment)
 
             if docx_path and docx_path.exists():
@@ -40,9 +38,7 @@ class SMTPProvider(ProviderBase):
                         f.read(),
                         _subtype="vnd.openxmlformats-officedocument.wordprocessingml.document",
                     )
-                    docx_attachment.add_header(
-                        "Content-Disposition", "attachment", filename=docx_path.name
-                    )
+                    docx_attachment.add_header("Content-Disposition", "attachment", filename=docx_path.name)
                     msg.attach(docx_attachment)
 
             def _smtp_send() -> None:

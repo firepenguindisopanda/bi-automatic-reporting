@@ -9,10 +9,7 @@ from app.models.bi import ScrapedContent
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = (
-    "Mozilla/5.0 (compatible; BIAnalyzer/1.0; "
-    "+https://bisystem.com/bot)"
-)
+USER_AGENT = "Mozilla/5.0 (compatible; BIAnalyzer/1.0; +https://bisystem.com/bot)"
 
 
 class ScraperEngine:
@@ -45,19 +42,25 @@ class ScraperEngine:
                 title=title,
                 description=description,
                 headings=headings,
-                text_content=text_content[:self._max_text_length],
+                text_content=text_content[: self._max_text_length],
                 meta_keywords=meta_keywords,
                 links=links[:100],
             )
 
         except httpx.HTTPStatusError as e:
             return ScrapedContent(
-                url=url, title="", description="", text_content="",
+                url=url,
+                title="",
+                description="",
+                text_content="",
                 error=f"HTTP {e.response.status_code}",
             )
         except httpx.TimeoutException:
             return ScrapedContent(
-                url=url, title="", description="", text_content="",
+                url=url,
+                title="",
+                description="",
+                text_content="",
                 error="Request timed out",
             )
         except Exception as e:

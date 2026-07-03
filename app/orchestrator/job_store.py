@@ -68,7 +68,8 @@ class JobStore:
         async with aiosqlite.connect(self._db_path) as db:
             db.row_factory = aiosqlite.Row
             async with db.execute(
-                "SELECT * FROM jobs WHERE job_id = ?", (job_id,),
+                "SELECT * FROM jobs WHERE job_id = ?",
+                (job_id,),
             ) as cursor:
                 row = await cursor.fetchone()
                 if row is None:
@@ -76,7 +77,10 @@ class JobStore:
                 return dict(row)
 
     async def update_status(
-        self, job_id: str, status: str, error: str | None = None,
+        self,
+        job_id: str,
+        status: str,
+        error: str | None = None,
     ) -> None:
         async with aiosqlite.connect(self._db_path) as db:
             await db.execute(
@@ -102,7 +106,10 @@ class JobStore:
             await db.commit()
 
     async def create_brief(
-        self, job_id: str, session_id: str, data: dict[str, str],
+        self,
+        job_id: str,
+        session_id: str,
+        data: dict[str, str],
     ) -> dict[str, object]:
         cols = ", ".join(data.keys())
         placeholders = ", ".join(["?"] * len(data))
@@ -115,7 +122,8 @@ class JobStore:
             await db.commit()
             db.row_factory = aiosqlite.Row
             async with db.execute(
-                "SELECT * FROM briefs WHERE job_id = ?", (job_id,),
+                "SELECT * FROM briefs WHERE job_id = ?",
+                (job_id,),
             ) as cursor:
                 row = await cursor.fetchone()
                 return dict(row) if row else {}
@@ -124,7 +132,8 @@ class JobStore:
         async with aiosqlite.connect(self._db_path) as db:
             db.row_factory = aiosqlite.Row
             async with db.execute(
-                "SELECT * FROM briefs WHERE job_id = ?", (job_id,),
+                "SELECT * FROM briefs WHERE job_id = ?",
+                (job_id,),
             ) as cursor:
                 row = await cursor.fetchone()
                 return dict(row) if row else None
@@ -132,7 +141,8 @@ class JobStore:
     async def delete_brief(self, job_id: str) -> bool:
         async with aiosqlite.connect(self._db_path) as db:
             cursor = await db.execute(
-                "DELETE FROM briefs WHERE job_id = ?", (job_id,),
+                "DELETE FROM briefs WHERE job_id = ?",
+                (job_id,),
             )
             await db.commit()
             return cursor.rowcount > 0
@@ -140,7 +150,8 @@ class JobStore:
     async def add_event(self, job_id: str, event_type: str, agent: str) -> None:
         async with aiosqlite.connect(self._db_path) as db:
             async with db.execute(
-                "SELECT events FROM jobs WHERE job_id = ?", (job_id,),
+                "SELECT events FROM jobs WHERE job_id = ?",
+                (job_id,),
             ) as cursor:
                 row = await cursor.fetchone()
             events = json.loads(row[0]) if row and row[0] else []

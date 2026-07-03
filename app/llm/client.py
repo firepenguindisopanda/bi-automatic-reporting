@@ -113,12 +113,13 @@ class LLMClient:
         return "{\n" + ",\n".join(parts) + "\n}"
 
     def _build_json_prompt(
-        self, output_model: type[T], system_prompt: str, user_prompt: str,
+        self,
+        output_model: type[T],
+        system_prompt: str,
+        user_prompt: str,
     ) -> tuple[str, str]:
         example = self._build_example_schema(output_model)
-        json_instruction = (
-            f"\n\nRespond with ONLY valid JSON in this format (no markdown, no explanation):\n{example}"
-        )
+        json_instruction = f"\n\nRespond with ONLY valid JSON in this format (no markdown, no explanation):\n{example}"
         return system_prompt + json_instruction, user_prompt
 
     def _parse_json_response(self, content: str, output_model: type[T]) -> T | None:
@@ -164,7 +165,9 @@ class LLMClient:
     ) -> T:
         """Send a prompt and get back a validated Pydantic model (sync)."""
         sys_prompt, usr_prompt = self._build_json_prompt(
-            output_model, system_prompt, user_prompt,
+            output_model,
+            system_prompt,
+            user_prompt,
         )
         messages: list = []
         if sys_prompt:
@@ -178,9 +181,7 @@ class LLMClient:
         if parsed is not None:
             return parsed
 
-        raise RuntimeError(
-            f"Failed to parse {output_model.__name__} from model output"
-        )
+        raise RuntimeError(f"Failed to parse {output_model.__name__} from model output")
 
     async def ainvoke_structured(
         self,
@@ -190,7 +191,9 @@ class LLMClient:
     ) -> T:
         """Send a prompt and get back a validated Pydantic model (async)."""
         sys_prompt, usr_prompt = self._build_json_prompt(
-            output_model, system_prompt, user_prompt,
+            output_model,
+            system_prompt,
+            user_prompt,
         )
         messages: list = []
         if sys_prompt:
@@ -204,6 +207,4 @@ class LLMClient:
         if parsed is not None:
             return parsed
 
-        raise RuntimeError(
-            f"Failed to parse {output_model.__name__} from model output"
-        )
+        raise RuntimeError(f"Failed to parse {output_model.__name__} from model output")

@@ -63,7 +63,8 @@ class SendGridProvider(ProviderBase):
             response = await asyncio.to_thread(sg.send, message)
             logger.info(
                 "SendGrid email sent to %s (status=%s)",
-                to_email, response.status_code,
+                to_email,
+                response.status_code,
             )
             return 200 <= response.status_code < 300
 

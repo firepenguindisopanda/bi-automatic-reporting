@@ -26,6 +26,7 @@ class EmailService:
         if name == "sendgrid":
             try:
                 from app.email.providers.sendgrid_provider import SendGridProvider
+
                 if not settings.sendgrid_api_key:
                     logger.warning("EMAIL_PROVIDER=sendgrid but SENDGRID_API_KEY is empty; falling back to SMTP")
                     return SMTPProvider()

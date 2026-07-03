@@ -283,10 +283,7 @@ class ReportGenerator:
         style.font.name = "Helvetica"
 
         doc.add_heading("Business Intelligence Report", level=1)
-        p = doc.add_paragraph(
-            f"{company or profile.company_name} - Generated "
-            f"{datetime.now().strftime('%B %d, %Y')}"
-        )
+        p = doc.add_paragraph(f"{company or profile.company_name} - Generated {datetime.now().strftime('%B %d, %Y')}")
         p.italic = True
 
         doc.add_heading("Executive Summary", level=2)

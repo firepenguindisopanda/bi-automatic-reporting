@@ -8,7 +8,7 @@ from docx.shared import Pt
 from jinja2 import Template
 from weasyprint import HTML as WeasyPrintHTML  # noqa: N811
 
-from app.models.bi import BIReport, BusinessProfile, MarketingAnalysis
+from app.models.bi import BIReport, BusinessProfile, MarketResearchResult, MarketingAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +229,185 @@ HTML_TEMPLATE = Template("""
 """)
 
 
+MR_HTML_TEMPLATE = Template("""
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { margin: 2cm; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; line-height: 1.6; font-size: 11pt; }
+    h1 { color: #1a237e; font-size: 22pt; border-bottom: 3px solid #1a237e; padding-bottom: 8px; }
+    h2 { color: #283593; font-size: 16pt; margin-top: 24px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+    h3 { color: #3949ab; font-size: 13pt; margin-top: 16px; }
+    .exec-summary { background: #e8eaf6; padding: 16px; border-radius: 6px; margin: 16px 0; }
+    .kpi-row { display: flex; gap: 16px; margin: 16px 0; }
+    .kpi-card { flex: 1; border: 1px solid #ddd; border-radius: 6px; padding: 12px; text-align: center; }
+    .kpi-card .label { font-size: 9pt; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-card .value { font-size: 18pt; font-weight: bold; color: #1a237e; margin-top: 4px; }
+    .insight-box { background: #f3f4f6; padding: 12px 16px; border-left: 4px solid #3949ab; margin: 8px 0; }
+    .rec-box { background: #f0fdf4; padding: 12px 16px; border-left: 4px solid #16a34a; margin: 8px 0; }
+    .risk-box { background: #fefce8; padding: 12px 16px; border-left: 4px solid #ca8a04; margin: 8px 0; }
+    ul { padding-left: 20px; }
+    li { margin: 4px 0; }
+    .section { margin: 20px 0; }
+    .label { font-weight: 600; color: #1a237e; }
+    .footer {
+      margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd;
+      font-size: 9pt; color: #888; text-align: center;
+    }
+    .resource-item { border-left: 3px solid #c7d2fe; padding: 8px 12px; margin: 8px 0; }
+    .resource-item .name { font-weight: 600; color: #4338ca; }
+    .resource-item .url { font-size: 9pt; color: #888; }
+    .resource-item .desc { margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Market Research Report</h1>
+  <p style="color: #666; font-size: 10pt;">{{ query }} &mdash; Generated {{ date }}</p>
+
+  <div class="exec-summary">
+    <h2>Executive Summary</h2>
+    <p>{{ executive_summary }}</p>
+  </div>
+
+  {% if market_size or growth_rate %}
+  <div class="kpi-row">
+    {% if market_size %}
+    <div class="kpi-card">
+      <div class="label">Estimated Market Size</div>
+      <div class="value">{{ market_size }}</div>
+    </div>
+    {% endif %}
+    {% if growth_rate %}
+    <div class="kpi-card">
+      <div class="label">Growth Rate</div>
+      <div class="value">{{ growth_rate }}</div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if key_insights %}
+  <div class="section">
+    <h2>Key Insights</h2>
+    {% for insight in key_insights %}
+    <div class="insight-box">{{ insight }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if recommendations %}
+  <div class="section">
+    <h2>Recommendations</h2>
+    {% for rec in recommendations %}
+    <div class="rec-box">{{ rec }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if risks_and_assumptions %}
+  <div class="section">
+    <h2>Risks &amp; Assumptions</h2>
+    {% for risk in risks_and_assumptions %}
+    <div class="risk-box">{{ risk }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="section">
+    <h2>Market Landscape</h2>
+    <p>{{ summary }}</p>
+  </div>
+
+  {% if key_players %}
+  <div class="section">
+    <h2>Key Players</h2>
+    {% for r in key_players %}
+    <div class="resource-item">
+      <div class="name">{{ r.name }}</div>
+      <div class="url">{{ r.url }}</div>
+      <div class="desc">{{ r.description }}</div>
+      {% if r.relevance %}<p style="font-size: 9pt; color: #666; margin-top: 2px; font-style: italic;">{{ r.relevance }}</p>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if competitor_sites %}
+  <div class="section">
+    <h2>Competitor Sites</h2>
+    {% for r in competitor_sites %}
+    <div class="resource-item">
+      <div class="name">{{ r.name }}</div>
+      <div class="url">{{ r.url }}</div>
+      <div class="desc">{{ r.description }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if industry_websites %}
+  <div class="section">
+    <h2>Industry Websites &amp; Resources</h2>
+    {% for r in industry_websites %}
+    <div class="resource-item">
+      <div class="name">{{ r.name }}</div>
+      <div class="url">{{ r.url }}</div>
+      <div class="desc">{{ r.description }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if news_sources %}
+  <div class="section">
+    <h2>News &amp; Publications</h2>
+    {% for r in news_sources %}
+    <div class="resource-item">
+      <div class="name">{{ r.name }}</div>
+      <div class="url">{{ r.url }}</div>
+      <div class="desc">{{ r.description }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if research_papers %}
+  <div class="section">
+    <h2>Research Papers &amp; Reports</h2>
+    {% for r in research_papers %}
+    <div class="resource-item">
+      <div class="name">{{ r.name }}</div>
+      <div class="url">{{ r.url }}</div>
+      <div class="desc">{{ r.description }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if relevant_communities %}
+  <div class="section">
+    <h2>Communities &amp; Forums</h2>
+    {% for r in relevant_communities %}
+    <div class="resource-item">
+      <div class="name">{{ r.name }}</div>
+      <div class="url">{{ r.url }}</div>
+      <div class="desc">{{ r.description }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="footer">
+    <p>Business Intelligence System - Automated Market Research Report</p>
+    <p>Query: {{ query }}</p>
+  </div>
+</body>
+</html>
+""")
+
+
 def _sanitize_filename(name: str) -> str:
     result = re.sub(r"[^\w\s-]", "", name).strip()
     result = re.sub(r"[-\s]+", "_", result)
@@ -236,7 +415,7 @@ def _sanitize_filename(name: str) -> str:
 
 
 class ReportGenerator:
-    def __init__(self, output_dir: str = "reports") -> None:
+    def __init__(self, output_dir: str = "data/reports") -> None:
         self._output_dir = Path(output_dir)
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -433,4 +612,110 @@ class ReportGenerator:
         filepath = self._output_dir / filename
         doc.save(str(filepath))
         logger.info("DOCX generated: %s", filepath)
+        return filepath
+
+
+class MarketResearchReportGenerator:
+    def __init__(self, output_dir: str = "reports") -> None:
+        self._output_dir = Path(output_dir)
+
+    def _ensure_dir(self) -> None:
+        self._output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _resources_to_docx(self, doc: Document, title: str, resources: list) -> None:
+        if not resources:
+            return
+        doc.add_heading(title, level=2)
+        for r in resources:
+            p = doc.add_paragraph()
+            run = p.add_run(r.name)
+            run.bold = True
+            if r.url:
+                p.add_run(f" — {r.url}")
+            doc.add_paragraph(r.description, style="List Bullet")
+            if r.relevance:
+                doc.add_paragraph(f"Relevance: {r.relevance}", style="List Bullet")
+
+    def generate_pdf(self, result: MarketResearchResult) -> Path:
+        self._ensure_dir()
+        date_str = datetime.now().strftime("%B %d, %Y")
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        html = MR_HTML_TEMPLATE.render(
+            query=result.market_query,
+            date=date_str,
+            executive_summary=result.executive_summary,
+            key_insights=result.key_insights,
+            recommendations=result.recommendations,
+            risks_and_assumptions=result.risks_and_assumptions,
+            market_size=result.market_size,
+            growth_rate=result.growth_rate,
+            summary=result.summary,
+            key_players=result.key_players,
+            news_sources=result.news_sources,
+            industry_websites=result.industry_websites,
+            competitor_sites=result.competitor_sites,
+            research_papers=result.research_papers,
+            relevant_communities=result.relevant_communities,
+        )
+
+        safe_name = _sanitize_filename(result.market_query)
+        filename = f"market_research_{safe_name}_{ts}.pdf"
+        filepath = self._output_dir / filename
+        WeasyPrintHTML(string=html).write_pdf(str(filepath))
+        logger.info("Market research PDF generated: %s", filepath)
+        return filepath
+
+    def generate_docx(self, result: MarketResearchResult) -> Path:
+        self._ensure_dir()
+        doc = Document()
+        style = doc.styles["Normal"]
+        style.font.size = Pt(11)
+        style.font.name = "Helvetica"
+
+        doc.add_heading("Market Research Report", level=1)
+        p = doc.add_paragraph(f"{result.market_query} - Generated {datetime.now().strftime('%B %d, %Y')}")
+        p.italic = True
+
+        doc.add_heading("Executive Summary", level=2)
+        doc.add_paragraph(result.executive_summary)
+
+        if result.market_size:
+            doc.add_heading("Market Size", level=2)
+            doc.add_paragraph(result.market_size)
+        if result.growth_rate:
+            doc.add_heading("Growth Rate", level=2)
+            doc.add_paragraph(result.growth_rate)
+
+        if result.key_insights:
+            doc.add_heading("Key Insights", level=2)
+            for insight in result.key_insights:
+                doc.add_paragraph(insight, style="List Bullet")
+
+        if result.recommendations:
+            doc.add_heading("Recommendations", level=2)
+            for rec in result.recommendations:
+                doc.add_paragraph(rec, style="List Bullet")
+
+        if result.risks_and_assumptions:
+            doc.add_heading("Risks & Assumptions", level=2)
+            for risk in result.risks_and_assumptions:
+                doc.add_paragraph(risk, style="List Bullet")
+
+        doc.add_heading("Market Landscape", level=2)
+        doc.add_paragraph(result.summary)
+
+        self._resources_to_docx(doc, "Key Players", result.key_players)
+        self._resources_to_docx(doc, "Competitor Sites", result.competitor_sites)
+        self._resources_to_docx(doc, "Industry Websites & Resources", result.industry_websites)
+        self._resources_to_docx(doc, "News & Publications", result.news_sources)
+        self._resources_to_docx(doc, "Research Papers & Reports", result.research_papers)
+        self._resources_to_docx(doc, "Communities & Forums", result.relevant_communities)
+
+        safe_name = _sanitize_filename(result.market_query)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"market_research_{safe_name}_{ts}.docx"
+        filepath = self._output_dir / filename
+        doc.save(str(filepath))
+        logger.info("Market research DOCX generated: %s", filepath)
         return filepath

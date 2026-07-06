@@ -1,9 +1,8 @@
 import json
 import logging
 
-import aiosqlite
-
 from app.config import settings
+from app.orchestrator.database import Database
 
 logger = logging.getLogger(__name__)
 
@@ -11,70 +10,23 @@ logger = logging.getLogger(__name__)
 class JobStore:
     def __init__(self, db_path: str = "") -> None:
         self._db_path = db_path or settings.jobs_db
+        self._db = Database()
 
     async def init(self) -> None:
-        async with aiosqlite.connect(self._db_path) as db:
-            await db.execute("""
-                CREATE TABLE IF NOT EXISTS jobs (
-                    job_id TEXT PRIMARY KEY,
-                    url TEXT NOT NULL,
-                    email TEXT NOT NULL,
-                    status TEXT NOT NULL DEFAULT 'pending',
-                    error TEXT,
-                    artifact_json TEXT,
-                    pdf_path TEXT,
-                    docx_path TEXT,
-                    events TEXT DEFAULT '[]',
-                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-                )
-            """)
-            await db.execute("""
-                CREATE TABLE IF NOT EXISTS briefs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    job_id TEXT NOT NULL REFERENCES jobs(job_id),
-                    session_id TEXT NOT NULL,
-                    client_name TEXT DEFAULT '',
-                    client_country TEXT DEFAULT '',
-                    client_language TEXT DEFAULT '',
-                    client_website TEXT DEFAULT '',
-                    client_description TEXT DEFAULT '',
-                    target_audience_personas TEXT DEFAULT '',
-                    brand_personality_matrix TEXT DEFAULT '',
-                    unique_value_proposition TEXT DEFAULT '',
-                    people_ask TEXT DEFAULT '',
-                    customer_journey TEXT DEFAULT '',
-                    customer_persona_trait TEXT DEFAULT '',
-                    eeat_signal_integration TEXT DEFAULT '',
-                    geo_tactic TEXT DEFAULT '',
-                    call_to_action TEXT DEFAULT '',
-                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-                )
-            """)
-            await db.commit()
-        logger.info("Job store initialized at %s", self._db_path)
+        await self._db.init()
 
     async def create_job(self, job_id: str, url: str, email: str) -> dict[str, str]:
-        async with aiosqlite.connect(self._db_path) as db:
-            await db.execute(
-                "INSERT INTO jobs (job_id, url, email) VALUES (?, ?, ?)",
-                (job_id, url, email),
-            )
-            await db.commit()
+        await self._db.execute(
+            "INSERT INTO jobs (job_id, url, email) VALUES (?, ?, ?)",
+            job_id, url, email,
+        )
+        await self._db.commit()
         return {"job_id": job_id, "url": url, "email": email, "status": "pending"}
 
     async def get_job(self, job_id: str) -> dict[str, str] | None:
-        async with aiosqlite.connect(self._db_path) as db:
-            db.row_factory = aiosqlite.Row
-            async with db.execute(
-                "SELECT * FROM jobs WHERE job_id = ?",
-                (job_id,),
-            ) as cursor:
-                row = await cursor.fetchone()
-                if row is None:
-                    return None
-                return dict(row)
+        return await self._db.fetchrow(
+            "SELECT * FROM jobs WHERE job_id = ?", job_id,
+        )
 
     async def update_status(
         self,
@@ -82,12 +34,11 @@ class JobStore:
         status: str,
         error: str | None = None,
     ) -> None:
-        async with aiosqlite.connect(self._db_path) as db:
-            await db.execute(
-                "UPDATE jobs SET status = ?, error = ?, updated_at = datetime('now') WHERE job_id = ?",
-                (status, error, job_id),
-            )
-            await db.commit()
+        await self._db.execute(
+            "UPDATE jobs SET status = ?, error = ?, updated_at = CURRENT_TIMESTAMP WHERE job_id = ?",
+            status, error, job_id,
+        )
+        await self._db.commit()
 
     async def complete_job(
         self,
@@ -96,14 +47,13 @@ class JobStore:
         pdf_path: str | None = None,
         docx_path: str | None = None,
     ) -> None:
-        async with aiosqlite.connect(self._db_path) as db:
-            await db.execute(
-                "UPDATE jobs SET status = 'complete', artifact_json = ?, "
-                "pdf_path = ?, docx_path = ?, "
-                "updated_at = datetime('now') WHERE job_id = ?",
-                (artifact_json, pdf_path, docx_path, job_id),
-            )
-            await db.commit()
+        await self._db.execute(
+            "UPDATE jobs SET status = 'complete', artifact_json = ?, "
+            "pdf_path = ?, docx_path = ?, "
+            "updated_at = CURRENT_TIMESTAMP WHERE job_id = ?",
+            artifact_json, pdf_path, docx_path, job_id,
+        )
+        await self._db.commit()
 
     async def create_brief(
         self,
@@ -114,50 +64,80 @@ class JobStore:
         cols = ", ".join(data.keys())
         placeholders = ", ".join(["?"] * len(data))
         values = list(data.values())
-        async with aiosqlite.connect(self._db_path) as db:
-            await db.execute(
-                f"INSERT OR REPLACE INTO briefs (job_id, session_id, {cols}) VALUES (?, ?, {placeholders})",
-                [job_id, session_id, *values],
+
+        if self._db.is_pg:
+            import asyncpg
+            set_clause = ", ".join(f"{k} = EXCLUDED.{k}" for k in data)
+            sql = (
+                f"INSERT INTO briefs (job_id, session_id, {cols}) "
+                f"VALUES ($1, $2, {', '.join(f'${i+3}' for i in range(len(data)))}) "
+                f"ON CONFLICT (job_id, session_id) DO UPDATE SET {set_clause}, "
+                f"updated_at = CURRENT_TIMESTAMP"
             )
-            await db.commit()
-            db.row_factory = aiosqlite.Row
-            async with db.execute(
-                "SELECT * FROM briefs WHERE job_id = ?",
-                (job_id,),
-            ) as cursor:
-                row = await cursor.fetchone()
-                return dict(row) if row else {}
+            async with self._db._pool.acquire() as conn:
+                await conn.execute(sql, job_id, session_id, *values)
+        else:
+            sql = f"INSERT OR REPLACE INTO briefs (job_id, session_id, {cols}) VALUES (?, ?, {placeholders})"
+            await self._db.execute(sql, job_id, session_id, *values)
+            await self._db.commit()
+
+        return await self.get_brief(job_id) or {}
 
     async def get_brief(self, job_id: str) -> dict[str, object] | None:
-        async with aiosqlite.connect(self._db_path) as db:
-            db.row_factory = aiosqlite.Row
-            async with db.execute(
-                "SELECT * FROM briefs WHERE job_id = ?",
-                (job_id,),
-            ) as cursor:
-                row = await cursor.fetchone()
-                return dict(row) if row else None
+        return await self._db.fetchrow(
+            "SELECT * FROM briefs WHERE job_id = ?", job_id,
+        )
 
     async def delete_brief(self, job_id: str) -> bool:
-        async with aiosqlite.connect(self._db_path) as db:
-            cursor = await db.execute(
-                "DELETE FROM briefs WHERE job_id = ?",
-                (job_id,),
-            )
-            await db.commit()
-            return cursor.rowcount > 0
+        affected = await self._db.execute(
+            "DELETE FROM briefs WHERE job_id = ?", job_id,
+        )
+        await self._db.commit()
+        return affected > 0
 
     async def add_event(self, job_id: str, event_type: str, agent: str) -> None:
-        async with aiosqlite.connect(self._db_path) as db:
-            async with db.execute(
-                "SELECT events FROM jobs WHERE job_id = ?",
-                (job_id,),
-            ) as cursor:
-                row = await cursor.fetchone()
-            events = json.loads(row[0]) if row and row[0] else []
-            events.append({"type": event_type, "agent": agent})
-            await db.execute(
-                "UPDATE jobs SET events = ?, updated_at = datetime('now') WHERE job_id = ?",
-                (json.dumps(events), job_id),
-            )
-            await db.commit()
+        row = await self._db.fetchrow(
+            "SELECT events FROM jobs WHERE job_id = ?", job_id,
+        )
+        events = json.loads(row["events"]) if row and row.get("events") else []
+        events.append({"type": event_type, "agent": agent})
+        await self._db.execute(
+            "UPDATE jobs SET events = ?, updated_at = CURRENT_TIMESTAMP WHERE job_id = ?",
+            json.dumps(events), job_id,
+        )
+        await self._db.commit()
+
+    async def create_market_research_job(self, job_id: str, market_query: str) -> dict[str, str]:
+        await self._db.execute(
+            "INSERT INTO market_research_jobs (job_id, market_query) VALUES (?, ?)",
+            job_id, market_query,
+        )
+        await self._db.commit()
+        return {"job_id": job_id, "market_query": market_query, "status": "pending"}
+
+    async def get_market_research_job(self, job_id: str) -> dict[str, str | None] | None:
+        return await self._db.fetchrow(
+            "SELECT * FROM market_research_jobs WHERE job_id = ?", job_id,
+        )
+
+    async def update_market_research_status(self, job_id: str, status: str, error: str | None = None) -> None:
+        await self._db.execute(
+            "UPDATE market_research_jobs SET status = ?, error = ?, updated_at = CURRENT_TIMESTAMP WHERE job_id = ?",
+            status, error, job_id,
+        )
+        await self._db.commit()
+
+    async def complete_market_research(
+        self,
+        job_id: str,
+        result_json: str,
+        pdf_path: str | None = None,
+        docx_path: str | None = None,
+    ) -> None:
+        await self._db.execute(
+            "UPDATE market_research_jobs SET status = 'complete', result_json = ?, "
+            "pdf_path = ?, docx_path = ?, "
+            "updated_at = CURRENT_TIMESTAMP WHERE job_id = ?",
+            result_json, pdf_path, docx_path, job_id,
+        )
+        await self._db.commit()

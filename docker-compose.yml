@@ -1,15 +1,31 @@
+networks:
+  bi-net:
+    driver: bridge
+
 services:
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     image: bi-backend:latest
+    container_name: bi-automatic-reporting
+    restart: unless-stopped
     ports:
-      - "8000:8000"
-    env_file: .env
+      - "8002:8000"
     environment:
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY}
+      - NVIDIA_MODEL=${NVIDIA_MODEL:-meta/llama-3.1-8b-instruct}
+      - LLM_TIMEOUT=${LLM_TIMEOUT:-120}
+      - MAX_TOKENS=${MAX_TOKENS:-4096}
+      - EMAIL_PROVIDER=${EMAIL_PROVIDER:-sendgrid}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - FROM_EMAIL=${FROM_EMAIL}
       - REPORT_OUTPUT_DIR=/data/reports
-      - JOBS_DB=/data/jobs.db
+      - DATABASE_URL=${DATABASE_URL}
+      - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}
+      - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}
+    env_file:
+      - .env
     volumes:
       - app_data:/data
     healthcheck:
@@ -18,19 +34,13 @@ services:
       timeout: 10s
       start_period: 15s
       retries: 3
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    image: bi-frontend:latest
-    ports:
-      - "80:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - bi-net
 
 volumes:
   app_data:

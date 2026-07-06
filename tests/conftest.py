@@ -5,10 +5,15 @@ All tests use mocked LLM calls - never hit a real API.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+
+# Force SQLite for tests regardless of .env
+os.environ.setdefault("DATABASE_URL", "")
+os.environ.setdefault("JOBS_DB", ":memory:")
 
 from app.llm.client import LLMClient
 

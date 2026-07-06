@@ -1,10 +1,15 @@
-FROM python:3.13-slim AS builder
+FROM node:22-alpine AS frontend-builder
+WORKDIR /app
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ .
+RUN npm run build
 
+FROM python:3.13-slim AS builder
 COPY requirements.txt .
 RUN pip install --user --no-cache-dir -r requirements.txt
 
 FROM python:3.13-slim
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpango-1.0-0 \
     libpangocairo-1.0-0 \
@@ -22,7 +27,10 @@ COPY --chown=app:app app/ ./app/
 COPY --chown=app:app pyproject.toml ./
 COPY --chown=app:app requirements.txt ./
 
-ENV PATH=/home/app/.local/bin:$PATH
+COPY --from=frontend-builder --chown=app:app /app/dist ./static
+
+ENV PATH=/home/app/.local/bin:$PATH \
+    PYTHONPATH=/home/app/.local/lib/python3.13/site-packages:$PYTHONPATH
 
 RUN mkdir -p /data && chown app:app /data
 

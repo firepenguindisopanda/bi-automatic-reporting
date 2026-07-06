@@ -11,6 +11,9 @@ export default function Layout() {
           <Link to="/" className="text-sm text-indigo-200 hover:text-white">
             Analysis
           </Link>
+          <Link to="/market-research" className="text-sm text-indigo-200 hover:text-white">
+            Market Research
+          </Link>
         </div>
       </nav>
       <main className="mx-auto max-w-4xl px-4 py-8">

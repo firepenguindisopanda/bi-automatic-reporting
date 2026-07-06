@@ -159,3 +159,51 @@ class BIJobStatus(BaseModel):
     status: str
     progress: list[dict[str, str]] = Field(default_factory=list)
     error: str | None = None
+
+
+class MarketResource(BaseModel):
+    name: str
+    url: str
+    description: str
+    type: str = "website"
+    relevance: str = ""
+
+
+class MarketResearchResult(BaseModel):
+    market_query: str
+    executive_summary: str
+    key_insights: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+    risks_and_assumptions: list[str] = Field(default_factory=list)
+    summary: str
+    market_size: str = ""
+    growth_rate: str = ""
+    key_players: list[MarketResource] = Field(default_factory=list)
+    news_sources: list[MarketResource] = Field(default_factory=list)
+    industry_websites: list[MarketResource] = Field(default_factory=list)
+    competitor_sites: list[MarketResource] = Field(default_factory=list)
+    research_papers: list[MarketResource] = Field(default_factory=list)
+    relevant_communities: list[MarketResource] = Field(default_factory=list)
+
+
+class MarketResearchSubmitRequest(BaseModel):
+    market_query: str = Field(min_length=3, max_length=500)
+
+
+class MarketResearchSubmitResponse(BaseModel):
+    job_id: str
+    status: str = "processing"
+    message: str
+
+
+class MarketResearchStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    error: str | None = None
+
+
+class MarketResearchResultResponse(BaseModel):
+    job_id: str
+    status: str
+    result: MarketResearchResult | None = None
+    error: str | None = None

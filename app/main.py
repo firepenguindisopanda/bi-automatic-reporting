@@ -1,13 +1,15 @@
 import logging
-import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+import httpx
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.staticfiles import StaticFiles
 
 from app.api.routes import _bi_pipeline, router
 from app.config import settings
@@ -25,23 +27,53 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.max_requests = max_requests
         self.window = window
+        self._upstash_url = settings.upstash_redis_rest_url.rstrip("/")
+        self._upstash_token = settings.upstash_redis_rest_token
+        self._use_upstash = bool(self._upstash_url and self._upstash_token)
         self._clients: dict[str, list[float]] = {}
 
-    async def dispatch(self, request: Request, call_next):  # type: ignore[no-untyped-def]
+    async def dispatch(self, request: Request, call_next):
         if request.method == "POST" and request.url.path == "/api/bi/submit":
             client_ip = request.client.host if request.client else "unknown"
-            now = time.time()
-            timestamps = self._clients.get(client_ip, [])
-            timestamps = [t for t in timestamps if now - t < self.window]
-            if len(timestamps) >= self.max_requests:
+            allowed = await self._check(client_ip)
+            if not allowed:
                 return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"})
-            timestamps.append(now)
-            self._clients[client_ip] = timestamps
         return await call_next(request)
+
+    async def _check(self, client_ip: str) -> bool:
+        if self._use_upstash:
+            return await self._check_upstash(client_ip)
+        return self._check_memory(client_ip)
+
+    async def _check_upstash(self, client_ip: str) -> bool:
+        key = f"rl:{client_ip}"
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self._upstash_url}/INCR/{key}",
+                headers={"Authorization": f"Bearer {self._upstash_token}"},
+            )
+            data = resp.json()
+            count = int(data.get("result", 0))
+            if count == 1:
+                await client.post(
+                    f"{self._upstash_url}/EXPIRE/{key}/{self.window}",
+                    headers={"Authorization": f"Bearer {self._upstash_token}"},
+                )
+            return count <= self.max_requests
+
+    def _check_memory(self, client_ip: str) -> bool:
+        now = __import__("time").time()
+        timestamps = self._clients.get(client_ip, [])
+        timestamps = [t for t in timestamps if now - t < self.window]
+        if len(timestamps) >= self.max_requests:
+            return False
+        timestamps.append(now)
+        self._clients[client_ip] = timestamps
+        return True
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):  # type: ignore[no-untyped-def]
+    async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
@@ -73,10 +105,31 @@ app.add_middleware(
 )
 
 app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(RateLimitMiddleware, max_requests=10, window=60)  # type: ignore[arg-type]
+app.add_middleware(RateLimitMiddleware, max_requests=10, window=60)
 
 app.include_router(router)
 
+static_dir = Path(__file__).resolve().parent.parent / "static"
+if static_dir.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
+
+    @app.get("/favicon.svg")
+    async def favicon() -> Response:
+        f = static_dir / "favicon.svg"
+        return Response(content=f.read_bytes(), media_type="image/svg+xml") if f.exists() else Response(status_code=404)
+
+    @app.get("/{path:path}")
+    async def spa_catch_all(path: str) -> Response:
+        if path.startswith("api/"):
+            return Response(status_code=404)
+        fp = static_dir / path
+        if fp.is_file():
+            content = fp.read_bytes()
+            return Response(content=content)
+        index = static_dir / "index.html"
+        if index.exists():
+            return Response(content=index.read_bytes(), media_type="text/html")
+        return Response(status_code=404)
 
 if __name__ == "__main__":
     uvicorn.run(

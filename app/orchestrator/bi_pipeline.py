@@ -177,11 +177,7 @@ class BIPipeline:
             await self._store.update_status(job_id, "error", str(e))
 
     async def _run_async(self, job_id: str, url: str, email: str) -> None:
-        """Fully async pipeline runner - runs in the event loop via create_task.
-
-        Uses the pipeline's own agents (no thread-local hacks) and async LLM
-        calls to avoid httpx connection-pool mixing between threads.
-        """
+        """Fully async pipeline runner - runs in the event loop via create_task."""
         try:
             await self._store.init()
             await self._store.update_status(job_id, "scraping")

@@ -7,8 +7,8 @@ from app.models.bi import (
     BusinessProfile,
     CompetitiveAnalysis,
     MarketAnalysis,
-    MarketResearchResult,
     MarketingAnalysis,
+    MarketResearchResult,
     ScrapedContent,
     SWOTAnalysis,
 )

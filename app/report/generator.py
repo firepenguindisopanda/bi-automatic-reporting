@@ -8,7 +8,7 @@ from docx.shared import Pt
 from jinja2 import Template
 from weasyprint import HTML as WeasyPrintHTML  # noqa: N811
 
-from app.models.bi import BIReport, BusinessProfile, MarketResearchResult, MarketingAnalysis
+from app.models.bi import BIReport, BusinessProfile, MarketingAnalysis, MarketResearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -328,7 +328,7 @@ MR_HTML_TEMPLATE = Template("""
       <div class="name">{{ r.name }}</div>
       <div class="url">{{ r.url }}</div>
       <div class="desc">{{ r.description }}</div>
-      {% if r.relevance %}<p style="font-size: 9pt; color: #666; margin-top: 2px; font-style: italic;">{{ r.relevance }}</p>{% endif %}
+      {% if r.relevance %}<p style="font-size: 9pt; color: #666; margin-top: 2px;">{{ r.relevance }}</p>{% endif %}
     </div>
     {% endfor %}
   </div>

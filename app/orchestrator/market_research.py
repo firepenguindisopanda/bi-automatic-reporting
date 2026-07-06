@@ -5,7 +5,6 @@ import uuid
 from app.analysis.agents import MarketResearchAgent
 from app.config import settings
 from app.llm.client import LLMClient
-from app.models.bi import MarketResearchResult
 from app.orchestrator.job_store import JobStore
 from app.report.generator import MarketResearchReportGenerator
 

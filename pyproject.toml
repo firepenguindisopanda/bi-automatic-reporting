@@ -10,6 +10,7 @@ sendgrid = ["sendgrid>=6.0"]
 [tool.ruff]
 line-length = 120
 target-version = "py313"
+exclude = ["tests/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]

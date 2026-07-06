@@ -66,7 +66,6 @@ class JobStore:
         values = list(data.values())
 
         if self._db.is_pg:
-            import asyncpg
             set_clause = ", ".join(f"{k} = EXCLUDED.{k}" for k in data)
             sql = (
                 f"INSERT INTO briefs (job_id, session_id, {cols}) "

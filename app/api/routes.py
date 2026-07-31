@@ -4,22 +4,29 @@ from pathlib import Path
 from typing import Any, cast
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, StreamingResponse
 
+from app.api.progress import build_progress, stream_progress
+from app.config import settings
 from app.models.bi import (
     BIJobStatus,
     BISubmitRequest,
     BISubmitResponse,
     BriefInput,
     BriefResponse,
+    JobProgress,
     MarketResearchResult,
     MarketResearchResultResponse,
     MarketResearchStatusResponse,
     MarketResearchSubmitRequest,
     MarketResearchSubmitResponse,
+    ResendResponse,
+    StageDescriptor,
 )
 from app.orchestrator.bi_pipeline import BIPipeline
 from app.orchestrator.market_research import MarketResearchService
+from app.orchestrator.runner import stats as queue_stats
+from app.pipeline.stages import JobStatus, stages_for
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["bi"])
@@ -81,7 +88,9 @@ async def bi_download(job_id: str, format: str = Query("pdf", pattern="^(pdf|doc
     job = await _bi_pipeline.get_job(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
-    if job["status"] != "complete":
+    # `partial` means the report exists but delivery failed - the file is still
+    # the user's to download, and refusing it here would be the wrong answer.
+    if job["status"] not in ("complete", JobStatus.COMPLETED, JobStatus.PARTIAL):
         raise HTTPException(status_code=400, detail="Job not yet complete")
 
     file_path = Path(job["pdf_path"] or "") if format == "pdf" else Path(job["docx_path"] or "")
@@ -98,23 +107,146 @@ async def bi_download(job_id: str, format: str = Query("pdf", pattern="^(pdf|doc
 
 @router.get("/bi/models")
 async def bi_models() -> dict[str, str]:
-    from app.config import settings as s
-
     return {
         "Scraper": "N/A (no LLM)",
-        "Business Profile": s.agent_model_business_profile,
-        "Market Analysis": s.agent_model_market_analysis,
-        "Competitive Analysis": s.agent_model_competitive_analysis,
-        "SWOT Analysis": s.agent_model_swot,
-        "Marketing Analysis": s.agent_model_marketing,
-        "Report Generation": s.agent_model_report_writer,
+        "Business Profile": settings.agent_model_business_profile,
+        "Market Analysis": settings.agent_model_market_analysis,
+        "Competitive Analysis": settings.agent_model_competitive_analysis,
+        "SWOT Analysis": settings.agent_model_swot,
+        "Marketing Analysis": settings.agent_model_marketing,
+        "Report Generation": settings.agent_model_report_writer,
         "Email Delivery": "N/A (no LLM)",
     }
 
 
+@router.get("/bi/progress/{job_id}", response_model=JobProgress)
+async def bi_progress(job_id: str) -> JobProgress:
+    """Full stage detail. A refresh reconstructs the whole view from this."""
+    job = await _bi_pipeline.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return await build_progress(
+        _bi_pipeline._store, job_id, "bi", job["status"], job.get("error"),
+        subject=job.get("url"),
+    )
+
+
+@router.get("/market-research/progress/{job_id}", response_model=JobProgress)
+async def market_research_progress(job_id: str) -> JobProgress:
+    row = await _market_research.get_status(job_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return await build_progress(
+        _market_research._store, job_id, "market_research", row["status"], row.get("error"),
+        subject=row.get("market_query"),
+    )
+
+
+@router.get("/jobs/{job_id}/events")
+async def job_events(
+    job_id: str, kind: str = Query("bi", pattern="^(bi|market_research)$")
+) -> StreamingResponse:
+    """Server-sent progress stream. Clients fall back to polling on failure."""
+
+    async def load() -> JobProgress | None:
+        if kind == "bi":
+            job = await _bi_pipeline.get_job(job_id)
+            if job is None:
+                return None
+            return await build_progress(
+                _bi_pipeline._store, job_id, kind, job["status"], job.get("error"),
+                subject=job.get("url"),
+            )
+        row = await _market_research.get_status(job_id)
+        if row is None:
+            return None
+        return await build_progress(
+            _market_research._store, job_id, kind, row["status"], row.get("error"),
+            subject=row.get("market_query"),
+        )
+
+    return StreamingResponse(
+        stream_progress(load),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            # Belt and braces alongside `proxy_buffering off` in the nginx block.
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.post("/bi/{job_id}/resend", response_model=ResendResponse)
+async def bi_resend(job_id: str) -> ResendResponse:
+    """Retry delivery for a job whose report exists but never arrived."""
+    job = await _bi_pipeline.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if not job.get("pdf_path"):
+        raise HTTPException(status_code=400, detail="This job has no report to send")
+    ok, detail = await _bi_pipeline.resend(job_id)
+    return ResendResponse(job_id=job_id, sent=ok, detail=detail)
+
+
+@router.get("/pipelines/{kind}/stages", response_model=list[StageDescriptor])
+async def pipeline_stages(kind: str) -> list[StageDescriptor]:
+    """Canonical stage list for a pipeline, so the frontend never hardcodes one."""
+    try:
+        stages = stages_for(kind)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Unknown pipeline: {kind}") from None
+    return [
+        StageDescriptor(
+            slug=s.slug, display=s.display, label=s.label, seq=s.seq, uses_llm=s.uses_llm
+        )
+        for s in stages
+    ]
+
+
 @router.get("/health")
 async def health() -> dict[str, str]:
+    """Liveness. Deliberately cheap - the container healthcheck calls this."""
     return {"status": "ok"}
+
+
+@router.get("/health/ready")
+async def health_ready(response: Response) -> dict[str, Any]:
+    """Readiness. Checks the things that make the service actually usable."""
+    checks: dict[str, dict[str, Any]] = {}
+
+    try:
+        await _bi_pipeline.get_job("__readiness_probe__")
+        checks["database"] = {"ok": True}
+    except Exception as e:  # noqa: BLE001
+        checks["database"] = {"ok": False, "detail": str(e)}
+
+    checks["llm_api_key"] = {"ok": bool(settings.nvidia_api_key)}
+    if not settings.nvidia_api_key:
+        checks["llm_api_key"]["detail"] = "NVIDIA_API_KEY is not set"
+
+    report_dir = Path(settings.report_output_dir)
+    try:
+        report_dir.mkdir(parents=True, exist_ok=True)
+        probe = report_dir / ".write-probe"
+        probe.write_text("ok")
+        probe.unlink()
+        checks["report_dir"] = {"ok": True, "path": str(report_dir)}
+    except Exception as e:  # noqa: BLE001
+        checks["report_dir"] = {"ok": False, "path": str(report_dir), "detail": str(e)}
+
+    try:
+        health = await _bi_pipeline.email_health()
+        checks["email"] = health
+    except Exception as e:  # noqa: BLE001
+        checks["email"] = {"ok": False, "detail": str(e)}
+
+    checks["job_queue"] = {"ok": True, **queue_stats()}
+
+    ready = all(c.get("ok") for c in checks.values())
+    if not ready:
+        response.status_code = 503
+    return {"status": "ready" if ready else "not_ready", "checks": checks}
 
 
 @router.post("/market-research/submit", response_model=MarketResearchSubmitResponse)
@@ -149,7 +281,7 @@ async def market_research_result(job_id: str) -> MarketResearchResultResponse:
         try:
             data = json.loads(row["result_json"])
             result = MarketResearchResult(**data)
-        except (json.JSONDecodeError, Exception) as e:
+        except Exception as e:
             logger.error("Failed to parse market research result: %s", e)
     return MarketResearchResultResponse(
         job_id=row["job_id"],

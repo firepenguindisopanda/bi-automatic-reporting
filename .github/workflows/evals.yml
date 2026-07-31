@@ -1,0 +1,48 @@
+name: Evals
+
+# Manual only. These run the real agents against real models, so they cost
+# quota and take minutes - not something to fire on every push.
+on:
+  workflow_dispatch:
+    inputs:
+      case:
+        description: "Comma-separated case names (blank = all)"
+        required: false
+      stages:
+        description: "Comma-separated stage slugs (blank = all)"
+        required: false
+      check:
+        description: "Fail the run on a regression against the baseline"
+        type: boolean
+        default: true
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt
+
+      - name: Run evals
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          args=""
+          [ -n "${{ inputs.case }}" ] && args="$args --case ${{ inputs.case }}"
+          [ -n "${{ inputs.stages }}" ] && args="$args --stages ${{ inputs.stages }}"
+          [ "${{ inputs.check }}" = "true" ] && args="$args --check"
+          python -m evals.run --label ci-${{ github.run_number }} $args
+
+      - name: Publish the report to the run summary
+        if: always()
+        run: cat evals/results/ci-${{ github.run_number }}.md >> $GITHUB_STEP_SUMMARY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results-${{ github.run_number }}
+          path: evals/results/

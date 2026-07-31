@@ -26,6 +26,17 @@ class Settings(BaseSettings):
     agent_model_report_writer: str = "meta/llama-3.1-8b-instruct"
     agent_model_market_research: str = "meta/llama-3.1-8b-instruct"
 
+    # Stage quality signal
+    enable_stage_critic: bool = True
+    agent_model_critic: str = "meta/llama-3.1-8b-instruct"
+    critic_retry_threshold: float = 60.0
+    agent_max_attempts: int = 3
+
+    # Job runner. Concurrency stays at 1 on the Pi: rendering is the memory
+    # ceiling and two concurrent renders push the container over it.
+    job_concurrency: int = 1
+    job_queue_max: int = 20
+
     app_title: str = "Business Intelligence System"
     app_version: str = "0.2.0"
 
@@ -33,9 +44,40 @@ class Settings(BaseSettings):
     upstash_redis_rest_token: str = ""
     upstash_redis_rest_url: str = ""
 
+    # Outbound fetch policy. Disabling the guard lets the scraper reach hosts on
+    # the deployment's own network - only do that on an isolated machine.
+    scraper_block_private_networks: bool = True
+    scraper_max_redirects: int = 5
+
+    rate_limit_max_requests: int = 10
+    rate_limit_window: int = 60
+    # Behind nginx every request appears to come from 127.0.0.1, which would
+    # make the rate limit global instead of per-client. Only enable this when a
+    # trusted reverse proxy is the sole ingress.
+    trust_proxy_headers: bool = True
+
+    cors_origins: str = "http://localhost:5173,http://localhost:4173"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    # Email. SMTP is the default because it works with any mail vendor, so
+    # switching provider is a config change rather than a code change.
     email_provider: str = "smtp"
-    sendgrid_api_key: str = ""
     from_email: str = "reports@bisystem.com"
+    email_max_attempts: int = 3
+    email_max_attachment_mb: int = 20
+
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_security: str = "starttls"
+    smtp_timeout: int = 30
+
+    sendgrid_api_key: str = ""
+    resend_api_key: str = ""
     report_output_dir: str = "reports"
     jobs_db: str = "jobs.db"
 

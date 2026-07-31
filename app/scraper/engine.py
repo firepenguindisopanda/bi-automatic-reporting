@@ -5,7 +5,9 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 
+from app.config import settings
 from app.models.bi import ScrapedContent
+from app.scraper.guard import BlockedURLError, validate_url
 
 logger = logging.getLogger(__name__)
 
@@ -17,15 +19,33 @@ class ScraperEngine:
         self._timeout = timeout
         self._max_text_length = max_text_length
 
+    async def _fetch(self, client: httpx.AsyncClient, url: str) -> httpx.Response:
+        """GET a URL, following redirects one hop at a time.
+
+        Redirects are followed manually so the SSRF guard can vet every hop -
+        a public URL that 302s to 127.0.0.1 must not slip through.
+        """
+        current = validate_url(url)
+        for _ in range(settings.scraper_max_redirects + 1):
+            resp = await client.get(current)
+            if not resp.is_redirect:
+                resp.raise_for_status()
+                return resp
+            location = resp.headers.get("location", "")
+            if not location:
+                resp.raise_for_status()
+                return resp
+            current = validate_url(str(resp.url.join(location)))
+        raise BlockedURLError(f"Exceeded {settings.scraper_max_redirects} redirects")
+
     async def scrape(self, url: str) -> ScrapedContent:
         try:
             async with httpx.AsyncClient(
                 timeout=httpx.Timeout(self._timeout),
-                follow_redirects=True,
+                follow_redirects=False,
                 headers={"User-Agent": USER_AGENT},
             ) as client:
-                resp = await client.get(url)
-                resp.raise_for_status()
+                resp = await self._fetch(client, url)
                 html = resp.text
 
             soup = BeautifulSoup(html, "lxml")
@@ -47,6 +67,9 @@ class ScraperEngine:
                 links=links[:100],
             )
 
+        except BlockedURLError as e:
+            logger.warning("Blocked scrape of %s: %s", url, e)
+            return ScrapedContent(url=url, title="", description="", text_content="", error=str(e))
         except httpx.HTTPStatusError as e:
             return ScrapedContent(
                 url=url,

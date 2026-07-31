@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Eleventy is a simpler static site generator</title>
+<meta content="Eleventy is a simpler static site generator" name="description"/>
+<meta content="Eleventy (Build Awesome) v4.0.0" name="generator"/>
+<meta content="#1f1f1f" name="theme-color"/>
+
+<link as="font" crossorigin="" href="/css/fonts/benchnine-bold.woff2" rel="preload" type="font/woff2"/>
+<link href="/img/favicon.png" rel="icon" sizes="96x96" type="image/png"/>
+<link href="https://fosstodon.org/@eleventy" rel="me"/>
+<link href="https://neighborhood.11ty.dev/@11ty" rel="me"/>
+<meta content="@11ty@neighborhood.11ty.dev" name="fediverse:creator"/>
+<!-- Open Graph -->
+<meta content="website" property="og:type"/>
+<meta content="https://www.11ty.dev/" property="og:url"/>
+<meta content="Eleventy" property="og:site_name"/>
+<meta content="en_US" property="og:locale"/>
+<meta content="Eleventy is a simpler static site generator" property="og:title"/>
+<meta content="Eleventy is a simpler static site generator." property="og:description"/>
+<meta content="https://www.11ty.dev/img/open-graph.jpg" property="og:image"/>
+<meta content="image/jpeg" property="og:image:type"/>
+<meta content="The 11ty logo (with a small floating possum hiding in the letter y)" property="og:image:alt"/>
+<meta content="1200" property="og:image:width"/>
+<meta content="630" property="og:image:height"/>
+<!-- Feeds -->
+<link href="/blog/feed.xml" rel="alternate" title="Eleventy Blog" type="application/atom+xml"/>
+<link href="/firehose/firehose.rss" rel="alternate" title="Eleventy Firehose" type="application/rss+xml"/>
+<link href="/opensearch.xml" rel="search" title="Eleventy" type="application/opensearchdescription+xml"/>
+
+<link fetchpriority="low" href="/CoNYk4um-k.css" media="print" rel="stylesheet"/>
+
+
+
+
+</head>
+<body>
+<div class="elv-skip">
+<a href="#skip-nav">Skip to navigation</a>
+<a href="#skip-content">Skip to main content</a>
+</div>
+<aside>
+<div class="products">
+<active-background>
+<div class="products-max">
+<a class="products-ba elv-externalexempt" data-active-background="" href="https://build.awesome.me/"><span class="sr-only">Build Awesome</span></a>
+<a class="products-fa elv-externalexempt" data-active-background="" href="https://fontawesome.com/"><span class="sr-only">Font Awesome</span></a>
+<a class="products-wa elv-externalexempt" data-active-background="" href="https://webawesome.com/"><span class="sr-only">Web Awesome</span></a>
+<span class="products-spacer"></span>
+<a class="elv-externalexempt" href="https://www.podcastawesome.com/"><span class="sr-only">Podcast Awesome</span></a>
+<a class="elv-externalexempt" href="https://blog.fontawesome.com/"><span class="sr-only">Blog Awesome</span></a>
+</div>
+</active-background>
+</div>
+</aside>
+<header class="elv-header elv-header-default">
+<div class="elv-menu">
+<ul class="elv-nav-menu list-bare fl fl-inline fl-nowrap">
+<li><a class="elv-nav-menu-logo" href="/"><span class="sr-only">11ty</span></a></li>
+<li><a href="/docs/">Get Started</a></li>
+<li><a href="/blog/">Blog</a></li>
+<li><a href="/docs/community/">Community</a></li>
+<li><a href="/docs/versions/"><code class="elv-header-version">v3.1.6</code></a></li>
+<li>
+<details-utils close-click-outside="" close-esc="">
+<details class="elv-popover">
+<summary>Versions</summary>
+<div>
+<ul class="list-bare">
+<li><a class="elv-externalexempt" href="https://build.awesome.me/docs/"><code>v4</code> <small>Pre-release</small></a></li>
+<li><a class="elv-externalexempt" href="https://www.11ty.dev/docs/"><code>v3</code> <small>Stable</small></a></li>
+<li><a class="elv-externalexempt" href="https://v2.11ty.dev/docs/"><code>v2</code></a></li>
+<li><a class="elv-externalexempt" href="https://v1.11ty.dev/docs/"><code>v1</code></a></li>
+<li><a class="elv-externalexempt" href="https://v0.11ty.dev/docs/"><code>v0</code></a></li>
+<li><a class="elv-externalexempt" href="/docs/versions/">History</a></li>
+<li><a class="elv-externalexempt" href="/firehose/">Firehose</a></li>
+</ul></div>
+</details>
+</details-utils>
+</li>
+<li class="util-grow">
+<disabled-form>
+<form action="/docs/search/" class="util-stack">
+<label>
+<span class="sr-only">Search</span>
+<input disabled="" name="q" placeholder="Search…" type="search" value=""/>
+</label>
+<button disabled="" type="submit"><span class="sr-only">Search</span></button>
+</form>
+</disabled-form>
+</li>
+<li><a class="elv-skipicon" href="https://github.com/11ty/eleventy/">GitHub</a></li>
+<li><a class="nound elv-externalexempt elv-nav-sociallink" href="https://www.youtube.com/c/EleventyVideo"><span class="sr-only">YouTube</span></a></li>
+<li><a class="nound elv-nav-sociallink" href="https://neighborhood.11ty.dev/@11ty"><span class="sr-only">Mastodon</span></a></li>
+<li><a class="nound elv-nav-sociallink" href="https://bsky.app/profile/11ty.dev"><span class="sr-only">Bluesky</span></a></li>
+<li><a class="nound elv-nav-sociallink" href="/blog/discord/"><span class="sr-only">Discord</span></a></li>
+</ul>
+</div>
+<div class="elv-nav-header">
+<a class="elv-hero elv-externalexempt" href="/docs/">
+<div class="elv-hero-ba">
+
+
+<span class="sr-only">Build Awesome</span>
+</div>
+</a>
+<a class="elv-hero-11ty" href="/docs/">
+<span class="sr-only">Eleventy</span>
+<picture><source type="image/avif"/><img alt="A cartoon possum wearing a green tshirt with a balloon logo on front" class="elv-mascot-image" decoding="async" height="803" loading="eager" src="/img/built/T3q0klu3ui-800.svg" width="800"/></picture>
+</a>
+<is-land class="elv-possum-island" on:idle="" on:load="" on:media="(prefers-reduced-motion: no-preference)" on:save-data="false" on:visible="">
+
+</is-land>
+</div>
+</header>
+<main class="elv-layout elv-layout-toc" data-pagefind-body="">
+<div class="elv-toc" data-pagefind-ignore=""><div class="elv-callout elv-callout-info"><div class="elv-callout-label"><a href="/blog/">Blog</a></div><div class="elv-callout-c">
+<a class="elv-toc-callout-link" href="/blog/build-awesome-pro/"><strong>Back Build Awesome Pro and make it easier to build for the web!</strong></a></div></div><div class="elv-callout elv-callout-info"><div class="elv-callout-label"><a href="/docs/versions/">Versions</a></div><div class="elv-callout-c"><dl class="versions-callout">
+<dt>Stable</dt>
+<dd><a class="elv-externalexempt" href="https://github.com/11ty/eleventy/releases/tag/v3.1.6"><code>3.1.6</code></a></dd>
+<dt>Canary</dt>
+<dd><a class="elv-externalexempt" href="https://github.com/11ty/eleventy/releases/tag/v4.0.0-alpha.10"><code>4.0.0-alpha.10</code></a></dd>
+</dl></div></div>
+<details-force-state class="elv-toc-c" data-force-closed="(max-width: 41.375em)" id="skip-nav"><ul class="elv-toc-list"><li><details><summary>Introduction</summary><ul><li><a href="/docs/">Get Started</a></li>
+<li><a href="/#why-should-you-use-eleventy">Why Eleventy?</a><ul><li><a href="/docs/performance/">Performance</a></li></ul></li>
+<li><span>Learn</span><ul><li><a href="/docs/glossary/">Glossary</a></li>
+<li><a href="/docs/terminal-window/">Opening a Terminal</a></li>
+<li><a href="/docs/javascript-runtime/">Installing JavaScript</a></li>
+<li><a href="/docs/cjs-esm/">CommonJS, ESM, TypeScript</a></li></ul></li>
+<li><a href="/docs/starter/">Starter Projects</a></li>
+<li><a href="/docs/tutorials/">Tutorials</a><ul><li><a href="/docs/quicktips/">Quick Tips</a></li></ul></li></ul></details></li>
+<li><details><summary>Community</summary><ul><li><a href="/docs/community/">How can I contribute?</a></li>
+<li><a href="/docs/code-of-conduct/">Code of Conduct</a></li>
+<li><a href="/blog/">Blog</a></li>
+<li><a href="/firehose/">Firehose</a></li>
+<li><a href="https://11tybundle.dev/">11ty Bundle</a></li>
+<li><a href="/speedlify/">Leaderboards</a></li>
+<li><a href="https://11tymeetup.dev/">Eleventy Meetup</a></li>
+<li><a href="https://conf.11ty.dev/">11ty Conference</a></li></ul></details></li>
+<li><a href="/docs/projects/">Guide</a><details><summary>Guide</summary><ul><li><a href="/docs/">Get Started</a></li>
+<li><a href="/docs/usage/">Command Line Usage</a></li>
+<li><a href="/docs/config/">Add a Configuration File</a></li>
+<li><a href="/docs/copy/">Copy Files to Output</a></li>
+<li><a href="/docs/assets/">Add CSS, JS, Fonts</a></li>
+<li><a href="/docs/migrate/">Importing Content</a></li>
+<li><a href="/docs/data-configuration/">Configure Templates with Data</a><ul><li><a href="/docs/permalinks/">Permalinks</a></li>
+<li><a href="/docs/layouts/">Layouts</a></li>
+<li><a href="/docs/collections/">Collections</a><ul><li><a href="/docs/collections-api/">Collections API</a></li></ul></li>
+<li><a href="/docs/dates/">Content Dates</a></li>
+<li><a href="/docs/pages-from-data/">Create Pages From Data</a><ul><li><a href="/docs/pagination/">Pagination</a></li>
+<li><a href="/docs/pagination/nav/">Pagination Navigation</a></li></ul></li></ul></li>
+<li><a href="/docs/data/">Using Data in Templates</a><ul><li><a href="/docs/data-eleventy-supplied/">Eleventy Supplied Data</a></li>
+<li><a href="/docs/data-cascade/">Data Cascade</a><ul><li><a href="/docs/data-frontmatter/">Front Matter Data</a><ul><li><a href="/docs/data-frontmatter-customize/">Custom Front Matter</a></li></ul></li>
+<li><a href="/docs/data-template-dir/">Template &amp; Directory Data Files</a></li>
+<li><a href="/docs/data-global/">Global Data Files</a></li>
+<li><a href="/docs/data-global-custom/">Config Global Data</a></li>
+<li><a href="/docs/data-computed/">Computed Data</a></li></ul></li>
+<li><a href="/docs/data-js/">JavaScript Data Files</a></li>
+<li><a href="/docs/data-custom/">Custom Data File Formats</a></li>
+<li><a href="/docs/data-validate/">Validate Data</a></li></ul></li>
+<li><a href="/docs/languages/">Template Languages</a><ul><li><a href="/docs/languages/html/">HTML</a></li>
+<li><a href="/docs/languages/markdown/">Markdown</a><ul><li><a href="/docs/languages/mdx/">MDX</a></li></ul></li>
+<li><a href="/docs/languages/javascript/">JavaScript</a><ul><li><a href="/docs/languages/jsx/">JSX</a></li>
+<li><a href="/docs/languages/typescript/">TypeScript</a></li></ul></li>
+<li><a href="/docs/languages/custom/">Custom</a></li>
+<li><a href="/docs/languages/webc/">WebC</a></li>
+<li><a href="/docs/languages/nunjucks/">Nunjucks</a></li>
+<li><a href="/docs/languages/liquid/">Liquid</a></li>
+<li><a href="/docs/languages/handlebars/">Handlebars</a></li>
+<li><a href="/docs/languages/mustache/">Mustache</a></li>
+<li><a href="/docs/languages/ejs/">EJS</a></li>
+<li><a href="/docs/languages/haml/">HAML</a></li>
+<li><a href="/docs/languages/pug/">Pug</a></li>
+<li><a href="/docs/languages/sass/">Sass</a></li>
+<li><a href="/docs/virtual-templates/">Virtual Templates</a></li>
+<li><a href="/docs/template-overrides/">Overriding Languages</a></li></ul></li>
+<li><span>Template Features</span><ul><li><a href="/docs/ignores/">Ignore Files</a></li>
+<li><a href="/docs/config-preprocessors/">Preprocess Content</a></li>
+<li><a href="/docs/transforms/">Postprocess Content</a></li>
+<li><a href="/docs/filters/">Filters</a><ul><li><a href="/docs/filters/url/"><code>url</code></a></li>
+<li><a href="/docs/filters/slugify/"><code>slugify</code></a></li>
+<li><a href="/docs/filters/log/"><code>log</code></a></li>
+<li><a href="/docs/filters/collection-items/"><code>get*CollectionItem</code></a></li>
+<li><a href="/docs/filters/inputpath-to-url/"><code>inputPathToUrl</code></a></li></ul></li>
+<li><a href="/docs/shortcodes/">Shortcodes</a><ul><li><a href="/docs/plugins/bundle/"><code>getBundle</code></a></li>
+<li><a href="/docs/plugins/bundle/"><code>getBundleFileUrl</code></a></li></ul></li></ul></li>
+<li><a href="/docs/environment-vars/">Environment Variables</a></li>
+<li><a href="/docs/i18n/">Internationalization (i18n)</a></li>
+<li><a href="/docs/watch-serve/">Watch Files and Dev Servers</a><ul><li><a href="/docs/dev-server/">Eleventy Dev Server</a></li>
+<li><a href="/docs/server-vite/">Vite</a></li></ul></li>
+<li><a href="/docs/pitfalls/">Common Pitfalls</a></li>
+<li><a href="/docs/advanced/">Advanced</a><ul><li><a href="/docs/versions/">Release History</a></li>
+<li><a href="/docs/programmatic/">Programmatic API</a></li>
+<li><a href="/docs/events/">Configuration Events</a></li>
+<li><a href="/docs/advanced-order/">Order of Operations</a></li></ul></li></ul></details></li>
+<li><a href="/docs/plugins/">Plugins</a><details><summary>Plugins</summary><ul><li><a href="/docs/create-plugin/">Create or use Plugins</a></li>
+<li><a href="/docs/plugins/image/">Image</a></li>
+<li><a href="/docs/plugins/fetch/">Fetch</a></li>
+<li><a href="/docs/plugins/is-land/"><code>&lt;is-land&gt;</code></a></li>
+<li><a href="/docs/plugins/render/">Render</a></li>
+<li><a href="/docs/plugins/i18n/">Internationalization (i18n)</a></li>
+<li><a href="/docs/plugins/rss/">RSS</a></li>
+<li><a href="/docs/plugins/upgrade-help/">Upgrade Helper</a></li>
+<li><a href="/docs/plugins/syntaxhighlight/">Syntax Highlighting</a></li>
+<li><a href="/docs/plugins/inputpath-to-url/">InputPath to URL</a></li>
+<li><a href="/docs/plugins/navigation/">Navigation</a></li>
+<li><a href="/docs/plugins/html-base/">HTML <code>&lt;base&gt;</code></a></li>
+<li><a href="/docs/plugins/bundle/">Bundle</a></li>
+<li><a href="/docs/plugins/id-attribute/">Id Attribute</a></li>
+<li><a href="/docs/plugins/community/">Community Plugins</a></li>
+<li><a href="/docs/plugins/retired/">Retired Plugins</a></li></ul></details></li>
+<li><a href="/docs/services/">Services</a><details><summary>Services</summary><ul><li><a href="/docs/deployment/">Deployment &amp; Hosting</a></li>
+<li><a href="/docs/cms/">Using a CMS</a></li>
+<li><a href="/docs/api-services/">Runtime APIs</a><ul><li><a href="/docs/services/screenshots/">Screenshots</a></li>
+<li><a href="/docs/services/opengraph/">OpenGraph Image</a></li>
+<li><a href="/docs/services/indieweb-avatar/">IndieWeb Avatar</a></li>
+<li><a href="/docs/services/generator/">Generator Image</a></li>
+<li><a href="/docs/services/builtwith/">Hosting Image</a></li>
+<li><a href="/docs/services/sparklines/">Sparklines</a></li></ul></li></ul></details></li></ul>
+</details-force-state>
+</div>
+<div id="skip-content">
+<h1 class="elv-hed" id="eleventy-is-a-simpler-static-site-generator">Eleventy is a simpler <code>static</code> site generator</h1>
+<heading-anchors selector="h2,h3,h4">
+<h2 class="mt-0" id="quick-start">Quick Start</h2>
+<p>Eleventy requires a way to <a href="/docs/javascript-runtime/">run JavaScript</a> on your computer and we recommend Node.js (version 
+
+18 or newer). You can check whether or not you have Node.js installed by running <code>node --version</code> in a Terminal. (<a href="/docs/terminal-window/"><em>Well, wait—what is a Terminal?</em></a>) If <code>node</code> is not found or it reports a version number below 
+
+18, you will need to <a href="https://nodejs.org/en/download/">install Node.js</a> before moving on.</p>
+<p>Now we’ll create an <code>index.md</code> <a href="https://commonmark.org/help/">Markdown</a> file. You can do this in the text editor of your choice or by running one of these commands in your terminal:</p>
+<seven-minute-tabs autoheight="" class="tabs-flush" persist="" sync="">
+<div aria-label="Choose your Operating System" role="tablist">
+<a data-tabs-persist="os:mac" href="#quickstart-os-nix" id="quickstart-os-mac-btn" role="tab">macOS</a>
+<a data-tabs-persist="os:posix" href="#quickstart-os-nix" role="tab">Linux</a>
+<a data-tabs-persist="os:win" href="#quickstart-os-win" role="tab">Windows</a>
+<a data-tabs-persist="os:all" href="#quickstart-os-all" role="tab">Cross Platform</a>
+</div>
+<div id="quickstart-os-nix" role="tabpanel">
+<syntax-highlight language="bash">
+<is-land data-wa-copy-button-target="webc-64zFh" import="/static/web-awesome/components/copy-button/copy-button.js" on:visible="">
+<wa-copy-button from="webc-64zFh" tooltip-placement="left"></wa-copy-button>
+</is-land><pre class="language-bash" id="webc-64zFh" tabindex="0"><code class="language-bash"><span class="token builtin class-name">echo</span> <span class="token string">'# Heading'</span> <span class="token operator">&gt;</span> index.md</code></pre></syntax-highlight>
+</div>
+<div id="quickstart-os-win" role="tabpanel">
+<syntax-highlight language="bash">
+<is-land data-wa-copy-button-target="webc-1Z5rK" import="/static/web-awesome/components/copy-button/copy-button.js" on:visible="">
+<wa-copy-button from="webc-1Z5rK" tooltip-placement="left"></wa-copy-button>
+</is-land><pre class="language-bash" id="webc-1Z5rK" tabindex="0"><code class="language-bash"><span class="token builtin class-name">echo</span> <span class="token string">'# Heading'</span> <span class="token operator">|</span> out-file <span class="token parameter variable">-encoding</span> utf8 <span class="token string">'index.md'</span></code></pre></syntax-highlight>
+<p>If the <code>out-file</code> command is not available in your Windows Terminal window (it’s PowerShell specific), use the Cross Platform method.</p>
+</div>
+<div id="quickstart-os-all" role="tabpanel">
+<syntax-highlight language="bash">
+<is-land data-wa-copy-button-target="webc-UE8jl" import="/static/web-awesome/components/copy-button/copy-button.js" on:visible="">
+<wa-copy-button from="webc-UE8jl" tooltip-placement="left"></wa-copy-button>
+</is-land><pre class="language-bash" id="webc-UE8jl" tabindex="0"><code class="language-bash"><span class="token builtin class-name">echo</span> <span class="token string">'# Heading'</span> <span class="token operator">|</span> npx @11ty/create index.md</code></pre></syntax-highlight>
+<p>Learn more about <a href="https://github.com/11ty/create"><code>@11ty/create</code></a> <em>(requires Node.js 18 or newer)</em>.</p>
+</div>
+</seven-minute-tabs>
+<p>Run Eleventy using <code>npx</code>, an <a href="https://www.npmjs.com/">npm</a>-provided command that is bundled with Node.js.</p>
+<seven-minute-tabs autoheight="" class="tabs-flush" persist="" sync="">
+<div aria-label="Choose your Package Manager" role="tablist">
+<a data-tabs-persist="pkgmgr:npm" href="#quickstart-run-npm" role="tab">npm</a>
+<a data-tabs-persist="pkgmgr:pnpm" href="#quickstart-run-pnpm" role="tab">pnpm</a>
+<a data-tabs-persist="pkgmgr:yarn" href="#quickstart-run-yarn" role="tab">yarn</a>
+</div>
+<div id="quickstart-run-npm" role="tabpanel">
+<syntax-highlight language="bash">
+<is-land data-wa-copy-button-target="webc-KPi6Q" import="/static/web-awesome/components/copy-button/copy-button.js" on:visible="">
+<wa-copy-button from="webc-KPi6Q" tooltip-placement="left"></wa-copy-button>
+</is-land><pre class="language-bash" id="webc-KPi6Q" tabindex="0"><code class="language-bash">npx @11ty/eleventy <span class="token parameter variable">--serve</span></code></pre></syntax-highlight>
+</div>
+<div id="quickstart-run-pnpm" role="tabpanel">
+<syntax-highlight language="bash">
+<is-land data-wa-copy-button-target="webc-B-sKM" import="/static/web-awesome/components/copy-button/copy-button.js" on:visible="">
+<wa-copy-button from="webc-B-sKM" tooltip-placement="left"></wa-copy-button>
+</is-land><pre class="language-bash" id="webc-B-sKM" tabindex="0"><code class="language-bash"><span class="token function">pnpm</span> dlx @11ty/eleventy <span class="token parameter variable">--serve</span></code></pre></syntax-highlight>
+<p><a href="https://pnpm.io/">pnpm</a> is an <em>optional</em> alternative to npm that needs to be installed separately.</p>
+</div>
+<div id="quickstart-run-yarn" role="tabpanel">
+<syntax-highlight language="bash">
+<is-land data-wa-copy-button-target="webc-MAPee" import="/static/web-awesome/components/copy-button/copy-button.js" on:visible="">
+<wa-copy-button from="webc-MAPee" tooltip-placement="left"></wa-copy-button>
+</is-land><pre class="language-bash" id="webc-MAPee" tabindex="0"><code class="language-bash"><span class="token function">yarn</span> dlx @11ty/eleventy <span class="token parameter variable">--serve</span></code></pre></syntax-highlight>
+<p><a href="https://yarnpkg.com/">Yarn</a> is an <em>optional</em> alternative to npm that needs to be installed separately.</p>
+</div>
+</seven-minute-tabs>
+<p>Eleventy compiles any files in the current directory matching valid <a href="/docs/languages/">file extensions</a> (<code>md</code> is one of many) to the <code>_site</code> output folder. It might look like this:</p>
+<pre class="language-11ty-output" tabindex="0"><code class="language-11ty-output">[11ty] Writing _site/index.html from ./index.md (liquid)
+[11ty] Wrote 1 file in 0.03 seconds (v3.1.6)
+[11ty] Watching…
+[11ty] Server at http://localhost:8080/
+</code></pre>
+<p>The <code>--serve</code> option also starts a <a href="/docs/dev-server/">local development server</a>. Open up <code>http://localhost:8080/</code> in your favorite web browser to view your web site.</p>
+<p>If you’d like to experiment further with different template syntax, edit the following sample <code>index.md</code> file in your browser. <a href="/docs/data-frontmatter/">Front Matter</a>, <a href="/docs/languages/liquid/">Liquid</a> and <a href="/docs/languages/markdown/">Markdown</a> are in use.</p>
+<is-land import="/js/eleventy-editor.js" on:interaction="touchstart,click,focusin">
+<eleventy-editor data-editor-filename="index.md" focus="" label="Edit index.md">
+<syntax-highlight language="markdown">
+<is-land data-wa-copy-button-target="webc-6U9sz" import="/static/web-awesome/components/copy-button/copy-button.js" on:visible="">
+<wa-copy-button from="webc-6U9sz" tooltip-placement="left"></wa-copy-button>
+</is-land><pre class="language-markdown" id="webc-6U9sz" tabindex="0"><code class="language-markdown"><span class="token front-matter-block"><span class="token punctuation">---</span>
+<span class="token front-matter yaml language-yaml"><span class="token key atrule">title</span><span class="token punctuation">:</span> Heading</span>
+<span class="token punctuation">---</span></span>
+<span class="token title important"><span class="token punctuation">#</span> {{ title }}</span></code></pre></syntax-highlight>
+</eleventy-editor>
+</is-land>
+<ul>
+<li>Read our full <a href="/docs/"><strong>Get Started guide</strong></a> on the docs.</li>
+<li>Watch <a href="https://www.youtube.com/watch?v=kzf9A9tkkl4"><strong>6 minutes to Build a Blog from Scratch</strong></a>.</li>
+</ul>
+<div>
+<h2 id="try-eleventy-in-your-browser">Try Eleventy in Your Browser</h2>
+<p>Next try editing one of the three files in this Eleventy project. Change the <code>title</code> in front matter on a blog post and watch the list update on the index page!</p>
+<is-land import="/js/eleventy-editor.js" on:interaction="touchstart,click,focusin">
+<eleventy-editor data-editor-filename="index.md" focus="" group="group1" label="Edit index.md">
+<syntax-highlight language="liquid">
+<pre class="language-liquid" id="webc-XtDRS" tabindex="0"><code class="language-liquid">---
+subject: World
+---
+# Hello <span class="token liquid language-liquid"><span class="token delimiter punctuation">{{</span> subject <span class="token delimiter punctuation">}}</span></span>
+
+You can type here!
+
+- [Markdown](/docs/languages/markdown/)
+- [Liquid](/docs/languages/liquid/)
+
+## Posts
+
+<span class="token liquid language-liquid"><span class="token delimiter punctuation">{%-</span> <span class="token keyword">for</span> post <span class="token keyword">in</span> collections<span class="token punctuation">.</span>posts <span class="token delimiter punctuation">%}</span></span>
+- [<span class="token liquid language-liquid"><span class="token delimiter punctuation">{{</span> post<span class="token punctuation">.</span>data<span class="token punctuation">.</span>title <span class="token delimiter punctuation">}}</span></span>](<span class="token liquid language-liquid"><span class="token delimiter punctuation">{{</span> post<span class="token punctuation">.</span>url<span class="token delimiter punctuation">}}</span></span>)
+<span class="token liquid language-liquid"><span class="token delimiter punctuation">{%-</span> <span class="token keyword">endfor</span> <span class="token delimiter punctuation">%}</span></span>
+
+_Built with <span class="token liquid language-liquid"><span class="token delimiter punctuation">{{</span> eleventy<span class="token punctuation">.</span>generator <span class="token delimiter punctuation">}}</span></span>_</code></pre></syntax-highlight>
+</eleventy-editor>
+<eleventy-editor data-editor-filename="post1.md" group="group1" label="Edit post1.md">
+<syntax-highlight language="liquid">
+<pre class="language-liquid" id="webc-09SAl" tabindex="0"><code class="language-liquid">---
+title: First blog post ⬅️
+tags: posts
+---
+# <span class="token liquid language-liquid"><span class="token delimiter punctuation">{{</span> title <span class="token delimiter punctuation">}}</span></span></code></pre></syntax-highlight>
+</eleventy-editor>
+<eleventy-editor data-editor-filename="post2.md" group="group1" label="Edit post2.md">
+<syntax-highlight language="liquid">
+<pre class="language-liquid" id="webc-KHjZX" tabindex="0"><code class="language-liquid">---
+title: Second blog post
+tags: posts
+---
+# <span class="token liquid language-liquid"><span class="token delimiter punctuation">{{</span> title <span class="token delimiter punctuation">}}</span></span></code></pre></syntax-highlight>
+</eleventy-editor>
+</is-land>
+<h2 id="news-from-the-blog">News from the Blog</h2>
+<ul><li><a href="/blog/sponsorship-tiers/"><strong>New Sponsorship Tiers for the Build Awesome Kickstarter</strong></a> (<em>2026 May 13</em>)</li><li><a href="/blog/build-awesome-pro/">Back Build Awesome Pro and make it easier to build for the web!</a> (<em>2026 April 28</em>)</li><li><a href="/blog/collaborative-editing/">Collaborative Editing as Progressive Enhancement</a> (<em>2026 April 21</em>)</li><li><a href="/blog/build-awesome/">Eleventy is now Build Awesome</a> (<em>2026 March 03</em>)</li><li><a href="/blog/npm-security/">Securely Publishing our Packages to npm</a> (<em>2025 December 03</em>)</li><li><a href="/blog/community-survey-2025/">The Eleventy Community Survey (2025)</a> (<em>2025 November 19</em>)</li><li><a href="/blog/eleventy-v3-1/">Eleventy v3.1.0 is now available — 11% faster and 22% smaller!</a> (<em>2025 May 13</em>)</li><li><a href="/blog/eleventy-v3/">Eleventy v3.0.0 is now available!</a> (<em>2024 October 02</em>)</li><li><a href="/blog/eleventy-font-awesome/">11ty is joining Font Awesome</a> (<em>2024 September 12</em>)</li><li>…and <a href="/blog/">67 more on the <strong>blog archives</strong></a>.</li></ul>
+<h2 id="why-should-you-use-eleventy">Why should you use Eleventy?</h2>
+<ul>
+<li>
+			Eleventy has <a href="/docs/performance/"><strong>fast builds and even faster web sites</strong></a>.
+			<is-land on:media="(prefers-reduced-motion: no-preference)" on:visible="">
+<build-comparison class="wn-p0sbkc">
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th colspan="2">Building ×4000 Markdown Files</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Eleventy</td>
+<td class="numeric">1.93<abbr title="seconds">s</abbr></td>
+<td><text-throbber duration="1930">
+
+== 🏁</text-throbber></td>
+</tr>
+<tr>
+<td>Astro</td>
+<td class="numeric">22.90<abbr title="seconds">s</abbr></td>
+<td><text-throbber duration="22900">
+
+======================= 🏁</text-throbber></td>
+</tr>
+<tr>
+<td>Gatsby</td>
+<td class="numeric">29.05<abbr title="seconds">s</abbr></td>
+<td><text-throbber duration="29050">
+
+============================== 🏁</text-throbber></td>
+</tr>
+<tr>
+<td>Next.js</td>
+<td class="numeric">70.65<abbr title="seconds">s</abbr></td>
+<td><text-throbber duration="70650">
+
+======================================================================= 🏁</text-throbber></td>
+</tr>
+</tbody>
+</table>
+</build-comparison>
+</is-land>
+</li>
+<li>
+			Eleventy is <strong>production ready</strong> and trusted by:
+			<is-land on:save-data="false" on:visible="">
+<logo-cloud><ul class="logos-list" id="logos">
+<li><img alt="IndieWeb Avatar for https://www.nasa.gov/" class="avatar avatar-indieweb" decoding="async" height="150" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.nasa.gov%2F/" width="150"/><abbr title="National Aeronautics and Space Administration">NASA</abbr></li>
+<li><img alt="IndieWeb Avatar for https://home.web.cern.ch/" class="avatar avatar-indieweb" decoding="async" height="150" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fhome.web.cern.ch%2F/" width="150"/>Cern</li>
+<li><img alt="IndieWeb Avatar for https://tc39.es/" class="avatar avatar-indieweb" decoding="async" height="150" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Ftc39.es%2F/" width="150"/>TC39</li>
+<li><img alt="IndieWeb Avatar for https://www.w3.org/" class="avatar avatar-indieweb" decoding="async" height="150" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.w3.org%2F/" width="150"/>W3C</li>
+<li><img alt="IndieWeb Avatar for https://about.google/" class="avatar avatar-indieweb" decoding="async" height="150" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fabout.google%2F/" width="150"/>Google</li>
+<li><img alt="IndieWeb Avatar for https://www.microsoft.com/" class="avatar avatar-indieweb" decoding="async" height="150" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.microsoft.com%2F/" width="150"/>Microsoft</li>
+<li><img alt="IndieWeb Avatar for https://www.mozilla.org/" class="avatar avatar-indieweb" decoding="async" height="150" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.mozilla.org%2F/" width="150"/>Mozilla</li>
+<li><img alt="IndieWeb Avatar for https://fontawesome.com/" class="avatar avatar-indieweb" decoding="async" height="150" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Ffontawesome.com%2F/" width="150"/>Font Awesome</li>
+<li><img alt="IndieWeb Avatar for https://apache.org/" class="avatar avatar-indieweb" decoding="async" height="150" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fapache.org%2F/" width="150"/>Apache</li>
+<li><img alt="IndieWeb Avatar for https://www.freecodecamp.org/" class="avatar avatar-indieweb" decoding="async" height="150" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.freecodecamp.org%2F/" width="150"/>freeCodeCamp</li>
+<li>
+<html-fetch replace="" src="/imports/logo-cloud.html" target="li">
+</html-fetch>
+</li>
+<li class="logos-list-more">…and more</li>
+</ul>
+</logo-cloud>
+</is-land>
+<small>Eleventy has been downloaded <span>19,997,961</span> times and is used on <a href="https://github.com/11ty/eleventy/network/dependents?package_id=UGFja2FnZS00NjY3NjEyNjg%3D">88,000+ repositories on GitHub</a>.</small>
+</li>
+<li>
+			Eleventy offers <strong>full control over your project’s output</strong>. <a href="https://www.youtube.com/watch?v=b4frtsT4Cgo">We don’t inject our own markup into your pages</a>.
+		</li>
+<li>
+			Eleventy has a <a href="/docs/community/">lovely community of folks</a> that really care about what they build. <em>What is <a href="/docs/testimonials/#sara-soueidan"><img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.sarasoueidan.com%2F" class="avatar avatar-indieweb" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.sarasoueidan.com%2F/" width="60"/>Sara Soueidan saying about Eleventy?</a></em>
+</li>
+<li>
+<a href="/blog/stability/">Eleventy is <strong>stable</strong></a>. We’ve shipped <span>226</span> releases going back to the first version in December 2017 and only three of those releases have had Eleventy-specific changes requiring developer changes.
+			<blockquote>
+<p>a11yproject.com launched with version 1.0.0 of Eleventy. […] It's been a little under three years and I haven't had to make any adjustments to its dependencies, and it can still install and run from a cold start with no complications. When I update the site to use version 2.0.0 I'll actually be removing dependencies, and not adding more. […] That's rare and special.—<a href="https://social.ericwbailey.website/@eric/109914908787346813"><img alt="IndieWeb Avatar for https://ericwbailey.design/" class="avatar avatar-indieweb" decoding="async" height="150" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fericwbailey.design%2F/" width="150"/> Eric Bailey</a></p>
+</blockquote>
+</li>
+<li>
+			Eleventy <strong>doesn’t track you</strong>. We <a href="https://www.zachleat.com/web/site-generator-review/#telemetry">don’t have or use telemetry nor require you to opt-out of data collection</a>.
+		</li>
+<li>
+			Eleventy is <strong><a class="buzzword" href="/docs/glossary/#zero-config">zero-config</a></strong> to start and can be extended with flexible configuration options.
+		</li>
+<li>
+			Eleventy <strong>works with multiple template languages</strong>. You can pick one or use them all together in a single project: 
+<ul class="inlinelist"><li class="inlinelist-item"><a href="/docs/languages/html/">HTML <code>*.html</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/markdown/">Markdown <code>*.md</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/webc/">WebC <code>*.webc</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/javascript/">JavaScript <code>*.11ty.js</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/liquid/">Liquid <code>*.liquid</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/nunjucks/">Nunjucks <code>*.njk</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/handlebars/">Handlebars <code>*.hbs</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/mustache/">Mustache <code>*.mustache</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/ejs/">EJS <code>*.ejs</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/haml/">Haml <code>*.haml</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/pug/">Pug <code>*.pug</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/typescript/">TypeScript <code>*.ts</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/jsx/">JSX <code>*.jsx</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/mdx/">MDX <code>*.mdx</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/sass/">Sass <code>*.scss</code></a></li> <li class="inlinelist-item"><a href="/docs/languages/custom/">Custom <code>*.*</code></a></li></ul>
+</li>
+<li>
+			Eleventy uses <strong>independent template languages</strong>. We don’t want to hold your content hostage with a custom format. If you decide to use a different syntax later, having your content decoupled in this way will make migration easier.
+		</li>
+<li>
+			Eleventy does <strong>not require that you use a JavaScript framework</strong>—that means <em>zero client-side JavaScript by default across the board</em>. We’re <strong>thinking long-term</strong> to opt-out of the framework rat race. The tool chain, modules, and components you use in your front end stack are decoupled from this tool. Work from a solid foundation of <a class="buzzword" href="/docs/glossary/#pre-rendered-templates-by-default">pre-rendered templates</a> that suit your project’s <a class="buzzword" href="/docs/glossary/#progressive-enhancement">progressive enhancement</a> baseline requirements.
+		</li>
+<li>
+			Eleventy <strong>works with your project’s existing directory structure</strong>. The tool doesn’t require an <code>app</code> directory or a <code>pages</code> directory. Use the structure that you want.
+		</li>
+<li>
+			Eleventy allows <strong>incremental adoption</strong>. We only <a href="/docs/config/#template-formats">look for the files</a> and <a href="/docs/config/#input-directory">directories</a> you specify. Further, with even more precision you can <a href="/docs/ignores/">opt-out or ignore specific files</a> in your project. You don’t need to start an Eleventy project from scratch. Eleventy is flexible enough to allow conversion of only a few templates at a time. Migrate as fast or as slow as you’d like.
+		</li>
+</ul>
+<p><a href="/docs/"><strong>Get started with Eleventy today!</strong></a> or read more about <a href="https://www.zachleat.com/web/introducing-eleventy/">Eleventy’s project goals</a>.</p>
+<giant-docs-button class="why-are-you-doing-this">
+<a class="btn-primary benchnine rainbow-active" href="/docs/">Documentation</a></giant-docs-button>
+<p class="mb-8 wo2ref_5f">Todd and <a href="https://social.vivaldi.net/@brucelawson">Bruce</a> said this button should be bigger and as you can see they were right.</p>
+<h2 id="built-with-eleventy">Built With Eleventy</h2>
+<sites-list>
+<div class="sites-vert sites-vert--wc">
+<div class="lo-grid">
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://every-layout.dev/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://every-layout.dev/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fevery-layout.dev%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fevery-layout.dev%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fevery-layout.dev%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fevery-layout.dev%2F/" width="60"/>
+			every-layout.dev
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://designsystem.webstandards.ca.gov/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://designsystem.webstandards.ca.gov/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fdesignsystem.webstandards.ca.gov%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fdesignsystem.webstandards.ca.gov%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fdesignsystem.webstandards.ca.gov%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fdesignsystem.webstandards.ca.gov%2F/" width="60"/>
+			designsystem.webstandards.ca.gov
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://cloudcannon.com/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://cloudcannon.com/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fcloudcannon.com%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fcloudcannon.com%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fcloudcannon.com%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fcloudcannon.com%2F/" width="60"/>
+			cloudcannon.com
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://www.a11yproject.com/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://www.a11yproject.com/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fwww.a11yproject.com%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fwww.a11yproject.com%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.a11yproject.com%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.a11yproject.com%2F/" width="60"/>
+			a11yproject.com
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://www.freecodecamp.org/news">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://www.freecodecamp.org/news">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fwww.freecodecamp.org%2Fnews/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fwww.freecodecamp.org%2Fnews/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.freecodecamp.org%2Fnews" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.freecodecamp.org%2Fnews/" width="60"/>
+			freecodecamp.org/news
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://tc39.es/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://tc39.es/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Ftc39.es%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Ftc39.es%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Ftc39.es%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Ftc39.es%2F/" width="60"/>
+			tc39.es
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://blog.fontawesome.com/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://blog.fontawesome.com/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fblog.fontawesome.com%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fblog.fontawesome.com%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fblog.fontawesome.com%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fblog.fontawesome.com%2F/" width="60"/>
+			blog.fontawesome.com
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://blog.mozilla.org/addons/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://blog.mozilla.org/addons/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fblog.mozilla.org%2Faddons%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fblog.mozilla.org%2Faddons%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fblog.mozilla.org%2Faddons%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fblog.mozilla.org%2Faddons%2F/" width="60"/>
+			blog.mozilla.org/addons
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://blog.glitch.com/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://blog.glitch.com/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fblog.glitch.com%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fblog.glitch.com%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fblog.glitch.com%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fblog.glitch.com%2F/" width="60"/>
+			blog.glitch.com
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://18f.org/guides/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://18f.org/guides/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2F18f.org%2Fguides%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2F18f.org%2Fguides%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2F18f.org%2Fguides%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2F18f.org%2Fguides%2F/" width="60"/>
+			18f.org/guides
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://developer.chrome.com/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://developer.chrome.com/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fdeveloper.chrome.com%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fdeveloper.chrome.com%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fdeveloper.chrome.com%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fdeveloper.chrome.com%2F/" width="60"/>
+			developer.chrome.com
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://aphera.co/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://aphera.co/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Faphera.co%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Faphera.co%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Faphera.co%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Faphera.co%2F/" width="60"/>
+			aphera.co
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://atomic.financial/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://atomic.financial/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fatomic.financial%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fatomic.financial%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fatomic.financial%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fatomic.financial%2F/" width="60"/>
+			atomic.financial
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://www.11ty.dev/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://www.11ty.dev/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fwww.11ty.dev%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fwww.11ty.dev%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.11ty.dev%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.11ty.dev%2F/" width="60"/>
+			11ty.dev
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://quire.getty.edu/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://quire.getty.edu/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fquire.getty.edu%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fquire.getty.edu%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fquire.getty.edu%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fquire.getty.edu%2F/" width="60"/>
+			quire.getty.edu
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://pelican.ots.la.gov/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://pelican.ots.la.gov/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fpelican.ots.la.gov%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fpelican.ots.la.gov%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fpelican.ots.la.gov%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fpelican.ots.la.gov%2F/" width="60"/>
+			pelican.ots.la.gov
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://lit.dev/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://lit.dev/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Flit.dev%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Flit.dev%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Flit.dev%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Flit.dev%2F/" width="60"/>
+			lit.dev
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://unbreaking.org/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://unbreaking.org/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Funbreaking.org%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Funbreaking.org%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Funbreaking.org%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Funbreaking.org%2F/" width="60"/>
+			unbreaking.org
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://v8.dev/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://v8.dev/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fv8.dev%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fv8.dev%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fv8.dev%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fv8.dev%2F/" width="60"/>
+			v8.dev
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://eslint.org/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://eslint.org/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Feslint.org%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Feslint.org%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Feslint.org%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Feslint.org%2F/" width="60"/>
+			eslint.org
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://www.duetds.com/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://www.duetds.com/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fwww.duetds.com%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fwww.duetds.com%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.duetds.com%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.duetds.com%2F/" width="60"/>
+			duetds.com
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://docs.flutter.dev/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://docs.flutter.dev/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fdocs.flutter.dev%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fdocs.flutter.dev%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fdocs.flutter.dev%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fdocs.flutter.dev%2F/" width="60"/>
+			docs.flutter.dev
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://atom-editor.cc/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://atom-editor.cc/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fatom-editor.cc%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fatom-editor.cc%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fatom-editor.cc%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fatom-editor.cc%2F/" width="60"/>
+			atom-editor.cc
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://moderncss.dev/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://moderncss.dev/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fmoderncss.dev%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fmoderncss.dev%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fmoderncss.dev%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fmoderncss.dev%2F/" width="60"/>
+			moderncss.dev
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://gsap.com/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://gsap.com/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fgsap.com%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fgsap.com%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fgsap.com%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fgsap.com%2F/" width="60"/>
+			gsap.com
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://webawesome.com/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://webawesome.com/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fwebawesome.com%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fwebawesome.com%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwebawesome.com%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwebawesome.com%2F/" width="60"/>
+			webawesome.com
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+<site-card class="wjhpxtwla" featured="true" show-icons="true" url="https://ffconf.org/">
+<div class="sites-site-vert">
+<a class="elv-externalexempt" href="https://ffconf.org/">
+<div class="sites-screenshot-container">
+<img alt="" class="sites-screenshot" decoding="async" height="375" loading="lazy" src="https://screenshot.11ty.app/https%3A%2F%2Fffconf.org%2F/small/1:1/_wait:2/" width="375"/>
+<div class="sites-screenshot-container-icons"><img alt="" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="https://v1.generator.11ty.dev/image/https%3A%2F%2Fffconf.org%2F/_2026_6_30/" width="66"/></div>
+</div>
+<span class="sites-site-name">
+<img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fffconf.org%2F" class="avatar avatar-indieweb avatar-large" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fffconf.org%2F/" width="60"/>
+			ffconf.org
+			
+			
+			
+		</span>
+</a>
+</div></site-card>
+</div>
+</div>
+</sites-list>
+<is-land on:save-data="false" on:visible="">
+<facepile>
+<html-fetch src="/imports/facepile.html">
+</html-fetch>
+</facepile>
+</is-land>
+<p>A random sample taken from <a href="/authors/"><code><span>880</span></code> authors</a>. Check out the <a href="/speedlify/">fastest of their <code>1274</code> web sites</a>.</p>
+<h2 id="dont-take-my-word-for-it-rainbow">Don’t take my word for it <emoji>
+<span aria-hidden="true" class="emoji">🌈</span>
+<span class="sr-only">Rainbow</span>
+</emoji></h2>
+<p>Listen to what these <a href="/docs/testimonials/">happy developers</a> are saying about Eleventy:</p>
+<testimonials-list>
+<div class="testimonials">
+<div class="testimonials-layout fl">
+<div><blockquote><p>“Eleventy is almost fascinatingly simple.” <span class="bio-source">—<a href="https://css-tricks.com/a-site-for-front-end-development-conferences-built-with-11ty-on-netlify/"><img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fchriscoyier.net%2F" class="avatar avatar-indieweb" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fchriscoyier.net%2F/" width="60"/>Chris Coyier</a></span></p></blockquote></div>
+<div><blockquote><p>“I use Eleventy on almost every project at this point and I love it.” <span class="bio-source">—<a href="https://twitter.com/LeaVerou/status/1629652201168576512"><img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Flea.verou.me%2F" class="avatar avatar-indieweb" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Flea.verou.me%2F/" width="60"/>Lea Verou</a></span></p></blockquote></div>
+<div><blockquote><p>“I looked into and actively tried using various static site generators for this project. Eleventy was the only one I could find that gave me the fine-grained control I needed at blazingly fast build times.” <span class="bio-source">—<a href="https://twitter.com/mathias/status/1044232502309789696"><img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fmathiasbynens.be%2F" class="avatar avatar-indieweb" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fmathiasbynens.be%2F/" width="60"/>Mathias Bynens</a></span></p></blockquote></div>
+<div><blockquote><p>“2022 winner of the Google Open Source Peer Bonus Award” <span class="bio-source">—<a href="https://opensource.googleblog.com/2022/03/Announcing-First-Group-of-Google-Open-Source-Peer-Bonus-Winners-in-2022.html"><img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fgoogle.com%2F" class="avatar avatar-indieweb" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fgoogle.com%2F/" width="60"/>Google</a></span></p></blockquote></div>
+<div><blockquote><p>“Don’t tell Zach I said it but Eleventy is seeming fresh as hell so far” <span class="bio-source">—<a href="https://hire.wil.to/"><img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwil.to%2F" class="avatar avatar-indieweb" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwil.to%2F/" width="60"/>Mat Marquis</a></span></p></blockquote></div>
+<div><blockquote><p>“#1 Product of the Day (May 2022)” <span class="bio-source">—<a href="https://www.producthunt.com/products/eleventy"><img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fproducthunt.com%2F" class="avatar avatar-indieweb" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fproducthunt.com%2F/" width="60"/>Product Hunt</a></span></p></blockquote></div>
+<div><blockquote><p>“Jekyll is dead to me” <span class="bio-source">—<a href="https://andy-bell.co.uk/"><img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fandy-bell.co.uk%2F" class="avatar avatar-indieweb" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fandy-bell.co.uk%2F/" width="60"/>Andy Bell</a></span></p></blockquote></div>
+<div><blockquote><p>“Eleventy is absolutely wonderful. It’s by far the nicest static site generator I’ve used in what feels like forever.” <span class="bio-source">—<a href="https://addyosmani.com/"><img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Faddyosmani.com%2F" class="avatar avatar-indieweb" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Faddyosmani.com%2F/" width="60"/>Addy Osmani</a></span></p></blockquote></div>
+<div><blockquote><p>“I heard Eleventy was good” <span class="bio-source">—<a href="https://twitter.com/lachzeat/status/1196789524535431168"><picture><source type="image/avif"/><img alt="Favicon for zachleat.com/img/lachzeat-glasses.png" class="avatar avatar-indieweb" decoding="async" height="150" loading="lazy" src="/img/built/60Y9933xOF-150.png" width="150"/></picture>Lach Zeatherman</a></span></p></blockquote></div>
+<div><blockquote><p>“Eleventy + Netlify have become my new workflow for static sites. I think I'm in love.” <span class="bio-source">—<a href="https://tweets.mina.codes/1037088841520168960"><img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fminamarkh.am%2F" class="avatar avatar-indieweb" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fminamarkh.am%2F/" width="60"/>Mina Markham</a></span></p></blockquote></div>
+<div><blockquote><p>“Eleventy is a killer static site generator. That’s all.” <span class="bio-source">—<a href="https://twitter.com/SaraSoueidan/status/1144696081403523072"><img alt="Favicon for v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.sarasoueidan.com%2F" class="avatar avatar-indieweb" decoding="async" height="60" loading="lazy" src="https://v1.indieweb-avatar.11ty.dev/https%3A%2F%2Fwww.sarasoueidan.com%2F/" width="60"/>Sara Soueidan</a></span></p></blockquote></div>
+</div>
+</div>
+</testimonials-list>
+<p><a href="/docs/testimonials/">…and many more!</a></p>
+<h2 id="alternatives">Alternatives</h2>
+<p>This project aims to directly compete with all other static site generators. We encourage you to try out a few others:</p>
+<ul class="inlinelist">
+<li><a href="https://jekyllrb.com/">Jekyll (Ruby)</a></li>
+<li><a href="https://gohugo.io/">Hugo (Go)</a></li>
+<li><a href="https://hexo.io/">Hexo (JavaScript)</a></li>
+<li><a href="https://www.gatsbyjs.org/">Gatsby (JavaScript using React)</a></li>
+<li><a href="https://nuxtjs.org/">Nuxt (JavaScript using Vue)</a></li>
+<li><a href="https://nextjs.org/">Next.js (JavaScript using React)</a></li>
+<li><a href="https://www.bridgetownrb.com/">Bridgetown (Ruby)</a></li>
+<li><a href="https://astro.build/">Astro (JavaScript)</a></li>
+<li><a href="https://remix.run/">Remix (JavaScript using React)</a></li>
+<li><a href="https://kit.svelte.dev/">SvelteKit (JavaScript using Svelte)</a></li>
+<li><a href="https://jamstack.org/generators/"><em>More at jamstack.org</em></a></li>
+</ul>
+</div>
+</heading-anchors>
+</div>
+</main>
+<footer class="elv-footer-wrap">
+<div class="announcement">
+<a href="https://www.kickstarter.com/projects/fontawesome/build-awesome-pro?ref=43ttgb">
+<span>Join the 838 backers of Build Awesome!</span><span class="announcement-tag">Late Pricing Available</span>
+</a>
+</div>
+<div class="elv-footer elv-layout">
+<div class="elv-callout"><div class="elv-callout-c">
+<div class="fl">
+<p><a class="minilink minilink-github elv-skipicon" href="https://github.com/11ty/eleventy"> <strong title="19821">19.8k</strong></a> <a class="elv-skipicon" href="https://github.com/11ty/eleventy"><strong>Star Eleventy on GitHub!</strong></a> This is an easy way to support our underrated project and help boost our rank on both GitHub and <a href="https://jamstack.org/generators/">jamstack.org</a>’s list of site generators.</p>
+<ul class="inlinelist">
+<li><a href="/blog/">Read the <strong>Blog</strong></a></li>
+<li><a href="https://neighborhood.11ty.dev/@11ty">Follow on <strong>Mastodon</strong></a></li>
+<li><a href="https://bsky.app/profile/11ty.dev">Follow on <strong>Bluesky</strong></a></li>
+<li><a href="https://buttondown.email/11ty">Subscribe to the <strong>Newsletter</strong></a></li>
+<li><a class="elv-externalexempt" href="https://www.youtube.com/c/EleventyVideo">Watch on <strong>YouTube</strong></a></li>
+<li><a class="elv-externalexempt" href="https://github.com/11ty/eleventy">Star on <strong>GitHub</strong></a></li>
+<li><a href="/blog/discord/">Chat on <strong>Discord</strong></a></li>
+<li class="inert"><del><strong>Twitter</strong></del></li>
+</ul>
+</div>
+</div></div>
+<div class="fl">
+<div class="supporters-tiered supporters-silver">
+<h3 class="subhed" id="sponsors"><strong>Sponsors</strong></h3>
+<div class="facepile facepile-supporters"><a class="elv-externalexempt" href="https://au.trustpilot.com/review/bestaustraliaonlinepokies.com" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for Australian Online Pokies" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="/img/built/G4dSY0UbEd-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://superluxuryreps.com/" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for superluxuryreps" class="avatar avatar-large" decoding="async" height="50" loading="lazy" src="/img/built/Lk01OIo4ys-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://global.fun88.com/" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for Fun88" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="/img/built/u7teF61XY2-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://www.fun88the.com/th/" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for Fun88" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="/img/built/c4ijjyAcmc-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://pqina.nl/pintura/" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for Pintura" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="/img/built/BC8y6qmc2B-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://de.trustpilot.com/review/onlinecasinospaysafecard.com" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for Paysafecard Casino" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="/img/built/CNg64hhrxK-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://de.trustpilot.com/review/paysafecardcasinos.org" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for Paysafecard Casino" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="/img/built/_2tBSeClmd-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://privatejet.com" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for Privatejet.com" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="/img/built/qWEZjwKj95-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://au.trustpilot.com/review/aussiepokies.net" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for Online Pokies in Australia" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="/img/built/mx5fPHfyUJ-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://de.trustpilot.com/review/onlinecasinoohneoasis.me" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for Casino ohne oasis" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="/img/built/V_yGTe6Pqo-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://www.fun88vnf.com/vn/" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for Fun88" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="/img/built/Lx6YUQOx6b-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://www.jbo88b.com/vn/" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for JBO" class="avatar avatar-large" decoding="async" height="34" loading="lazy" src="/img/built/tFa14gqN3K-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://au.trustpilot.com/review/bestpayidpokies.net" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for PayID Pokies" class="avatar avatar-large" decoding="async" height="66" loading="lazy" src="/img/built/aJ7aUWPRQq-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://www.jbo579.com/th/" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for JBO" class="avatar avatar-large" decoding="async" height="34" loading="lazy" src="/img/built/iYrgWvT257-66.png" width="66"/></picture></a><a class="elv-externalexempt" href="https://eslint.org/" rel="sponsored"><picture><source type="image/avif"/><img alt="Open Collective Avatar for ESLint" class="avatar avatar-large" decoding="async" height="57" loading="lazy" src="/img/built/d-IxivSbC--66.png" width="66"/></picture></a>
+</div>
+</div>
+</div>
+<div class="fullwidth-module">
+<is-land on:save-data="false" on:visible="">
+
+</is-land>
+</div>
+<div class="fl fl-nowrap elv-footer-nav">
+<ul class="list-bare">
+<li><a class="elv-externalexempt" href="https://github.com/11ty/docs/tree/main/./src/index.webc">Edit this page</a></li>
+<li><a href="/docs/accessibility/">Accessibility</a></li>
+<li><a href="/docs/credits/">Credits</a></li>
+<li><a href="/firehose/">Firehose</a></li>
+<li><a href="/styleguide/">Style Guide</a></li>
+</ul>
+<ul class="list-bare">
+<li><strong class="subhed">Built With</strong></li>
+<li><em>Eleventy v4.0.0</em></li>
+<li><is-land import="/js/time-difference.js" on:idle=""><time-difference live=""><em>Built <time datetime="2026-07-30T20:00:49.478Z">2026 July 30</time></em></time-difference></is-land></li>
+<li><strong class="subhed">Statistics</strong></li>
+<li><a class="elv-externalexempt" href="https://github.com/11ty/eleventy/" title="19821">19.8k Stars</a></li>
+<li><abbr title="19997961">20M</abbr> Downloads</li>
+</ul>
+<ul class="list-bare">
+<li><strong class="subhed">Awesomeverse</strong></li>
+<li><a href="https://fontawesome.com/">Font Awesome</a></li>
+<li><a href="https://webawesome.com/">Web Awesome</a></li>
+<li><a href="https://www.podcastawesome.com/">Podcast Awesome</a></li>
+<li><a href="https://blog.fontawesome.com/">Blog Awesome</a></li>
+</ul>
+</div>
+</div>
+</footer>
+<!-- Built on 2026 July 30 by Eleventy -->
+<div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</div>
+</body>
+</html>

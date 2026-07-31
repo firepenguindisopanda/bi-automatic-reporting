@@ -1,0 +1,91 @@
+# Eval cases. One per fixture in evals/fixtures/.
+#
+# Expectations are deliberately loose. The point is not to pin the model to one
+# phrasing - that would fail on every prompt tweak - but to catch the failures
+# that actually matter: getting the company wrong, inventing competitors,
+# leaving fields empty, or emitting placeholder text.
+#
+# Fields:
+#   must_mention   substrings expected somewhere in the profile (case-insensitive,
+#                  any one of a group satisfies that group)
+#   industry_terms at least one must appear in the extracted industry
+#   forbidden      strings that indicate a hallucination or a wrong subject
+#   min_offerings  the site clearly lists at least this many products/services
+#   notes          why this fixture is in the set
+
+cases:
+  - name: stripe
+    fixture: stripe.html
+    url: https://stripe.com
+    company: Stripe
+    must_mention: [["payment", "financial", "money"]]
+    industry_terms: [payment, fintech, financial, infrastructure, saas]
+    forbidden: [Shopify Inc., Acme Corp]
+    min_offerings: 3
+    notes: Dense marketing site with a broad product range - tests offering extraction.
+
+  - name: ghost
+    fixture: ghost.html
+    url: https://ghost.org
+    company: Ghost
+    must_mention: [["publish", "newsletter", "blog", "creator"]]
+    industry_terms: [publishing, cms, newsletter, media, saas, content]
+    forbidden: [Acme Corp]
+    min_offerings: 2
+    notes: Open-source product with a commercial hosted tier - tests business-model reading.
+
+  - name: eleventy
+    fixture: eleventy.html
+    url: https://www.11ty.dev
+    company: Eleventy
+    must_mention: [["static site", "generator", "javascript", "site"]]
+    industry_terms: [developer, software, web, tooling, open source, static]
+    forbidden: [Acme Corp]
+    min_offerings: 1
+    notes: A free open-source tool with no revenue model - the profile should not
+           invent pricing or a commercial offering.
+
+  - name: linear
+    fixture: linear.html
+    url: https://linear.app
+    company: Linear
+    must_mention: [["product development", "issue", "project", "software team"]]
+    industry_terms: [saas, project management, software, productivity, developer]
+    forbidden: [Acme Corp]
+    min_offerings: 2
+    notes: Heavy JS site; most copy is in the markup. Tests extraction from a
+           script-heavy page.
+
+  - name: basecamp
+    fixture: basecamp.html
+    url: https://basecamp.com
+    company: Basecamp
+    must_mention: [["project management", "team", "work", "collaborat"]]
+    industry_terms: [saas, project management, software, collaboration, productivity]
+    forbidden: [Acme Corp]
+    min_offerings: 1
+    notes: Short, opinionated copy - tests behaviour when there is little text.
+
+  - name: flyio
+    fixture: flyio.html
+    url: https://fly.io
+    company: Fly
+    must_mention: [["deploy", "app", "server", "cloud", "compute"]]
+    industry_terms: [cloud, infrastructure, hosting, developer, paas, compute]
+    forbidden: [Acme Corp]
+    min_offerings: 1
+    notes: Developer infrastructure with jargon-heavy copy.
+
+  - name: govuk
+    fixture: govuk.html
+    url: https://www.gov.uk
+    company: GOV.UK
+    must_mention: [["government", "public service", "uk"]]
+    industry_terms: [government, public sector, public service, information]
+    # "competitor" is not usable as a canary here - a competitive analysis is
+    # entitled to use the word, including to say there are none. These are
+    # commercial rivals that gov.uk could not plausibly have.
+    forbidden: [Acme Corp, Salesforce, Shopify, Stripe Inc]
+    min_offerings: 1
+    notes: Not a business at all. Market sizing and competitors here should be
+           hedged rather than confidently invented - the hallucination canary.

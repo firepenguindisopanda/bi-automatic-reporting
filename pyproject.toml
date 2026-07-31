@@ -37,8 +37,10 @@ module = "app.llm.client"
 ignore_errors = true
 
 [tool.pytest.ini_options]
+markers = ["real_jobs: test drives the real job queue"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+pythonpath = ["."]
 
 [tool.coverage.run]
 source = ["app"]

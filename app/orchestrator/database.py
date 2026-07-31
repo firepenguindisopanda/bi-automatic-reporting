@@ -4,6 +4,7 @@ from typing import Any
 import aiosqlite
 
 from app.config import settings
+from app.orchestrator.schema import BACKFILL_COLUMNS, ddl
 
 logger = logging.getLogger(__name__)
 
@@ -39,128 +40,23 @@ class Database:
                 statement_cache_size=0,
             )
             logger.info("Connected to PostgreSQL via %s", self._url.split("@")[-1].split("?")[0])
-            async with self._pool.acquire() as conn:
-                await conn.execute(
-                    """CREATE TABLE IF NOT EXISTS jobs (
-                        job_id TEXT PRIMARY KEY,
-                        url TEXT NOT NULL,
-                        email TEXT NOT NULL,
-                        status TEXT NOT NULL DEFAULT 'pending',
-                        error TEXT,
-                        artifact_json TEXT,
-                        pdf_path TEXT,
-                        docx_path TEXT,
-                        events TEXT DEFAULT '[]',
-                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    )"""
-                )
-                await conn.execute(
-                    """CREATE TABLE IF NOT EXISTS briefs (
-                        id SERIAL PRIMARY KEY,
-                        job_id TEXT NOT NULL REFERENCES jobs(job_id),
-                        session_id TEXT NOT NULL,
-                        client_name TEXT DEFAULT '',
-                        client_country TEXT DEFAULT '',
-                        client_language TEXT DEFAULT '',
-                        client_website TEXT DEFAULT '',
-                        client_description TEXT DEFAULT '',
-                        target_audience_personas TEXT DEFAULT '',
-                        brand_personality_matrix TEXT DEFAULT '',
-                        unique_value_proposition TEXT DEFAULT '',
-                        people_ask TEXT DEFAULT '',
-                        customer_journey TEXT DEFAULT '',
-                        customer_persona_trait TEXT DEFAULT '',
-                        eeat_signal_integration TEXT DEFAULT '',
-                        geo_tactic TEXT DEFAULT '',
-                        call_to_action TEXT DEFAULT '',
-                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        UNIQUE(job_id, session_id)
-                    )"""
-                )
-                await conn.execute(
-                    """CREATE TABLE IF NOT EXISTS market_research_jobs (
-                        job_id TEXT PRIMARY KEY,
-                        market_query TEXT NOT NULL,
-                        status TEXT NOT NULL DEFAULT 'pending',
-                        result_json TEXT,
-                        error TEXT,
-                        pdf_path TEXT,
-                        docx_path TEXT,
-                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    )"""
-                )
-                for col in ("pdf_path", "docx_path"):
-                    try:
-                        await conn.execute(
-                            f"ALTER TABLE market_research_jobs ADD COLUMN {col} TEXT"
-                        )
-                    except Exception:
-                        pass
         else:
             self._conn = await aiosqlite.connect(self._path)
             self._conn.row_factory = aiosqlite.Row
             logger.info("Connected to SQLite at %s", self._path)
-            await self._exec(
-                """CREATE TABLE IF NOT EXISTS jobs (
-                    job_id TEXT PRIMARY KEY,
-                    url TEXT NOT NULL,
-                    email TEXT NOT NULL,
-                    status TEXT NOT NULL DEFAULT 'pending',
-                    error TEXT,
-                    artifact_json TEXT,
-                    pdf_path TEXT,
-                    docx_path TEXT,
-                    events TEXT DEFAULT '[]',
-                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-                )"""
-            )
-            await self._exec(
-                """CREATE TABLE IF NOT EXISTS briefs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    job_id TEXT NOT NULL REFERENCES jobs(job_id),
-                    session_id TEXT NOT NULL,
-                    client_name TEXT DEFAULT '',
-                    client_country TEXT DEFAULT '',
-                    client_language TEXT DEFAULT '',
-                    client_website TEXT DEFAULT '',
-                    client_description TEXT DEFAULT '',
-                    target_audience_personas TEXT DEFAULT '',
-                    brand_personality_matrix TEXT DEFAULT '',
-                    unique_value_proposition TEXT DEFAULT '',
-                    people_ask TEXT DEFAULT '',
-                    customer_journey TEXT DEFAULT '',
-                    customer_persona_trait TEXT DEFAULT '',
-                    eeat_signal_integration TEXT DEFAULT '',
-                    geo_tactic TEXT DEFAULT '',
-                    call_to_action TEXT DEFAULT '',
-                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-                )"""
-            )
-            await self._exec(
-                """CREATE TABLE IF NOT EXISTS market_research_jobs (
-                    job_id TEXT PRIMARY KEY,
-                    market_query TEXT NOT NULL,
-                    status TEXT NOT NULL DEFAULT 'pending',
-                    result_json TEXT,
-                    error TEXT,
-                    pdf_path TEXT,
-                    docx_path TEXT,
-                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-                )"""
-            )
-            for col in ("pdf_path", "docx_path"):
-                try:
-                    await self._exec(
-                        f"ALTER TABLE market_research_jobs ADD COLUMN {col} TEXT"
-                    )
-                except Exception:
-                    pass
+
+        await self._migrate()
+
+    async def _migrate(self) -> None:
+        """Create every table and index. Idempotent - runs on each startup."""
+        for statement in ddl(self._pg):
+            await self._exec(statement)
+        for table, column, coltype in BACKFILL_COLUMNS:
+            try:
+                await self._exec(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
+            except Exception:
+                pass  # column already present - expected on every run after the first
+        await self.commit()
 
     async def _exec(self, sql: str, *args: Any) -> Any:
         if self._pg:
@@ -210,8 +106,16 @@ class Database:
     def is_pg(self) -> bool:
         return self._pg
 
+    @property
+    def now_expr(self) -> str:
+        """SQL expression for the current timestamp in the active dialect."""
+        return "CURRENT_TIMESTAMP" if self._pg else "(datetime('now'))"
+
     async def close(self) -> None:
-        if self._pg:
+        if self._pg and self._pool is not None:
             await self._pool.close()
-        else:
+            self._pool = None
+        elif self._conn is not None:
             await self._conn.close()
+            self._conn = None
+        self._pg = False

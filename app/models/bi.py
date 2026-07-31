@@ -161,6 +161,65 @@ class BIJobStatus(BaseModel):
     error: str | None = None
 
 
+class StageReport(BaseModel):
+    """One stage's live state, as shown in the UI timeline."""
+
+    stage: str
+    display: str
+    label: str
+    seq: int
+    status: str
+    duration_ms: int | None = None
+    model: str | None = None
+    attempts: int = 0
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    completeness: float | None = None
+    confidence: float | None = None
+    critic_note: str | None = None
+    warnings: list[str] = Field(default_factory=list)
+    error: str | None = None
+    error_kind: str | None = None
+
+
+class JobProgress(BaseModel):
+    """Everything needed to render a job's progress after a page refresh."""
+
+    job_id: str
+    kind: str = "bi"
+    status: str
+    error: str | None = None
+    subject: str | None = None
+    """What this job is about - the URL analysed, or the market researched.
+
+    Sent so the page can name itself. The client used to rely on its own
+    localStorage for this, so a job opened in another browser, in a private
+    window, or from a shared link showed a bare job id.
+    """
+    stages: list[StageReport] = Field(default_factory=list)
+    elapsed_ms: int = 0
+    eta_ms: int | None = None
+    quality: float | None = None
+    confidence: float | None = None
+    queue_position: int | None = None
+
+
+class ResendResponse(BaseModel):
+    job_id: str
+    sent: bool
+    detail: str = ""
+
+
+class StageDescriptor(BaseModel):
+    """One pipeline stage, as advertised to the frontend."""
+
+    slug: str
+    display: str
+    label: str
+    seq: int
+    uses_llm: bool
+
+
 class MarketResource(BaseModel):
     name: str
     url: str
@@ -184,6 +243,58 @@ class MarketResearchResult(BaseModel):
     competitor_sites: list[MarketResource] = Field(default_factory=list)
     research_papers: list[MarketResource] = Field(default_factory=list)
     relevant_communities: list[MarketResource] = Field(default_factory=list)
+
+
+class PESTELAnalysis(BaseModel):
+    political: list[str] = Field(default_factory=list)
+    economic: list[str] = Field(default_factory=list)
+    social: list[str] = Field(default_factory=list)
+    technological: list[str] = Field(default_factory=list)
+    environmental: list[str] = Field(default_factory=list)
+    legal: list[str] = Field(default_factory=list)
+
+
+class FiveForces(BaseModel):
+    threat_of_new_entrants: str = ""
+    supplier_power: str = ""
+    buyer_power: str = ""
+    threat_of_substitutes: str = ""
+    competitive_rivalry: str = ""
+
+
+class MarketMacroAnalysis(BaseModel):
+    """Stage 1 of market research: macro environment and industry structure."""
+
+    pestel: PESTELAnalysis = Field(default_factory=PESTELAnalysis)
+    five_forces: FiveForces = Field(default_factory=FiveForces)
+
+
+class MarketSynthesis(BaseModel):
+    """Stage 2: sizing plus the narrative synthesis, conditioned on the macro view."""
+
+    executive_summary: str = ""
+    summary: str = ""
+    market_size: str = ""
+    growth_rate: str = ""
+    key_insights: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+    risks_and_assumptions: list[str] = Field(default_factory=list)
+    swot: SWOTAnalysis = Field(
+        default_factory=lambda: SWOTAnalysis(
+            strengths=[], weaknesses=[], opportunities=[], threats=[]
+        )
+    )
+
+
+class MarketResources(BaseModel):
+    """Stage 3: the verifiable resource lists."""
+
+    key_players: list["MarketResource"] = Field(default_factory=list)
+    news_sources: list["MarketResource"] = Field(default_factory=list)
+    industry_websites: list["MarketResource"] = Field(default_factory=list)
+    competitor_sites: list["MarketResource"] = Field(default_factory=list)
+    research_papers: list["MarketResource"] = Field(default_factory=list)
+    relevant_communities: list["MarketResource"] = Field(default_factory=list)
 
 
 class MarketResearchSubmitRequest(BaseModel):

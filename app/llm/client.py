@@ -1,12 +1,18 @@
 """LLM client wrapping ChatNVIDIA for all agent calls.
 
-Follows the tutorial pattern from
-nvidia_nims_prompt_interactive_tutorial/10.1_Appendix_Chaining Prompts.ipynb
+Async only. The sync path was removed: ChatNVIDIA's ``.invoke()`` returns
+truncated response bodies under concurrency, which is what made structured
+parsing fail intermittently (see AGENTS.md).
+
+Structured output is produced by asking for JSON directly and parsing the
+reply, not via ``with_structured_output`` - the same reason. The runner in
+``app.analysis.runner`` layers retries and repair turns on top of this.
 """
 
 import json
 import logging
-from typing import TypeVar
+from dataclasses import dataclass
+from typing import Any, TypeVar
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
@@ -18,44 +24,119 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
+# One ChatNVIDIA per distinct configuration. Previously every with_model() call
+# built a new client - and so a new httpx connection pool - on every agent call.
+_CHAT_CACHE: dict[tuple[str, float, int, int], ChatNVIDIA] = {}
+
+
+def _get_chat(model: str, temperature: float, max_tokens: int, timeout: int) -> ChatNVIDIA:
+    key = (model, temperature, max_tokens, timeout)
+    chat = _CHAT_CACHE.get(key)
+    if chat is None:
+        chat = ChatNVIDIA(
+            model=model,
+            temperature=temperature,
+            max_completion_tokens=max_tokens,
+            timeout=timeout,
+            api_key=settings.nvidia_api_key or None,
+        )
+        _CHAT_CACHE[key] = chat
+    return chat
+
+
+async def close_all() -> None:
+    """Release cached upstream clients. Called from the FastAPI lifespan."""
+    for chat in list(_CHAT_CACHE.values()):
+        for attr in ("async_client", "_async_client", "client", "_client"):
+            candidate = getattr(chat, attr, None)
+            aclose = getattr(candidate, "aclose", None)
+            if aclose is not None:
+                try:
+                    await aclose()
+                except Exception:  # noqa: BLE001 - best effort on shutdown
+                    logger.debug("Failed closing %s on cached chat client", attr, exc_info=True)
+    _CHAT_CACHE.clear()
+
+
+@dataclass(frozen=True, slots=True)
+class RawResponse:
+    """A single completion plus whatever token accounting the provider returned."""
+
+    content: str
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+
+
+def _usage(message: Any) -> tuple[int, int]:
+    """Pull (prompt, completion) token counts out of a LangChain response."""
+    meta = getattr(message, "usage_metadata", None)
+    if isinstance(meta, dict):
+        return int(meta.get("input_tokens", 0)), int(meta.get("output_tokens", 0))
+    response_meta = getattr(message, "response_metadata", None)
+    if isinstance(response_meta, dict):
+        usage = response_meta.get("token_usage") or {}
+        if isinstance(usage, dict):
+            return int(usage.get("prompt_tokens", 0)), int(usage.get("completion_tokens", 0))
+    return 0, 0
+
 
 class LLMClient:
     """Thin wrapper around ChatNVIDIA with support for structured outputs."""
 
-    def __init__(self, model: str | None = None) -> None:
+    def __init__(
+        self,
+        model: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> None:
         self._model = model or settings.nvidia_model
-        self._llm = ChatNVIDIA(
-            model=self._model,
-            temperature=settings.temperature,
-            max_completion_tokens=settings.max_tokens,
-            timeout=settings.llm_timeout,
-            api_key=settings.nvidia_api_key or None,
+        self._temperature = settings.temperature if temperature is None else temperature
+        self._max_tokens = max_tokens or settings.max_tokens
+        self._llm = _get_chat(
+            self._model, self._temperature, self._max_tokens, settings.llm_timeout
         )
 
-    def with_model(self, model_id: str) -> "LLMClient":
+    def with_model(
+        self,
+        model_id: str,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> "LLMClient":
         """Return a new LLMClient using a different model. Original unchanged."""
-        return LLMClient(model=model_id)
+        return LLMClient(model=model_id, temperature=temperature, max_tokens=max_tokens)
 
-    def invoke(
+    @property
+    def model(self) -> str:
+        return self._model
+
+    async def acomplete(self, messages: list[Any]) -> RawResponse:
+        """Send messages and return the raw reply with token counts."""
+        response = await self._llm.ainvoke(messages)
+        prompt_tokens, completion_tokens = _usage(response)
+        content = response.content
+        return RawResponse(
+            content=content if isinstance(content, str) else str(content),
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
+
+    async def ainvoke(
         self,
         system_prompt: str = "",
         user_prompt: str = "",
         prefill: str = "",
     ) -> str:
-        """Send a prompt with optional system prompt, AI prefill, and history.
-
-        Matches the get_completion() pattern from the tutorial notebooks.
-        """
-        messages: list = []
+        """Send a prompt and return the raw text response."""
+        messages: list[Any] = []
         if system_prompt:
             messages.append(SystemMessage(content=system_prompt))
         if user_prompt:
             messages.append(HumanMessage(content=user_prompt))
         if prefill:
             messages.append(AIMessage(content=prefill))
+        return (await self.acomplete(messages)).content
 
-        response = self._llm.invoke(messages)
-        return response.content
+    # --- JSON schema prompting ---------------------------------------------
 
     def _resolve_ref(self, prop: dict, defs: dict) -> dict:
         ref = prop.get("$ref", "")
@@ -74,8 +155,8 @@ class LLMClient:
                 return non_null[0]
         return prop
 
-    def _example_for_prop(self, prop: dict, defs: dict, depth: int = 0) -> str:
-        if depth > 3:
+    def _example_for_prop(self, prop: dict, defs: dict, depth: int = 0, max_depth: int = 3) -> str:
+        if depth > max_depth:
             return '"..."'
         prop = self._resolve_anyof(prop, defs)
         prop = self._resolve_ref(prop, defs)
@@ -86,7 +167,10 @@ class LLMClient:
             nested = items.get("properties", {})
             additional = items.get("additionalProperties", {})
             if nested:
-                subs = [f'"{k}": {self._example_for_prop(v, defs, depth + 1)}' for k, v in nested.items()]
+                subs = [
+                    f'"{k}": {self._example_for_prop(v, defs, depth + 1, max_depth)}'
+                    for k, v in nested.items()
+                ]
                 return "[{" + ", ".join(subs) + "}]"
             elif item_type == "object" and additional:
                 return '[{"name": "...", "description": "..."}]'
@@ -97,7 +181,10 @@ class LLMClient:
         elif ptype == "object":
             nested = prop.get("properties", {})
             if nested:
-                subs = [f'"{k}": {self._example_for_prop(v, defs, depth + 1)}' for k, v in nested.items()]
+                subs = [
+                    f'"{k}": {self._example_for_prop(v, defs, depth + 1, max_depth)}'
+                    for k, v in nested.items()
+                ]
                 return "{" + ", ".join(subs) + "}"
             else:
                 return "{}"
@@ -105,29 +192,57 @@ class LLMClient:
             title = prop.get("description", prop.get("title", ptype))
             return f'"<{title}>"'
 
-    def _build_example_schema(self, model: type[T]) -> str:
+    def build_example_schema(self, model: type[T], max_depth: int = 3) -> str:
+        """Render a filled-in example of the target schema.
+
+        Llama follows this example literally, so it must mirror the desired
+        output structure exactly. ``max_depth`` is lowered on a retry to keep
+        the prompt short when the model has already choked on the full one.
+        """
         schema = model.model_json_schema()
         defs = schema.get("$defs", {})
         props = schema.get("properties", {})
-        parts = [f'  "{k}": {self._example_for_prop(v, defs)}' for k, v in props.items()]
+        parts = [
+            f'  "{k}": {self._example_for_prop(v, defs, 0, max_depth)}' for k, v in props.items()
+        ]
         return "{\n" + ",\n".join(parts) + "\n}"
 
-    def _build_json_prompt(
+    def build_json_messages(
         self,
         output_model: type[T],
         system_prompt: str,
         user_prompt: str,
-    ) -> tuple[str, str]:
-        example = self._build_example_schema(output_model)
-        json_instruction = f"\n\nRespond with ONLY valid JSON in this format (no markdown, no explanation):\n{example}"
-        return system_prompt + json_instruction, user_prompt
+        schema_depth: int = 3,
+    ) -> list[Any]:
+        """Messages that ask for one JSON object matching ``output_model``."""
+        example = self.build_example_schema(output_model, max_depth=schema_depth)
+        instruction = (
+            "\n\nRespond with ONLY valid JSON in this format "
+            f"(no markdown, no explanation):\n{example}"
+        )
+        messages: list[Any] = []
+        if system_prompt or instruction:
+            messages.append(SystemMessage(content=system_prompt + instruction))
+        if user_prompt:
+            messages.append(HumanMessage(content=user_prompt))
+        return messages
 
-    def _parse_json_response(self, content: str, output_model: type[T]) -> T | None:
+    def parse_json_response(
+        self, content: str, output_model: type[T], diagnosis: list[str] | None = None
+    ) -> T | None:
+        """Extract and validate the target model from a raw reply.
+
+        Returns None when nothing in the reply parses into the model. Pass
+        ``diagnosis`` to receive why: "no JSON found", a JSON syntax error, or
+        the specific fields that failed validation. Without it, a schema
+        mismatch and malformed JSON are indistinguishable, which turns a
+        five-minute fix into an afternoon.
+        """
         text = content.strip()
         text = text.removeprefix("```json").removeprefix("```").strip()
         if text.endswith("```"):
             text = text[:-3].strip()
-        # Find ALL JSON objects - model sometimes echoes the schema before outputting data
+        # Find ALL JSON objects - the model sometimes echoes the schema first.
         objects: list[str] = []
         i = 0
         while True:
@@ -147,41 +262,27 @@ class LLMClient:
                         break
             else:
                 break
-        # Try each object - take the last valid one (model may echo schema first)
+        if not objects and diagnosis is not None:
+            diagnosis.append("no JSON object found in the response")
+
+        # Take the last object that validates - the data usually follows the echo.
         for candidate in reversed(objects):
             try:
                 data = json.loads(candidate)
                 if isinstance(data, dict):
                     return output_model.model_validate(data)
-            except (json.JSONDecodeError, ValidationError):
-                continue
+                if diagnosis is not None:
+                    diagnosis.append(f"top-level JSON was {type(data).__name__}, expected object")
+            except json.JSONDecodeError as e:
+                if diagnosis is not None:
+                    diagnosis.append(f"invalid JSON: {e}")
+            except ValidationError as e:
+                if diagnosis is not None:
+                    diagnosis.extend(
+                        f"{'.'.join(str(p) for p in err['loc']) or '(root)'}: {err['msg']}"
+                        for err in e.errors()[:4]
+                    )
         return None
-
-    def invoke_structured(
-        self,
-        output_model: type[T],
-        system_prompt: str = "",
-        user_prompt: str = "",
-    ) -> T:
-        """Send a prompt and get back a validated Pydantic model (sync)."""
-        sys_prompt, usr_prompt = self._build_json_prompt(
-            output_model,
-            system_prompt,
-            user_prompt,
-        )
-        messages: list = []
-        if sys_prompt:
-            messages.append(SystemMessage(content=sys_prompt))
-        if usr_prompt:
-            messages.append(HumanMessage(content=usr_prompt))
-
-        response = self._llm.invoke(messages)
-        content = str(response.content) if not isinstance(response.content, str) else response.content
-        parsed = self._parse_json_response(content, output_model)
-        if parsed is not None:
-            return parsed
-
-        raise RuntimeError(f"Failed to parse {output_model.__name__} from model output")
 
     async def ainvoke_structured(
         self,
@@ -189,22 +290,14 @@ class LLMClient:
         system_prompt: str = "",
         user_prompt: str = "",
     ) -> T:
-        """Send a prompt and get back a validated Pydantic model (async)."""
-        sys_prompt, usr_prompt = self._build_json_prompt(
-            output_model,
-            system_prompt,
-            user_prompt,
-        )
-        messages: list = []
-        if sys_prompt:
-            messages.append(SystemMessage(content=sys_prompt))
-        if usr_prompt:
-            messages.append(HumanMessage(content=usr_prompt))
+        """Send a prompt and get back a validated Pydantic model.
 
-        response = await self._llm.ainvoke(messages)
-        content = str(response.content) if not isinstance(response.content, str) else response.content
-        parsed = self._parse_json_response(content, output_model)
+        Single attempt with no repair. Agents go through
+        ``app.analysis.runner.AgentRunner`` instead, which retries.
+        """
+        messages = self.build_json_messages(output_model, system_prompt, user_prompt)
+        raw = await self.acomplete(messages)
+        parsed = self.parse_json_response(raw.content, output_model)
         if parsed is not None:
             return parsed
-
         raise RuntimeError(f"Failed to parse {output_model.__name__} from model output")

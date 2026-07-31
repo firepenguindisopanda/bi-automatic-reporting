@@ -1,0 +1,20 @@
+{
+  "overall": 96.4,
+  "per_stage": {
+    "profile": 100.0,
+    "market": 100.0,
+    "competitive": 97.9,
+    "swot": 100.0,
+    "marketing": 85.7,
+    "report": 97.5
+  },
+  "per_case": {
+    "stripe": 100.0,
+    "ghost": 80.0,
+    "eleventy": 100.0,
+    "linear": 100.0,
+    "basecamp": 100.0,
+    "flyio": 100.0,
+    "govuk": 95.0
+  }
+}

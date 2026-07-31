@@ -19,28 +19,35 @@ HTML_TEMPLATE = Template("""
   <meta charset="utf-8">
   <style>
     @page { margin: 2cm; }
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; line-height: 1.6; font-size: 11pt; }
-    h1 { color: #1a237e; font-size: 22pt; border-bottom: 3px solid #1a237e; padding-bottom: 8px; }
-    h2 { color: #283593; font-size: 16pt; margin-top: 24px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-    h3 { color: #3949ab; font-size: 13pt; margin-top: 16px; }
-    .exec-summary { background: #e8eaf6; padding: 16px; border-radius: 6px; margin: 16px 0; }
+    body { font-family: 'Source Serif 4', Palatino, Georgia, serif; color: #1a1815;
+           line-height: 1.65; font-size: 11pt; background: #fbfaf7; }
+    h1 { font-family: 'Source Serif 4', Palatino, Georgia, serif; font-weight: 400;
+         color: #1a1815; font-size: 24pt; border-bottom: 1px solid #d2cabb; padding-bottom: 10px; }
+    h2 { font-weight: 400; color: #1a1815; font-size: 15pt; margin-top: 26px;
+         border-bottom: 1px solid #e4dfd5; padding-bottom: 5px; }
+    h3 { font-weight: 600; color: #6b655c; font-size: 10pt; margin-top: 18px;
+         text-transform: uppercase; letter-spacing: 0.09em;
+         font-family: Helvetica, Arial, sans-serif; }
+    .exec-summary { background: #ffffff; border: 1px solid #e4dfd5; border-left: 2px solid #9a3f1f;
+                    padding: 16px; border-radius: 6px; margin: 16px 0; }
     .exec-summary p { margin: 4px 0; }
     ul { padding-left: 20px; }
     li { margin: 4px 0; }
     .section { margin: 20px 0; }
-    .label { font-weight: 600; color: #1a237e; }
+    .label { font-weight: 600; color: #6b655c; font-family: Helvetica, Arial, sans-serif;
+             font-size: 9pt; text-transform: uppercase; letter-spacing: 0.08em; }
     .footer {
-      margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd;
-      font-size: 9pt; color: #888; text-align: center;
+      margin-top: 40px; padding-top: 16px; border-top: 1px solid #e4dfd5;
+      font-size: 9pt; color: #8b8478; text-align: center;
     }
     table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background: #e8eaf6; font-weight: 600; }
+    th, td { border: 1px solid #e4dfd5; padding: 8px; text-align: left; }
+    th { background: #f5f2ec; font-weight: 600; }
   </style>
 </head>
 <body>
   <h1>Business Intelligence Report</h1>
-  <p style="color: #666; font-size: 10pt;">{{ company }} &mdash; Generated {{ date }}</p>
+  <p style="color: #6b655c; font-size: 10pt;">{{ company }} &mdash; Generated {{ date }}</p>
 
   <div class="exec-summary">
     <h2>Executive Summary</h2>
@@ -236,35 +243,51 @@ MR_HTML_TEMPLATE = Template("""
   <meta charset="utf-8">
   <style>
     @page { margin: 2cm; }
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; line-height: 1.6; font-size: 11pt; }
-    h1 { color: #1a237e; font-size: 22pt; border-bottom: 3px solid #1a237e; padding-bottom: 8px; }
-    h2 { color: #283593; font-size: 16pt; margin-top: 24px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-    h3 { color: #3949ab; font-size: 13pt; margin-top: 16px; }
-    .exec-summary { background: #e8eaf6; padding: 16px; border-radius: 6px; margin: 16px 0; }
+    body { font-family: 'Source Serif 4', Palatino, Georgia, serif; color: #1a1815;
+           line-height: 1.65; font-size: 11pt; background: #fbfaf7; }
+    h1 { font-family: 'Source Serif 4', Palatino, Georgia, serif; font-weight: 400;
+         color: #1a1815; font-size: 24pt; border-bottom: 1px solid #d2cabb; padding-bottom: 10px; }
+    h2 { font-weight: 400; color: #1a1815; font-size: 15pt; margin-top: 26px;
+         border-bottom: 1px solid #e4dfd5; padding-bottom: 5px; }
+    h3 { font-weight: 600; color: #6b655c; font-size: 10pt; margin-top: 18px;
+         text-transform: uppercase; letter-spacing: 0.09em;
+         font-family: Helvetica, Arial, sans-serif; }
+    .exec-summary { background: #ffffff; border: 1px solid #e4dfd5; border-left: 2px solid #9a3f1f;
+                    padding: 16px; border-radius: 6px; margin: 16px 0; }
     .kpi-row { display: flex; gap: 16px; margin: 16px 0; }
-    .kpi-card { flex: 1; border: 1px solid #ddd; border-radius: 6px; padding: 12px; text-align: center; }
-    .kpi-card .label { font-size: 9pt; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
-    .kpi-card .value { font-size: 18pt; font-weight: bold; color: #1a237e; margin-top: 4px; }
-    .insight-box { background: #f3f4f6; padding: 12px 16px; border-left: 4px solid #3949ab; margin: 8px 0; }
-    .rec-box { background: #f0fdf4; padding: 12px 16px; border-left: 4px solid #16a34a; margin: 8px 0; }
-    .risk-box { background: #fefce8; padding: 12px 16px; border-left: 4px solid #ca8a04; margin: 8px 0; }
+    .kpi-card { flex: 1; border: 1px solid #e4dfd5; border-radius: 6px; padding: 12px;
+                background: #ffffff; text-align: center; }
+    .kpi-card .label { font-size: 8pt; color: #6b655c; text-transform: uppercase;
+                       letter-spacing: 0.09em; font-family: Helvetica, Arial, sans-serif; }
+    .kpi-card .value { font-size: 17pt; font-weight: 400; color: #9a3f1f; margin-top: 4px; }
+    .insight-box { background: #ffffff; padding: 12px 16px; border-left: 2px solid #6b655c;
+                   border-top: 1px solid #e4dfd5; border-right: 1px solid #e4dfd5;
+                   border-bottom: 1px solid #e4dfd5; margin: 8px 0; }
+    .rec-box { background: #ffffff; padding: 12px 16px; border-left: 2px solid #3e6b4a;
+               border-top: 1px solid #e4dfd5; border-right: 1px solid #e4dfd5;
+               border-bottom: 1px solid #e4dfd5; margin: 8px 0; }
+    .risk-box { background: #ffffff; padding: 12px 16px; border-left: 2px solid #7d5f19;
+                border-top: 1px solid #e4dfd5; border-right: 1px solid #e4dfd5;
+                border-bottom: 1px solid #e4dfd5; margin: 8px 0; }
     ul { padding-left: 20px; }
     li { margin: 4px 0; }
     .section { margin: 20px 0; }
-    .label { font-weight: 600; color: #1a237e; }
+    .label { font-weight: 600; color: #6b655c; font-family: Helvetica, Arial, sans-serif;
+             font-size: 9pt; text-transform: uppercase; letter-spacing: 0.08em; }
     .footer {
-      margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd;
-      font-size: 9pt; color: #888; text-align: center;
+      margin-top: 40px; padding-top: 16px; border-top: 1px solid #e4dfd5;
+      font-size: 9pt; color: #8b8478; text-align: center;
     }
-    .resource-item { border-left: 3px solid #c7d2fe; padding: 8px 12px; margin: 8px 0; }
-    .resource-item .name { font-weight: 600; color: #4338ca; }
-    .resource-item .url { font-size: 9pt; color: #888; }
+    .resource-item { border-left: 1px solid #d2cabb; padding: 8px 12px; margin: 8px 0; }
+    .resource-item .name { font-weight: 600; color: #9a3f1f; }
+    .resource-item .url { font-size: 8.5pt; color: #8b8478;
+                          font-family: 'SF Mono', Menlo, monospace; }
     .resource-item .desc { margin-top: 4px; }
   </style>
 </head>
 <body>
   <h1>Market Research Report</h1>
-  <p style="color: #666; font-size: 10pt;">{{ query }} &mdash; Generated {{ date }}</p>
+  <p style="color: #6b655c; font-size: 10pt;">{{ query }} &mdash; Generated {{ date }}</p>
 
   <div class="exec-summary">
     <h2>Executive Summary</h2>
@@ -328,7 +351,7 @@ MR_HTML_TEMPLATE = Template("""
       <div class="name">{{ r.name }}</div>
       <div class="url">{{ r.url }}</div>
       <div class="desc">{{ r.description }}</div>
-      {% if r.relevance %}<p style="font-size: 9pt; color: #666; margin-top: 2px;">{{ r.relevance }}</p>{% endif %}
+      {% if r.relevance %}<p style="font-size: 9pt; color: #6b655c; margin-top: 2px;">{{ r.relevance }}</p>{% endif %}
     </div>
     {% endfor %}
   </div>

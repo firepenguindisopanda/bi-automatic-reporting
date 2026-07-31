@@ -16,3 +16,5 @@ __pycache__/
 .coverage*
 htmlcov/
 *.log
+.playwright-mcp/
+evals/results/

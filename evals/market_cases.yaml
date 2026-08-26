@@ -1,0 +1,31 @@
+# Query-based eval cases for the market research pipeline (macro -> sizing ->
+# resources). Run with `uv run python -m evals.run --suite market`.
+#
+# These take a `market_query` rather than an HTML fixture, so there is nothing
+# to hold constant between runs: unlike the BI suite, model variance is not the
+# only variable here. That is the price of covering the pipeline where the
+# CircleCI error actually lives - `evals/run.py` iterated BI_SPECS only, so
+# macro, sizing and resources had never been executed by the harness at all.
+#
+# Fields:
+#   market_query   the query the pipeline is asked to research
+#   must_include   entities a correct answer cannot omit (any one of a group
+#                  satisfies that group)
+#   must_exclude   entities disqualified by the query - a correctness failure,
+#                  not a style one
+#   notes          why this case is in the set
+#
+# must_include / must_exclude are NOT yet enforced - T6a wires the harness to
+# run these stages, T6b makes the assertions bite. They are recorded now so the
+# seed case is written down in one place.
+
+cases:
+  - name: self-hosted-cicd
+    market_query: Self-hosted CI/CD tools for small engineering teams
+    must_include: [[Drone], [Woodpecker], [Concourse], [Jenkins], [Gitea, Forgejo]]
+    must_exclude: [CircleCI, Travis CI, GitHub Actions]
+    notes: >
+      The case that exposed the bug. The query carries a hard disqualifier -
+      "self-hosted" - and the shipped run listed CircleCI and Travis CI, both
+      hosted SaaS, while Drone, Woodpecker, Concourse and Gitea Actions never
+      appeared at all. Hosted SaaS here is a correctness failure.

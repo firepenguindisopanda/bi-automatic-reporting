@@ -22,11 +22,14 @@ from app.models.bi import (
 )
 from app.pipeline.contracts import (
     StageContract,
+    field_differs_from,
     grounded_in_source,
     items_have,
     min_items,
     min_length,
+    no_cross_list_duplicates,
     no_duplicate_names,
+    no_near_identical_items,
     required,
 )
 
@@ -180,6 +183,10 @@ COMPETITIVE_CONTRACT = StageContract(
         min_items("indirect_competitors", 2),
         items_have("direct_competitors", ("name",)),
         no_duplicate_names("direct_competitors"),
+        # A company cannot coherently be both a direct and an indirect
+        # competitor. Unlike the resources rules this is a logical
+        # contradiction rather than a style judgement, so it needs no threshold.
+        no_cross_list_duplicates(("direct_competitors", "indirect_competitors")),
         min_items("competitive_advantages", 2),
         min_items("market_gaps", 2),
         min_length("threat_assessment", 120),
@@ -246,6 +253,16 @@ SIZING_CONTRACT = StageContract(
     ),
 )
 
+# Everything below the length checks was added by M4. The output that shipped
+# CircleCI and Travis CI as "self-hosted" passed the original six rules and
+# scored 100.0 while carrying 18 distinct names across 21 entries, one sentence
+# reused verbatim, and relevance fields that restated their own descriptions.
+#
+# Scoped to key_players and competitor_sites because that is where the evidence
+# is. The same rules also fire on research_papers (relevance echo, 0.69) and
+# relevant_communities (near-identical, 0.87) in that stored output, but both
+# sit close enough to the threshold that enforcing them would be building the
+# score on borderline calls. Recorded, deliberately not acted on yet.
 RESOURCES_CONTRACT = StageContract(
     rules=(
         min_items("key_players", 4),
@@ -254,6 +271,11 @@ RESOURCES_CONTRACT = StageContract(
         min_items("news_sources", 2),
         min_items("industry_websites", 2),
         min_items("competitor_sites", 2),
+        no_cross_list_duplicates(("key_players", "competitor_sites")),
+        field_differs_from("key_players", "description", "relevance"),
+        no_near_identical_items("key_players"),
+        field_differs_from("competitor_sites", "description", "relevance"),
+        no_near_identical_items("competitor_sites"),
     ),
 )
 

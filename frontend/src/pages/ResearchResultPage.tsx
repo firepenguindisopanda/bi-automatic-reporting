@@ -104,11 +104,29 @@ export default function ResearchResultPage() {
   )
 }
 
+/** A headline figure.
+ *
+ * Market size arrives as "TAM: … · SAM: … · SOM: …" now that the sizing stage
+ * keeps all three, and at display size that wrapped into a fifteen-line column.
+ * Split it into its parts instead; a single figure is left as it was.
+ */
 function Figure({ label, value }: { label: string; value: string }) {
+  const parts = value.split(' · ').filter(Boolean)
+
   return (
     <Card className="p-4">
       <p className="eyebrow">{label}</p>
-      <p className="mt-1 text-[22px] text-accent">{value}</p>
+      {parts.length > 1 ? (
+        <ul className="mt-2 space-y-1.5">
+          {parts.map((part, i) => (
+            <li key={i} className="text-[15px] leading-snug text-accent">
+              {part}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-1 text-[22px] leading-snug text-accent">{value}</p>
+      )}
     </Card>
   )
 }
@@ -138,7 +156,9 @@ function Resources({ title, items }: { title: string; items: MarketResource[] })
   return (
     <section>
       <h2 className="eyebrow">{title}</h2>
-      <ul className="mt-2 border-t border-rule">
+      {/* Two columns once there is room: six of these lists stacked one entry
+          deep made the page far longer than the reading in it. */}
+      <ul className="mt-2 grid border-t border-rule md:grid-cols-2 md:gap-x-8">
         {items.map((item, i) => (
           <li key={i} className="border-b border-rule py-3">
             <a
@@ -149,7 +169,17 @@ function Resources({ title, items }: { title: string; items: MarketResource[] })
             >
               {item.name}
             </a>
-            <p className="numeric mt-0.5 text-faint">{item.url}</p>
+            {/* The address was shown but not clickable, which reads as a broken
+                link rather than a caption. */}
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="numeric mt-0.5 block break-all py-0.5 text-faint no-underline
+                         hover:text-accent hover:underline"
+            >
+              {item.url}
+            </a>
             {item.description ? (
               <p className="mt-1 max-w-[62ch] text-[15px]">{item.description}</p>
             ) : null}

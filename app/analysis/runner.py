@@ -178,6 +178,15 @@ class StageMetrics:
     completeness: float = 100.0
     warnings: list[str] = field(default_factory=list)
     confidence: float | None = None
+    confidence_before_retry: float | None = None
+    """The first attempt's critic score, when a re-run was arbitrated.
+
+    None when no re-run happened - absent is not the same as unchanged, and a
+    stage that never retried should not look like one that retried to no effect.
+    """
+    retry_confidence: float | None = None
+    """The re-run's own score. None when there was no re-run, or the critic
+    could not score it - in which case the original is kept."""
     critic_note: str | None = None
 
 
@@ -340,24 +349,37 @@ class AgentRunner:
         metrics.warnings = contract.warnings
         return StageResult(value=value, metrics=metrics)
 
+    async def _review[T: BaseModel](
+        self, spec: AgentSpec[T], ctx: StageContext, value: T
+    ) -> tuple[float, str, list[str]] | None:
+        """Score one output, or None when the critic could not.
+
+        The house rule is that an advisory pass never loses a result, so a
+        critic failure is swallowed here rather than reaching either caller.
+        """
+        if self._critic is None:
+            return None
+        try:
+            return await self._critic.review(spec, ctx, value)
+        except Exception:  # noqa: BLE001 - the critic is advisory, never fatal
+            logger.warning("Critic failed for stage %s; keeping result", spec.key, exc_info=True)
+            return None
+
     async def run_with_review[T: BaseModel](
         self, spec: AgentSpec[T], ctx: StageContext
     ) -> StageResult[T]:
         """Run a stage, then optionally have a critic score it.
 
-        A low score triggers exactly one re-run with the critic's issues fed
-        back. A critic failure never loses an otherwise good result.
+        A low score triggers exactly one re-run. The re-run is scored too, and
+        replaces the original only when it scores strictly higher - a
+        replacement nobody checked is not an improvement. A critic failure
+        never loses a result.
         """
         result = await self.run(spec, ctx)
         if self._critic is None or not spec.critic:
             return result
 
-        try:
-            review = await self._critic.review(spec, ctx, result.value)
-        except Exception:  # noqa: BLE001 - the critic is advisory, never fatal
-            logger.warning("Critic failed for stage %s; keeping result", spec.key, exc_info=True)
-            return result
-
+        review = await self._review(spec, ctx, result.value)
         if review is None:
             return result
 
@@ -379,16 +401,44 @@ class AgentRunner:
             logger.warning("Stage %s re-run failed; keeping the original result", spec.key)
             return result
 
-        # Keep whichever attempt the contract rates higher.
-        if retried.metrics.completeness < result.metrics.completeness:
-            return result
+        # The re-run is scored exactly once and is never itself re-run. This is
+        # the only arbitration point, so there is no recursion to bound.
+        #
+        # Comparing completeness here instead was the original bug: it is pinned
+        # at 100.0, so `retried < result` was always False and every re-run was
+        # kept without a shred of evidence it was better.
+        retry_review = await self._review(spec, retry_ctx, retried.value)
+        retry_score, retry_verdict = (
+            (retry_review[0], retry_review[1]) if retry_review is not None else (None, "")
+        )
 
-        retried.metrics.attempts += result.metrics.attempts
-        retried.metrics.prompt_tokens += result.metrics.prompt_tokens
-        retried.metrics.completion_tokens += result.metrics.completion_tokens
-        retried.metrics.confidence = score
-        retried.metrics.critic_note = f"re-run after review: {verdict}"
-        return retried
+        if retry_score is not None and retry_score > score:
+            kept, discarded = retried, result
+            kept.metrics.confidence = retry_score
+            kept.metrics.critic_note = (
+                f"re-run kept ({score:.0f} -> {retry_score:.0f}): {retry_verdict}"
+            )
+        else:
+            # Ties and an unscoreable re-run both keep the original: without
+            # evidence of improvement there is no reason to swap.
+            kept, discarded = result, retried
+            kept.metrics.confidence = score
+            reason = (
+                f"{retry_score:.0f} did not beat {score:.0f}"
+                if retry_score is not None
+                else "the critic could not score it"
+            )
+            kept.metrics.critic_note = f"re-run discarded ({reason}): {verdict}"
+
+        # The discarded attempt still cost tokens and attempts. Dropping them
+        # would make the stage row understate what the stage actually spent.
+        kept.metrics.attempts += discarded.metrics.attempts
+        kept.metrics.prompt_tokens += discarded.metrics.prompt_tokens
+        kept.metrics.completion_tokens += discarded.metrics.completion_tokens
+
+        kept.metrics.confidence_before_retry = score
+        kept.metrics.retry_confidence = retry_score
+        return kept
 
 
 def replace_critic_issues(ctx: StageContext, issues: list[str]) -> StageContext:

@@ -9,6 +9,7 @@ each step is scored on its own.
 
 import asyncio
 import logging
+import time
 import uuid
 from typing import Any
 
@@ -38,9 +39,13 @@ class MarketResearchService:
         await self._store.init()
         job_id = uuid.uuid4().hex[:12]
         job_data = await self._store.create_market_research_job(job_id, market_query)
-        from app.orchestrator.runner import enqueue
+        from app.orchestrator.runner import QueueFullError, enqueue
 
-        await enqueue(job_id, self.run(job_id, market_query))
+        try:
+            await enqueue(job_id, self.run(job_id, market_query))
+        except QueueFullError:
+            await self._store.delete_market_research_job(job_id)
+            raise
         return job_data
 
     async def get_status(self, job_id: str) -> dict[str, Any] | None:
@@ -93,8 +98,15 @@ class MarketResearchService:
             result = assemble_result(market_query, sizing.value, resources.value)
 
             await recorder.start("render")
+            render_started = time.monotonic()
             pdf_path, docx_path = await self._render(result)
-            await recorder.succeed("render")
+            # Timed like every other stage, so the row shows a duration rather
+            # than the em-dash that made a finished render look unstarted.
+            await recorder.record_metrics_only(
+                "render",
+                duration_ms=int((time.monotonic() - render_started) * 1000),
+                attempts=1,
+            )
 
             await self._store.complete_market_research(
                 job_id, result.model_dump_json(), pdf_path=pdf_path, docx_path=docx_path

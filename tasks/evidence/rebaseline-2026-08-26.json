@@ -1,0 +1,552 @@
+{
+  "summary": {
+    "overall": 90.3,
+    "per_stage": {
+      "profile": 100.0,
+      "market": 100.0,
+      "competitive": 100.0,
+      "swot": 89.3,
+      "marketing": 100.0,
+      "report": 52.4
+    },
+    "per_stage_confidence": {
+      "profile": 93.0,
+      "competitive": 66.5,
+      "swot": 54.8,
+      "marketing": 75.0,
+      "market": 56.7
+    },
+    "per_case": {
+      "stripe": 100.0,
+      "ghost": 88.9,
+      "eleventy": 100.0,
+      "linear": 76.4,
+      "basecamp": 83.3,
+      "flyio": 100.0,
+      "govuk": 83.3
+    },
+    "metric_health": {
+      "completeness": {
+        "n": 40,
+        "distinct": 3,
+        "mean": 94.8,
+        "dead": false
+      },
+      "confidence": {
+        "n": 29,
+        "distinct": 11,
+        "mean": 69.0,
+        "dead": false
+      }
+    }
+  },
+  "cases": [
+    {
+      "case": "stripe",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 14593,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": null,
+          "duration_ms": 8339,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 22078,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 58.0,
+          "duration_ms": 13149,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 21511,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": null,
+          "duration_ms": 58423,
+          "attempts": 3,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "case": "ghost",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 7098,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 55.0,
+          "duration_ms": 6602,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 50499,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 35.0,
+          "duration_ms": 7577,
+          "attempts": 3,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 11126,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 33.3,
+          "confidence": null,
+          "duration_ms": 16687,
+          "attempts": 1,
+          "warnings": [
+            "recommendations has 1 items, expected at least 5",
+            "risk_factors has 1 items, expected at least 3"
+          ],
+          "assertion_failures": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "case": "eleventy",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 93.0,
+          "duration_ms": 4402,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 7105,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 58.0,
+          "duration_ms": 21768,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 5725,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 48.0,
+          "duration_ms": 22912,
+          "attempts": 4,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": null,
+          "duration_ms": 20177,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "case": "linear",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 85.0,
+          "duration_ms": 5363,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 5606,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": null,
+          "duration_ms": 217160,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 25.0,
+          "confidence": null,
+          "duration_ms": 5766,
+          "attempts": 1,
+          "warnings": [
+            "weaknesses has 0 items, expected at least 5",
+            "opportunities has 0 items, expected at least 5",
+            "threats has 0 items, expected at least 5"
+          ],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": null,
+          "duration_ms": 14735,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 33.3,
+          "confidence": null,
+          "duration_ms": 21275,
+          "attempts": 1,
+          "warnings": [
+            "recommendations has 1 items, expected at least 5",
+            "risk_factors has 1 items, expected at least 3"
+          ],
+          "assertion_failures": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "case": "basecamp",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 4968,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 92.0,
+          "duration_ms": 6756,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 18009,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 55.0,
+          "duration_ms": 13880,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": null,
+          "duration_ms": 15204,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": false,
+          "completeness": null,
+          "confidence": null,
+          "duration_ms": 0,
+          "attempts": 0,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": "BIReport could not be built: invalid JSON: Expecting ',' delimiter: line 1 column 10629 (char 10628)"
+        }
+      ]
+    },
+    {
+      "case": "flyio",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 7649,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 9318,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 62.0,
+          "duration_ms": 28053,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 58.0,
+          "duration_ms": 9587,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 93.0,
+          "duration_ms": 16011,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": null,
+          "duration_ms": 22830,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "case": "govuk",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": null,
+          "duration_ms": 9060,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 58.0,
+          "duration_ms": 6347,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 19760,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 6447,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 11382,
+          "attempts": 4,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": false,
+          "completeness": null,
+          "confidence": null,
+          "duration_ms": 0,
+          "attempts": 0,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": "BIReport could not be built: invalid JSON: Expecting ',' delimiter: line 1 column 12883 (char 12882)"
+        }
+      ]
+    }
+  ]
+}

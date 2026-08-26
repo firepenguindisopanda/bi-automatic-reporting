@@ -81,6 +81,8 @@ class StageRecorder:
                 completion_tokens=metrics.completion_tokens if metrics else None,
                 completeness=metrics.completeness if metrics else None,
                 confidence=metrics.confidence if metrics else None,
+                confidence_before_retry=metrics.confidence_before_retry if metrics else None,
+                retry_confidence=metrics.retry_confidence if metrics else None,
                 critic_note=metrics.critic_note if metrics else None,
                 warnings=metrics.warnings if metrics else None,
                 artifact_json=artifact_json,

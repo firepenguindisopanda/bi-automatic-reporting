@@ -1,4 +1,5 @@
 import logging
+import mimetypes
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -178,27 +179,59 @@ app.add_middleware(
 
 app.include_router(router)
 
-static_dir = Path(__file__).resolve().parent.parent / "static"
+static_dir = (Path(__file__).resolve().parent.parent / "static").resolve()
+
+
+def safe_static_file(path: str) -> Path | None:
+    """Resolve a request path to a file inside ``static_dir``, or None.
+
+    The path arrives percent-decoded, so a segment of ``..%2f`` reaches here as
+    ``../`` and an unguarded join escapes the directory - an unauthenticated
+    read of anything the process can open, including ``/proc/self/environ`` and
+    every secret in it. An absolute path escapes too, because ``Path.__truediv__``
+    discards the left side when the right one is rooted.
+
+    Resolving first and then checking containment is the whole guard. Comparing
+    the unresolved strings is not: it passes a symlink inside static/ that points
+    somewhere else.
+    """
+    candidate = (static_dir / path).resolve()
+    if candidate != static_dir and static_dir not in candidate.parents:
+        return None
+    return candidate if candidate.is_file() else None
+
+
+async def favicon() -> Response:
+    f = safe_static_file("favicon.svg")
+    return (
+        Response(content=f.read_bytes(), media_type="image/svg+xml")
+        if f is not None
+        else Response(status_code=404)
+    )
+
+
+async def spa_catch_all(path: str) -> Response:
+    """Serve a built asset, or hand the SPA its own routing back."""
+    if path.startswith("api/"):
+        return Response(status_code=404)
+    fp = safe_static_file(path)
+    if fp is not None:
+        # SecurityHeadersMiddleware sends `nosniff`, so a file served without a
+        # Content-Type is refused by the browser rather than guessed at.
+        guessed, _ = mimetypes.guess_type(fp.name)
+        return Response(content=fp.read_bytes(), media_type=guessed or "application/octet-stream")
+    index = static_dir / "index.html"
+    if index.is_file():
+        return Response(content=index.read_bytes(), media_type="text/html")
+    return Response(status_code=404)
+
+
+# Registered only when a frontend build is present - a dev checkout has none.
+# The handlers themselves stay at module level so they are testable either way.
 if static_dir.is_dir():
     app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
-
-    @app.get("/favicon.svg")
-    async def favicon() -> Response:
-        f = static_dir / "favicon.svg"
-        return Response(content=f.read_bytes(), media_type="image/svg+xml") if f.exists() else Response(status_code=404)
-
-    @app.get("/{path:path}")
-    async def spa_catch_all(path: str) -> Response:
-        if path.startswith("api/"):
-            return Response(status_code=404)
-        fp = static_dir / path
-        if fp.is_file():
-            content = fp.read_bytes()
-            return Response(content=content)
-        index = static_dir / "index.html"
-        if index.exists():
-            return Response(content=index.read_bytes(), media_type="text/html")
-        return Response(status_code=404)
+    app.get("/favicon.svg")(favicon)
+    app.get("/{path:path}")(spa_catch_all)
 
 if __name__ == "__main__":
     uvicorn.run(

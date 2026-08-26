@@ -26,6 +26,7 @@ class Sample(BaseModel):
 
 VALID = '{"company_name": "Acme", "offerings": ["widgets", "gadgets", "gizmos"]}'
 THIN = '{"company_name": "", "offerings": []}'
+BETTER = '{"company_name": "Better", "offerings": ["widgets", "gadgets", "gizmos"]}'
 GARBAGE = "Sure! Here is the analysis you asked for, but not as JSON."
 
 
@@ -269,17 +270,31 @@ class TestContractScoring:
 
 
 class FakeCritic:
-    def __init__(self, score: float, issues: list[str], fail: bool = False) -> None:
-        self.score = score
+    """Replays scripted scores, one per review call.
+
+    A bare float scores every call the same, as before. A list is what
+    arbitration needs: a different score for the re-run than for the original.
+    """
+
+    def __init__(
+        self,
+        score: float | list[float],
+        issues: list[str],
+        fail: bool = False,
+        fail_on_call: int | None = None,
+    ) -> None:
+        self.scores = [float(score)] if isinstance(score, int | float) else [float(s) for s in score]
         self.issues = issues
         self.fail = fail
+        self.fail_on_call = fail_on_call
         self.calls = 0
 
     async def review(self, spec: Any, ctx: Any, value: Any) -> Any:
         self.calls += 1
-        if self.fail:
+        if self.fail or self.calls == self.fail_on_call:
             raise RuntimeError("critic exploded")
-        return self.score, "verdict text", self.issues
+        score = self.scores[min(self.calls - 1, len(self.scores) - 1)]
+        return score, "verdict text", self.issues
 
 
 class TestCritic:
@@ -295,7 +310,9 @@ class TestCritic:
         runner, llm = make_runner([VALID], critic=critic)
         await runner.run_with_review(spec(critic=True), StageContext())
         assert len(llm.calls) == 2
-        assert critic.calls == 1  # the re-run is not itself re-reviewed
+        # Two reviews: the original and the re-run. The re-run is scored so the
+        # arbitration has evidence, but is never itself re-run.
+        assert critic.calls == 2
 
     async def test_rerun_prompt_carries_the_issues(self) -> None:
         critic = FakeCritic(30.0, ["competitor names look invented"])
@@ -325,6 +342,74 @@ class TestCritic:
         result = await runner.run_with_review(spec(critic=True, contract=contract), StageContext())
         assert result.value.company_name == "Acme"
         assert result.metrics.completeness == 100.0
+
+
+class TestRetryArbitration:
+    """The re-run is kept on evidence, never on a constant.
+
+    Completeness is pinned at 100.0 in practice, so the old
+    `retried.completeness < result.completeness` test was always False and
+    accepted every re-run unchecked.
+    """
+
+    async def test_worse_retry_is_rejected(self) -> None:
+        critic = FakeCritic([30.0, 20.0], ["thin"])
+        runner, _ = make_runner([VALID, BETTER], critic=critic)
+        result = await runner.run_with_review(spec(critic=True), StageContext())
+        assert result.value.company_name == "Acme"
+        assert result.metrics.confidence == 30.0
+
+    async def test_better_retry_is_accepted_and_carries_its_own_score(self) -> None:
+        """The kept score must describe the kept output.
+
+        The old code wrote the original's score onto the retry it kept, so the
+        stored confidence described output that had been thrown away.
+        """
+        critic = FakeCritic([30.0, 80.0], ["thin"])
+        runner, _ = make_runner([VALID, BETTER], critic=critic)
+        result = await runner.run_with_review(spec(critic=True), StageContext())
+        assert result.value.company_name == "Better"
+        assert result.metrics.confidence == 80.0
+
+    async def test_a_tie_keeps_the_original(self) -> None:
+        critic = FakeCritic([30.0, 30.0], ["thin"])
+        runner, _ = make_runner([VALID, BETTER], critic=critic)
+        result = await runner.run_with_review(spec(critic=True), StageContext())
+        assert result.value.company_name == "Acme"
+
+    async def test_critic_failure_during_arbitration_keeps_the_original(self) -> None:
+        """An unscoreable replacement is not evidence of improvement."""
+        critic = FakeCritic(30.0, ["thin"], fail_on_call=2)
+        runner, _ = make_runner([VALID, BETTER], critic=critic)
+        result = await runner.run_with_review(spec(critic=True), StageContext())
+        assert result.value.company_name == "Acme"
+        assert result.metrics.confidence == 30.0
+        assert result.metrics.retry_confidence is None
+
+    async def test_both_scores_are_recorded(self) -> None:
+        critic = FakeCritic([30.0, 80.0], ["thin"])
+        runner, _ = make_runner([VALID, BETTER], critic=critic)
+        result = await runner.run_with_review(spec(critic=True), StageContext())
+        assert result.metrics.confidence_before_retry == 30.0
+        assert result.metrics.retry_confidence == 80.0
+        assert result.metrics.critic_note is not None
+        assert "30 -> 80" in result.metrics.critic_note
+
+    async def test_a_stage_that_never_retried_records_neither(self) -> None:
+        """Absent is not the same as unchanged - these stay NULL on the row."""
+        critic = FakeCritic(95.0, [])
+        runner, _ = make_runner([VALID], critic=critic)
+        result = await runner.run_with_review(spec(critic=True), StageContext())
+        assert result.metrics.confidence_before_retry is None
+        assert result.metrics.retry_confidence is None
+
+    async def test_discarded_attempt_still_counts_towards_cost(self) -> None:
+        """Both attempts were paid for, whichever one is returned."""
+        critic = FakeCritic([30.0, 20.0], ["thin"])
+        runner, _ = make_runner([VALID, BETTER], critic=critic)
+        result = await runner.run_with_review(spec(critic=True), StageContext())
+        assert result.value.company_name == "Acme"
+        assert result.metrics.attempts == 2
 
     async def test_critic_skipped_when_spec_opts_out(self) -> None:
         critic = FakeCritic(10.0, ["bad"])

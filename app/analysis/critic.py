@@ -12,7 +12,7 @@ whole pass is disabled by ``ENABLE_STAGE_CRITIC=false``.
 import logging
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.analysis import prompts
 from app.analysis.runner import AgentSpec, StageContext
@@ -24,11 +24,65 @@ logger = logging.getLogger(__name__)
 MAX_SOURCE_CHARS = 4000
 MAX_OUTPUT_CHARS = 6000
 
+# The critic runs on a reasoning model, which spends completion tokens thinking
+# before it emits any JSON. At 1024 the thinking was cut off mid-sentence and the
+# response contained no JSON object at all, so every call raised and every stage
+# scored no confidence - a dead metric that still looked alive. Measured against a
+# real profile-stage prompt: reasoning alone overran 1024, and the same prompt
+# parsed cleanly at 4096.
+MAX_CRITIC_TOKENS = 4096
+
+
+# The keys the critic uses when it returns an issue as an object rather than a
+# string, in the order they read best once flattened: what is wrong, then what to
+# do about it.
+_ISSUE_KEYS = ("issue", "problem", "description", "detail", "text")
+_FIX_KEYS = ("fix", "suggestion", "recommendation", "remedy", "action")
+
 
 class CriticVerdict(BaseModel):
     score: int = Field(ge=0, le=100)
     verdict: str = ""
     issues: list[str] = Field(default_factory=list)
+
+    @field_validator("issues", mode="before")
+    @classmethod
+    def _flatten_issues(cls, value: Any) -> Any:
+        """Accept the richer shapes the critic reaches for unprompted.
+
+        Asked for `list[str]`, the model sometimes answers with objects -
+        `{"issue": ..., "fix": ...}` - which is valid JSON that fails validation,
+        so the whole verdict was discarded and the stage recorded no confidence
+        at all. Measured at roughly one call in four against a real prompt. The
+        extra field is worth keeping rather than rejecting: these strings are fed
+        back to the model as the brief for its retry, so a stated fix is the most
+        actionable part of the issue.
+        """
+        if isinstance(value, str):
+            value = [value]
+        if not isinstance(value, list):
+            return value
+
+        flattened: list[Any] = []
+        for item in value:
+            if isinstance(item, dict):
+                parts = [
+                    str(item[k]).strip()
+                    for k in (*_ISSUE_KEYS, *_FIX_KEYS)
+                    if isinstance(item.get(k), str | int | float) and str(item[k]).strip()
+                ]
+                # An object with none of the known keys still beats dropping the
+                # verdict: keep whatever strings it does carry.
+                if not parts:
+                    parts = [
+                        str(v).strip()
+                        for v in item.values()
+                        if isinstance(v, str | int | float) and str(v).strip()
+                    ]
+                flattened.append(" - ".join(parts) if parts else "")
+            else:
+                flattened.append(item)
+        return flattened
 
 
 class StageCritic:
@@ -43,7 +97,7 @@ class StageCritic:
         if not settings.enable_stage_critic:
             return None
 
-        client = LLMClient(model=self._model, temperature=0.0, max_tokens=1024)
+        client = LLMClient(model=self._model, temperature=0.0, max_tokens=MAX_CRITIC_TOKENS)
         try:
             verdict = await client.ainvoke_structured(
                 output_model=CriticVerdict,
@@ -66,7 +120,7 @@ class StageCritic:
         )
 
     def _source(self, ctx: StageContext) -> str:
-        """The grounding material, trimmed - the critic runs on a small model."""
+        """The grounding material, trimmed to keep the critic prompt bounded."""
         if ctx.scraped is not None:
             s = ctx.scraped
             return (

@@ -4,8 +4,25 @@ from typing import Any
 
 from app.config import settings
 from app.orchestrator.database import Database
+from app.pipeline.stages import JobStatus
 
 logger = logging.getLogger(__name__)
+
+LEGACY_COMPLETE = "complete"
+"""What earlier versions wrote instead of ``JobStatus.COMPLETED``.
+
+Rows with this value are still in deployed databases, and every reader - the
+SSE terminal check, the download guards, the frontend's status union - only
+knows ``completed``. Normalising on the way out means no migration and one
+spelling everywhere above this line.
+"""
+
+
+def _normalise(row: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Map the legacy completed spelling onto the canonical one."""
+    if row is not None and row.get("status") == LEGACY_COMPLETE:
+        row["status"] = str(JobStatus.COMPLETED)
+    return row
 
 
 class JobStore:
@@ -28,9 +45,13 @@ class JobStore:
         return {"job_id": job_id, "url": url, "email": email, "status": "pending"}
 
     async def get_job(self, job_id: str) -> dict[str, str] | None:
-        return await self._db.fetchrow(
-            "SELECT * FROM jobs WHERE job_id = ?", job_id,
-        )
+        row = await self._db.fetchrow("SELECT * FROM jobs WHERE job_id = ?", job_id)
+        return _normalise(row)
+
+    async def delete_job(self, job_id: str) -> None:
+        """Remove a job row. Used to undo a submission the queue refused."""
+        await self._db.execute("DELETE FROM jobs WHERE job_id = ?", job_id)
+        await self._db.commit()
 
     async def update_status(
         self,
@@ -50,7 +71,7 @@ class JobStore:
         artifact_json: str | None = None,
         pdf_path: str | None = None,
         docx_path: str | None = None,
-        status: str = "complete",
+        status: str = JobStatus.COMPLETED,
     ) -> None:
         await self._db.execute(
             f"UPDATE jobs SET status = ?, artifact_json = ?, "
@@ -141,6 +162,8 @@ class JobStore:
         completion_tokens: int | None = None,
         completeness: float | None = None,
         confidence: float | None = None,
+        confidence_before_retry: float | None = None,
+        retry_confidence: float | None = None,
         critic_note: str | None = None,
         warnings: list[str] | None = None,
         artifact_json: str | None = None,
@@ -151,11 +174,13 @@ class JobStore:
         await self._db.execute(
             f"UPDATE job_stages SET status = ?, ended_at = {now}, duration_ms = ?, "
             f"model = ?, prompt_version = ?, attempts = ?, prompt_tokens = ?, "
-            f"completion_tokens = ?, completeness = ?, confidence = ?, critic_note = ?, "
+            f"completion_tokens = ?, completeness = ?, confidence = ?, "
+            f"confidence_before_retry = ?, retry_confidence = ?, critic_note = ?, "
             f"warnings = ?, artifact_json = ?, error = ?, error_kind = ?, updated_at = {now} "
             f"WHERE job_id = ? AND stage = ?",
             status, duration_ms, model, prompt_version, attempts, prompt_tokens,
-            completion_tokens, completeness, confidence, critic_note,
+            completion_tokens, completeness, confidence,
+            confidence_before_retry, retry_confidence, critic_note,
             json.dumps(warnings or []), artifact_json, error, error_kind,
             job_id, stage,
         )
@@ -234,9 +259,15 @@ class JobStore:
         return {"job_id": job_id, "market_query": market_query, "status": "pending"}
 
     async def get_market_research_job(self, job_id: str) -> dict[str, Any] | None:
-        return await self._db.fetchrow(
+        row = await self._db.fetchrow(
             "SELECT * FROM market_research_jobs WHERE job_id = ?", job_id,
         )
+        return _normalise(row)
+
+    async def delete_market_research_job(self, job_id: str) -> None:
+        """Remove a job row. Used to undo a submission the queue refused."""
+        await self._db.execute("DELETE FROM market_research_jobs WHERE job_id = ?", job_id)
+        await self._db.commit()
 
     async def update_market_research_status(self, job_id: str, status: str, error: str | None = None) -> None:
         await self._db.execute(
@@ -253,9 +284,9 @@ class JobStore:
         docx_path: str | None = None,
     ) -> None:
         await self._db.execute(
-            "UPDATE market_research_jobs SET status = 'complete', result_json = ?, "
+            "UPDATE market_research_jobs SET status = ?, result_json = ?, "
             "pdf_path = ?, docx_path = ?, "
             "updated_at = CURRENT_TIMESTAMP WHERE job_id = ?",
-            result_json, pdf_path, docx_path, job_id,
+            JobStatus.COMPLETED, result_json, pdf_path, docx_path, job_id,
         )
         await self._db.commit()

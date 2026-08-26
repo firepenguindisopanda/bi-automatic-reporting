@@ -1,0 +1,171 @@
+{
+  "_provenance": {
+    "why": "The resources output that shipped CircleCI and Travis CI as 'self-hosted'. SPEC.md M4 exists because this scored 100.0 completeness.",
+    "query": "Self-hosted CI/CD tools for small engineering teams",
+    "run_at": "2026-08-25T23:36:24Z",
+    "reconstructed_from": "reports/market_research_Self_hosted_CICD_tools_for_small_engineering_teams_20260825_233625.docx",
+    "reconstructed_at": "2026-08-26",
+    "note": "Not dumped from a database: the run that produced it wrote to a store that no longer exists. Neon's newest market-research job is 2026-07-04 and no local jobs.db survives. The DOCX is the only surviving record and is complete - the writer emits name, url, description and relevance for every entry in all six categories.",
+    "fidelity": "21 entries, 18 distinct names, 6 categories - matches the figures recorded in SPEC.md M4, which were derived independently before this file existed.",
+    "_note_on_extra_key": "MarketResources ignores unknown fields, so this key is inert."
+  },
+  "key_players": [
+    {
+      "name": "CircleCI",
+      "url": "https://circleci.com/",
+      "description": "CircleCI is a self-hosted CI/CD tool that offers flexibility and scalability for small engineering teams.",
+      "type": "website",
+      "relevance": "CircleCI is a key player in the self-hosted CI/CD tools market for small engineering teams."
+    },
+    {
+      "name": "GitLab",
+      "url": "https://about.gitlab.com/",
+      "description": "GitLab is a self-hosted CI/CD tool that offers flexibility and scalability for small engineering teams.",
+      "type": "website",
+      "relevance": "GitLab is a key player in the self-hosted CI/CD tools market for small engineering teams."
+    },
+    {
+      "name": "Jenkins",
+      "url": "https://www.jenkins.io/",
+      "description": "Jenkins is a self-hosted CI/CD tool that offers flexibility and scalability for small engineering teams.",
+      "type": "website",
+      "relevance": "Jenkins is a key player in the self-hosted CI/CD tools market for small engineering teams."
+    },
+    {
+      "name": "Travis CI",
+      "url": "https://travis-ci.com/",
+      "description": "Travis CI is a self-hosted CI/CD tool that offers flexibility and scalability for small engineering teams.",
+      "type": "website",
+      "relevance": "Travis CI is a key player in the self-hosted CI/CD tools market for small engineering teams."
+    },
+    {
+      "name": "Codeship",
+      "url": "https://codeship.com/",
+      "description": "Codeship is a self-hosted CI/CD tool that offers flexibility and scalability for small engineering teams.",
+      "type": "website",
+      "relevance": "Codeship is a key player in the self-hosted CI/CD tools market for small engineering teams."
+    },
+    {
+      "name": "GoCD",
+      "url": "https://www.gocd.org/",
+      "description": "GoCD is a self-hosted CI/CD tool that offers flexibility and scalability for small engineering teams.",
+      "type": "website",
+      "relevance": "GoCD is a key player in the self-hosted CI/CD tools market for small engineering teams."
+    }
+  ],
+  "competitor_sites": [
+    {
+      "name": "CircleCI",
+      "url": "https://circleci.com/",
+      "description": "CircleCI is a self-hosted CI/CD tool that offers flexibility and scalability for small engineering teams.",
+      "type": "website",
+      "relevance": "CircleCI is a key competitor in the self-hosted CI/CD tools market for small engineering teams."
+    },
+    {
+      "name": "GitLab",
+      "url": "https://about.gitlab.com/",
+      "description": "GitLab is a self-hosted CI/CD tool that offers flexibility and scalability for small engineering teams.",
+      "type": "website",
+      "relevance": "GitLab is a key competitor in the self-hosted CI/CD tools market for small engineering teams."
+    },
+    {
+      "name": "Jenkins",
+      "url": "https://www.jenkins.io/",
+      "description": "Jenkins is a self-hosted CI/CD tool that offers flexibility and scalability for small engineering teams.",
+      "type": "website",
+      "relevance": "Jenkins is a key competitor in the self-hosted CI/CD tools market for small engineering teams."
+    }
+  ],
+  "industry_websites": [
+    {
+      "name": "Cloud Native Computing Foundation",
+      "url": "https://www.cncf.io/",
+      "description": "The Cloud Native Computing Foundation is a non-profit organization that promotes cloud-native technologies and practices.",
+      "type": "website",
+      "relevance": "The Cloud Native Computing Foundation provides resources and insights on cloud-native technologies and practices, including self-hosted CI/CD tools."
+    },
+    {
+      "name": "DevOps Institute",
+      "url": "https://www.devopsinstitute.com/",
+      "description": "The DevOps Institute is a non-profit organization that promotes DevOps practices and education.",
+      "type": "website",
+      "relevance": "The DevOps Institute provides resources and insights on DevOps practices and education, including self-hosted CI/CD tools."
+    },
+    {
+      "name": "Open Source Initiative",
+      "url": "https://opensource.org/",
+      "description": "The Open Source Initiative is a non-profit organization that promotes open-source software and practices.",
+      "type": "website",
+      "relevance": "The Open Source Initiative provides resources and insights on open-source software and practices, including self-hosted CI/CD tools."
+    }
+  ],
+  "news_sources": [
+    {
+      "name": "DevOps.com",
+      "url": "https://devops.com/",
+      "description": "DevOps.com is a leading publication for DevOps news and trends.",
+      "type": "website",
+      "relevance": "DevOps.com provides news and insights on the self-hosted CI/CD tools market for small engineering teams."
+    },
+    {
+      "name": "The New Stack",
+      "url": "https://thenewstack.io/",
+      "description": "The New Stack is a leading publication for cloud and DevOps news and trends.",
+      "type": "website",
+      "relevance": "The New Stack provides news and insights on the self-hosted CI/CD tools market for small engineering teams."
+    },
+    {
+      "name": "Container Journal",
+      "url": "https://containerjournal.com/",
+      "description": "Container Journal is a leading publication for container and DevOps news and trends.",
+      "type": "website",
+      "relevance": "Container Journal provides news and insights on the self-hosted CI/CD tools market for small engineering teams."
+    }
+  ],
+  "research_papers": [
+    {
+      "name": "The State of DevOps Report",
+      "url": "https://www.pivotal.io/labs/devops/state-of-devops-report-2019",
+      "description": "The State of DevOps Report is an annual report that provides insights on DevOps practices and trends.",
+      "type": "website",
+      "relevance": "The State of DevOps Report provides insights on DevOps practices and trends, including self-hosted CI/CD tools."
+    },
+    {
+      "name": "DevOps Adoption in the Enterprise",
+      "url": "https://www.idc.com/getdoc.jsp?containerId=US44314318",
+      "description": "DevOps Adoption in the Enterprise is a research report that provides insights on DevOps adoption and trends.",
+      "type": "website",
+      "relevance": "DevOps Adoption in the Enterprise provides insights on DevOps adoption and trends, including self-hosted CI/CD tools."
+    },
+    {
+      "name": "The Future of DevOps",
+      "url": "https://www.forrester.com/report/The+Future+Of+DevOps/-/E-RES142141",
+      "description": "The Future of DevOps is a research report that provides insights on the future of DevOps and trends.",
+      "type": "website",
+      "relevance": "The Future of DevOps provides insights on the future of DevOps and trends, including self-hosted CI/CD tools."
+    }
+  ],
+  "relevant_communities": [
+    {
+      "name": "DevOps subreddit",
+      "url": "https://www.reddit.com/r/DevOps/",
+      "description": "The DevOps subreddit is a community of DevOps professionals and enthusiasts.",
+      "type": "website",
+      "relevance": "The DevOps subreddit provides a platform for discussion and sharing of DevOps knowledge and best practices, including self-hosted CI/CD tools."
+    },
+    {
+      "name": "DevOps Slack community",
+      "url": "https://devops.slack.com/",
+      "description": "The DevOps Slack community is a community of DevOps professionals and enthusiasts.",
+      "type": "website",
+      "relevance": "The DevOps Slack community provides a platform for discussion and sharing of DevOps knowledge and best practices, including self-hosted CI/CD tools."
+    },
+    {
+      "name": "Cloud Native Computing Foundation community",
+      "url": "https://www.cncf.io/community/",
+      "description": "The Cloud Native Computing Foundation community is a community of cloud-native professionals and enthusiasts.",
+      "type": "website",
+      "relevance": "The Cloud Native Computing Foundation community provides a platform for discussion and sharing of cloud-native knowledge and best practices, including self-hosted CI/CD tools."
+    }
+  ]
+}

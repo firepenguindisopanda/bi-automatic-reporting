@@ -81,6 +81,8 @@ def ddl(is_pg: bool) -> list[str]:
             completion_tokens INTEGER,
             completeness REAL,
             confidence REAL,
+            confidence_before_retry REAL,
+            retry_confidence REAL,
             critic_note TEXT,
             warnings TEXT,
             artifact_json TEXT,
@@ -114,4 +116,10 @@ def ddl(is_pg: bool) -> list[str]:
 BACKFILL_COLUMNS: list[tuple[str, str, str]] = [
     ("market_research_jobs", "pdf_path", "TEXT"),
     ("market_research_jobs", "docx_path", "TEXT"),
+    # Retry arbitration: the score before the re-run and the re-run's own score.
+    # Both stay NULL for a stage that never retried - absent is not the same as
+    # unchanged, so a stage that never retried must not look like one that
+    # retried to no effect.
+    ("job_stages", "confidence_before_retry", "REAL"),
+    ("job_stages", "retry_confidence", "REAL"),
 ]

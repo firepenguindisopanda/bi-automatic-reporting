@@ -5,6 +5,41 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+# NVIDIA retired meta/llama-3.1-8b-instruct and the 49B behind competitive
+# analysis at 2026-08-26T09:00:00Z, so both models this app used stopped
+# answering mid-run.
+#
+# To find replacements, ask the API rather than the client library.
+# `available_models` is compiled into langchain_nvidia_ai_endpoints and still
+# lists both retired models; GET /v1/models on integrate.api.nvidia.com does not.
+# It is a filter, not a promise - of its 83 entries only 14 actually answer a
+# chat completion, the rest returning 404 - so the probe still has to run.
+#
+# Both roles were then settled by driving candidates through this app's own JSON
+# path (build_json_messages -> parse_json_response) on the real profile stage,
+# and scoring the output with the critic. Completeness cannot rank models: it
+# read 100.0 for all eight candidates, which is the pinned metric M1 exists to
+# expose. Confidence discriminated - 60 to 95 across the same three cases.
+#
+#   gpt-oss-20b   7.4s, critic mean 95.0 across stripe/ghost/govuk
+#   nemotron-3    120B MoE. A reasoning model, which is why the critic needs
+#                 MAX_CRITIC_TOKENS headroom to reach its JSON at all.
+#
+# WORKHORSE_MODEL was minimaxai/minimax-m3 for part of 2026-08-26. It is neither
+# retired nor unlisted: it throttles. It was the only 429 in a sweep of the whole
+# catalogue, sustained over 90 minutes while 13 other models answered normally.
+# The 429 carries no Retry-After and no rate-limit headers, NVIDIA does not
+# publish per-model limits, and the documented remedy is client-side failover.
+# Since this constant backs five of six BI stages, one throttled model stops
+# every job while DEEP_MODEL sits idle.
+#
+# Caveat worth keeping in view: prompts.py is tuned to the retired model, and
+# every eval score from before this date was measured on equipment that no
+# longer exists.
+WORKHORSE_MODEL = "openai/gpt-oss-20b"
+DEEP_MODEL = "nvidia/nemotron-3-super-120b-a12b"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
@@ -13,22 +48,28 @@ class Settings(BaseSettings):
     )
 
     nvidia_api_key: str = ""
-    nvidia_model: str = "meta/llama-3.1-8b-instruct"
+    nvidia_model: str = WORKHORSE_MODEL
     temperature: float = 0.0
     max_tokens: int = 4096
     llm_timeout: int = 120
 
-    agent_model_business_profile: str = "meta/llama-3.1-8b-instruct"
-    agent_model_market_analysis: str = "meta/llama-3.1-8b-instruct"
-    agent_model_competitive_analysis: str = "nvidia/llama-3.3-nemotron-super-49b-v1.5"
-    agent_model_swot: str = "meta/llama-3.1-8b-instruct"
-    agent_model_marketing: str = "meta/llama-3.1-8b-instruct"
-    agent_model_report_writer: str = "meta/llama-3.1-8b-instruct"
-    agent_model_market_research: str = "meta/llama-3.1-8b-instruct"
+    agent_model_business_profile: str = WORKHORSE_MODEL
+    agent_model_market_analysis: str = WORKHORSE_MODEL
+    # The one stage kept on the deeper model - it was the sole 49B stage before
+    # the retirement, and that choice is preserved rather than quietly dropped.
+    agent_model_competitive_analysis: str = DEEP_MODEL
+    agent_model_swot: str = WORKHORSE_MODEL
+    agent_model_marketing: str = WORKHORSE_MODEL
+    agent_model_report_writer: str = WORKHORSE_MODEL
+    agent_model_market_research: str = WORKHORSE_MODEL
 
     # Stage quality signal
     enable_stage_critic: bool = True
-    agent_model_critic: str = "meta/llama-3.1-8b-instruct"
+    # M2 made the critic load-bearing: it now arbitrates which retry is kept,
+    # so judging with the cheapest model in the stack is no longer free.
+    # Also the direct test of SPEC assumption 3 - whether the 89-clustering
+    # was the 8B echoing its own rubric back.
+    agent_model_critic: str = DEEP_MODEL
     critic_retry_threshold: float = 60.0
     agent_max_attempts: int = 3
 

@@ -81,8 +81,21 @@ uv run python -m evals.run --check             # fail on regression
 
 ## Deployment
 
-The Raspberry Pi runbook is [docs/deploy-pi.md](docs/deploy-pi.md) — nginx,
-compose, SSE buffering, backups, rollback.
+Target is an IBM LinuxONE VM — **s390x**, big-endian. Two steps, in this order:
+
+```bash
+cd frontend && npm ci && npm run build   # x86_64: produces frontend/dist
+cd .. && docker compose up -d --build    # image COPYs frontend/dist into ./static
+```
+
+The frontend is deliberately **not** built inside the image. Vite 8 bundles with
+rolldown, whose s390x native binding segfaults, and no Node base image builds it
+on that architecture. `frontend/dist` is static assets with no architecture in
+them, so it is built on x86_64 and copied in. If you skip step one, the `COPY`
+fails and the build stops — that is the intended failure.
+
+CI runs on x86_64 and never builds for s390x, so a green CI run is not evidence
+the image builds. See `SPEC.md` §4 for the wheel and native-binding findings.
 
 ## Tests
 

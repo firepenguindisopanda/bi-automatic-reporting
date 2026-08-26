@@ -8,7 +8,10 @@ langchain-core>=0.3.0
 python-dotenv>=1.0.0
 httpx>=0.27.0
 beautifulsoup4>=4.12.0
-lxml>=5.0.0
+# Held below 6: lxml stopped publishing s390x wheels in 6.x and the deploy
+# target is an IBM LinuxONE mainframe. 5.4.0 still ships one, so the builder
+# needs no libxml2/libxslt toolchain for it. See SPEC.md section 4.
+lxml>=5.0.0,<6
 jinja2>=3.1.0
 pyyaml>=6.0
 weasyprint>=62.0

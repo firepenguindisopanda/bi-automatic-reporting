@@ -1,4 +1,26 @@
-from pydantic import BaseModel, Field
+from typing import Annotated, Any
+
+from pydantic import BaseModel, BeforeValidator, Field
+
+
+def _flatten_market_size(value: Any) -> Any:
+    """Accept the shape the model actually returns for a market size.
+
+    The sizing prompt asks for TAM, SAM and SOM - three figures - while this
+    field is a single line of display text, and every consumer renders it as
+    one: the PDF template, the DOCX writer and the result page. So the model
+    answers with an object, which failed validation on all three attempts and
+    took the whole market-research run down with it.
+
+    Flattening here keeps the three figures instead of arguing with the prompt.
+    """
+    if isinstance(value, dict):
+        return " · ".join(f"{k.upper()}: {v}" for k, v in value.items() if v)
+    return value
+
+
+MarketSizeText = Annotated[str, BeforeValidator(_flatten_market_size)]
+"""Display text for a market size, tolerant of a TAM/SAM/SOM object."""
 
 
 class ScrapedContent(BaseModel):
@@ -27,7 +49,7 @@ class BusinessProfile(BaseModel):
 
 class MarketAnalysis(BaseModel):
     target_market: str
-    market_size: str
+    market_size: MarketSizeText
     market_trends: list[str] = Field(default_factory=list)
     customer_segments: list[str] = Field(default_factory=list)
     pricing_strategy: str
@@ -274,7 +296,7 @@ class MarketSynthesis(BaseModel):
 
     executive_summary: str = ""
     summary: str = ""
-    market_size: str = ""
+    market_size: MarketSizeText = ""
     growth_rate: str = ""
     key_insights: list[str] = Field(default_factory=list)
     recommendations: list[str] = Field(default_factory=list)

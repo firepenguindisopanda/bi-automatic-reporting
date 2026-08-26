@@ -1,0 +1,48 @@
+overall: 90.3 -> 92.6  (+2.3)
+
+=== COMPLETENESS per-stage mean, run1 -> run2 ===
+  profile      100.0 -> 100.0  ( +0.0)
+  market       100.0 -> 100.0  ( +0.0)
+  competitive  100.0 ->  98.2  ( -1.8)
+  swot          89.3 -> 100.0  (+10.7)  <-- would fail --check
+  marketing    100.0 -> 100.0  ( +0.0)
+  report        73.3 ->  80.0  ( +6.7)  <-- would fail --check
+  2 stage(s) exceed REGRESSION_TOLERANCE=5.0 with no code change at all
+
+=== CONFIDENCE per-stage mean, run1 -> run2 ===
+  profile       93.0 ->  80.1  (-12.9)  <-- would fail --check
+  market        56.7 ->  65.0  ( +8.3)  <-- would fail --check
+  competitive   66.5 ->  77.3  (+10.8)  <-- would fail --check
+  swot          54.8 ->  61.4  ( +6.6)  <-- would fail --check
+  marketing     75.0 ->  61.3  (-13.7)  <-- would fail --check
+  5 stage(s) exceed REGRESSION_TOLERANCE=5.0 with no code change at all
+
+run1 = rebaseline-2026-08-26.json   run2 = rebaseline-run2.json
+
+=== completeness — 40 cells in both runs ===
+  mean |delta|   6.4   max |delta|  75.0   cells moving >5: 5/40 (12%)
+    linear     swot          25.0 -> 100.0  (+75.0)
+    eleventy   report       100.0 ->  33.3  (-66.7)
+    ghost      report        33.3 -> 100.0  (+66.7)
+    linear     report        33.3 ->  66.7  (+33.4)
+    linear     competitive  100.0 ->  87.5  (-12.5)
+
+=== confidence — 26 cells in both runs ===
+  mean |delta|  15.0   max |delta|  63.0   cells moving >5: 17/26 (65%)
+    eleventy   profile       93.0 ->  30.0  (-63.0)
+    flyio      market        45.0 ->  95.0  (+50.0)
+    govuk      competitive   45.0 ->  78.0  (+33.0)
+    stripe     marketing     78.0 ->  45.0  (-33.0)
+    ghost      marketing     78.0 ->  55.0  (-23.0)
+    ghost      swot          35.0 ->  58.0  (+23.0)
+    eleventy   competitive   58.0 ->  78.0  (+20.0)
+    flyio      swot          58.0 ->  78.0  (+20.0)
+    stripe     profile       95.0 ->  78.0  (-17.0)
+    stripe     competitive   78.0 ->  62.0  (-16.0)
+    flyio      marketing     93.0 ->  78.0  (-15.0)
+    ghost      competitive   78.0 ->  93.0  (+15.0)
+  present in run1 only: 3   run2 only: 6
+
+run1 completeness distinct values: [25.0, 33.3, 100.0]
+
+run2 completeness distinct values: [33.3, 66.7, 87.5, 100.0]

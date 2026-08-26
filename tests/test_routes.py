@@ -80,3 +80,31 @@ class TestBiDownload:
         resp = client.get(f"/api/bi/download/{job_id}")
         # Job likely still processing, so should be 400
         assert resp.status_code in (400, 404)
+
+
+class TestQueueFull:
+    """A full backlog is the queue working, so it must not read as a server fault."""
+
+    @pytest.fixture
+    def refuse(self, monkeypatch):
+        import app.orchestrator.runner as job_runner
+
+        async def full(job_id, coro):
+            coro.close()
+            raise job_runner.QueueFullError("The job queue is full. Try again shortly.")
+
+        monkeypatch.setattr(job_runner, "enqueue", full)
+
+    def test_bi_submit_returns_503_not_500(self, client: TestClient, refuse) -> None:
+        resp = client.post(
+            "/api/bi/submit",
+            json={"url": "https://example.com", "email": "test@test.com"},
+        )
+        assert resp.status_code == 503
+        assert resp.headers["retry-after"] == "60"
+        assert "queue is full" in resp.json()["detail"]
+
+    def test_research_submit_returns_503_not_500(self, client: TestClient, refuse) -> None:
+        resp = client.post("/api/market-research/submit", json={"market_query": "Dev tools"})
+        assert resp.status_code == 503
+        assert resp.headers["retry-after"] == "60"

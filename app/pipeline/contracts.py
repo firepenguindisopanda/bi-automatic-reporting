@@ -9,8 +9,10 @@ Scoring costs nothing and runs on every stage. The LLM critic in
 ``app.analysis.critic`` is the separate, optional, paid signal.
 """
 
+import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from typing import Any
 
 from pydantic import BaseModel
@@ -40,6 +42,21 @@ PLACEHOLDER_MARKERS = (
     "your answer here",
     "example value",
 )
+
+# Similarity thresholds, measured against the stored `Self-hosted CI/CD tools`
+# resources output rather than guessed. On that artifact:
+#
+#   relevance vs its own description - templated entries cluster at 0.65-0.70,
+#   entries that say something real top out at 0.54. 0.60 sits in the gap.
+#
+#   description vs description - the reused sentence scores 0.94-1.00 across
+#   pairs, so 0.85 catches it with room to spare.
+#
+# Both are token-sequence ratios, not character ones: two sentences differing
+# only in the product name are ~95% identical by character and that similarity
+# is precisely what needs catching, so characters would be too blunt to tune.
+FIELD_ECHO_THRESHOLD = 0.60
+NEAR_IDENTICAL_THRESHOLD = 0.85
 
 PLACEHOLDER_PENALTY = 25.0
 DUPLICATE_PENALTY = 10.0
@@ -211,6 +228,138 @@ def find_duplicate_list_entries(value: BaseModel) -> list[str]:
             if len(normalised) != len(set(normalised)):
                 warnings.append(f"{field_name} contains duplicate entries")
     return warnings
+
+
+def _tokens(text: str) -> list[str]:
+    """Lowercased alphanumeric word tokens. Punctuation and case are noise here."""
+    return re.findall(r"[a-z0-9]+", text.lower())
+
+
+def similarity(a: str, b: str) -> float:
+    """0-1 token-sequence similarity. Standard library only - see SPEC.md section 4."""
+    ta, tb = _tokens(a), _tokens(b)
+    if not ta or not tb:
+        return 0.0
+    return SequenceMatcher(None, ta, tb).ratio()
+
+
+def _field(item: Any, key: str) -> str:
+    """One field off a dict or a model, as text."""
+    raw = item.get(key) if isinstance(item, dict) else getattr(item, key, "")
+    return str(raw or "").strip()
+
+
+def no_cross_list_duplicates(
+    paths: Iterable[str], key: str = "name", label: str | None = None
+) -> Rule:
+    """The same entity listed under two different categories.
+
+    ``no_duplicate_names`` only looks inside a single list, so an entity
+    repeated across ``key_players`` and ``competitor_sites`` was invisible.
+    That is how one resources output shipped 21 entries carrying 18 distinct
+    names and still scored 100.
+
+    A repeat *within* one list is deliberately left alone - that is the other
+    rule's job, and reporting it twice would penalise it twice.
+    """
+    wanted = tuple(paths)
+    name = label or " / ".join(wanted)
+
+    def rule(value: BaseModel) -> str | None:
+        first_seen: dict[str, str] = {}
+        clashes: list[str] = []
+        for path in wanted:
+            got = _get(value, path)
+            if not isinstance(got, list):
+                continue
+            for item in got:
+                text = _field(item, key)
+                if not text:
+                    continue
+                folded = text.lower()
+                where = first_seen.get(folded)
+                if where is None:
+                    first_seen[folded] = path
+                elif where != path:
+                    clashes.append(f"{text!r} in both {where} and {path}")
+        if clashes:
+            return f"{name} repeat the same entity: " + "; ".join(sorted(set(clashes))[:3])
+        return None
+
+    return rule
+
+
+def field_differs_from(
+    path: str,
+    a: str,
+    b: str,
+    threshold: float = FIELD_ECHO_THRESHOLD,
+    label: str | None = None,
+) -> Rule:
+    """One field restating another, e.g. ``relevance`` echoing ``description``.
+
+    Both fields are non-empty and look specific, so nothing else notices: the
+    output passes ``items_have`` and reads as complete while the second field
+    carries no information the first did not.
+    """
+    name = label or path
+
+    def rule(value: BaseModel) -> str | None:
+        got = _get(value, path)
+        if not isinstance(got, list):
+            return None
+        echoes: list[str] = []
+        for item in got:
+            first, second = _field(item, a), _field(item, b)
+            if not first or not second:
+                continue  # emptiness is `items_have`'s job, not this one
+            score = similarity(first, second)
+            if score >= threshold:
+                echoes.append(f"{_field(item, 'name') or '?'} ({score:.2f})")
+        if echoes:
+            return (
+                f"{name}: {b} restates {a} in {len(echoes)} entr"
+                f"{'y' if len(echoes) == 1 else 'ies'} - " + ", ".join(echoes[:3])
+            )
+        return None
+
+    return rule
+
+
+def no_near_identical_items(
+    path: str,
+    threshold: float = NEAR_IDENTICAL_THRESHOLD,
+    field: str = "description",
+    label: str | None = None,
+) -> Rule:
+    """Entries padded out from one templated sentence.
+
+    Compares a single field rather than the whole entry: the name and URL
+    legitimately differ between entries, and including them dilutes exactly the
+    similarity this is looking for. ``description`` is where the template shows.
+    """
+    name = label or path
+
+    def rule(value: BaseModel) -> str | None:
+        got = _get(value, path)
+        if not isinstance(got, list) or len(got) < 2:
+            return None
+        texts = [(_field(item, "name"), _field(item, field)) for item in got]
+        texts = [(n, text) for n, text in texts if text]
+        pairs: list[str] = []
+        for i in range(len(texts)):
+            for j in range(i + 1, len(texts)):
+                score = similarity(texts[i][1], texts[j][1])
+                if score >= threshold:
+                    pairs.append(f"{texts[i][0] or '?'}/{texts[j][0] or '?'} ({score:.2f})")
+        if pairs:
+            return (
+                f"{name}: {len(pairs)} pair(s) share a near-identical {field} - "
+                + ", ".join(pairs[:3])
+            )
+        return None
+
+    return rule
 
 
 def grounded_in_source(path: str, label: str | None = None) -> ContextRule:

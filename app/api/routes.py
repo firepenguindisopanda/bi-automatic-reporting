@@ -25,11 +25,27 @@ from app.models.bi import (
 )
 from app.orchestrator.bi_pipeline import BIPipeline
 from app.orchestrator.market_research import MarketResearchService
+from app.orchestrator.runner import QueueFullError
 from app.orchestrator.runner import stats as queue_stats
 from app.pipeline.stages import JobStatus, stages_for
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["bi"])
+
+QUEUE_FULL_RETRY_AFTER = "60"
+"""Seconds to advise a client to wait when the backlog is full."""
+
+
+def _queue_full(exc: QueueFullError) -> HTTPException:
+    """Back-pressure is a 503, not a 500.
+
+    The queue refusing work is the design working. Letting the exception
+    escape turned it into an unhandled error, which tells the caller the
+    service is broken rather than busy, and gives them nothing to retry on.
+    """
+    return HTTPException(
+        status_code=503, detail=str(exc), headers={"Retry-After": QUEUE_FULL_RETRY_AFTER}
+    )
 
 _bi_pipeline = BIPipeline()
 _market_research = MarketResearchService()
@@ -37,7 +53,10 @@ _market_research = MarketResearchService()
 
 @router.post("/bi/submit", response_model=BISubmitResponse)
 async def bi_submit(body: BISubmitRequest) -> BISubmitResponse:
-    job = await _bi_pipeline.submit(url=body.url, email=body.email)
+    try:
+        job = await _bi_pipeline.submit(url=body.url, email=body.email)
+    except QueueFullError as e:
+        raise _queue_full(e) from None
     return BISubmitResponse(
         job_id=job["job_id"],
         status="processing",
@@ -90,7 +109,7 @@ async def bi_download(job_id: str, format: str = Query("pdf", pattern="^(pdf|doc
         raise HTTPException(status_code=404, detail="Job not found")
     # `partial` means the report exists but delivery failed - the file is still
     # the user's to download, and refusing it here would be the wrong answer.
-    if job["status"] not in ("complete", JobStatus.COMPLETED, JobStatus.PARTIAL):
+    if job["status"] not in (JobStatus.COMPLETED, JobStatus.PARTIAL):
         raise HTTPException(status_code=400, detail="Job not yet complete")
 
     file_path = Path(job["pdf_path"] or "") if format == "pdf" else Path(job["docx_path"] or "")
@@ -251,7 +270,10 @@ async def health_ready(response: Response) -> dict[str, Any]:
 
 @router.post("/market-research/submit", response_model=MarketResearchSubmitResponse)
 async def market_research_submit(body: MarketResearchSubmitRequest) -> MarketResearchSubmitResponse:
-    job = await _market_research.submit(body.market_query)
+    try:
+        job = await _market_research.submit(body.market_query)
+    except QueueFullError as e:
+        raise _queue_full(e) from None
     return MarketResearchSubmitResponse(
         job_id=job["job_id"],
         status="processing",
@@ -299,7 +321,7 @@ async def market_research_download(
     row = await _market_research.get_status(job_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Job not found")
-    if row["status"] != "complete":
+    if row["status"] != JobStatus.COMPLETED:
         raise HTTPException(status_code=400, detail="Job not yet complete")
 
     file_path = Path(row["pdf_path"] or "") if format == "pdf" else Path(row["docx_path"] or "")

@@ -117,9 +117,16 @@ class BIPipeline:
         await self._store.init()
         job_id = uuid.uuid4().hex[:12]
         job_data = await self._store.create_job(job_id, url, email)
-        from app.orchestrator.runner import enqueue
+        from app.orchestrator.runner import QueueFullError, enqueue
 
-        await enqueue(job_id, self.run(job_id, url, email))
+        try:
+            # The row is written first so a worker can never start ahead of it.
+            # That means a refused enqueue leaves a job nobody will ever run,
+            # stuck at 'pending' and indistinguishable from one about to start.
+            await enqueue(job_id, self.run(job_id, url, email))
+        except QueueFullError:
+            await self._store.delete_job(job_id)
+            raise
         return job_data
 
     async def get_job(self, job_id: str) -> dict[str, str] | None:

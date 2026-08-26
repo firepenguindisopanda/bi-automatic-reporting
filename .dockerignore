@@ -6,6 +6,11 @@ __pycache__/
 *.md
 .DS_Store
 node_modules/
+# `node_modules/` alone only matches at the root, so the frontend's 106MB copy
+# was still being sent as build context. Only the built assets are needed now
+# that the image no longer builds the frontend - see the Dockerfile header.
+frontend/*
+!frontend/dist
 .venv/
 venv/
 reports/

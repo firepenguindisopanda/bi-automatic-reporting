@@ -450,11 +450,30 @@ class TestFailureDiagnosis:
         assert excinfo.value.error_kind == ErrorKind.PARSE_ERROR
 
     async def test_malformed_json_is_reported_as_such(self) -> None:
-        runner, _ = make_runner(['{"company_name": "Acme", "offerings": [}'])
+        """A syntax error the delimiter repair cannot reach.
+
+        This used to use `"offerings": [}`, which the repair now closes into an
+        empty list - the stage succeeds and the empty list shows up as a low
+        contract score instead. A missing comma between keys is genuinely
+        unparseable, so it still exercises the diagnosis path.
+        """
+        runner, _ = make_runner(['{"company_name": "Acme" "offerings": ["x"]}'])
         with pytest.raises(StageError) as excinfo:
             await runner.run(spec(), StageContext())
         message = excinfo.value.message.lower()
         assert "invalid json" in message or "no json object" in message
+
+    async def test_a_mismatched_bracket_is_repaired_rather_than_failed(self) -> None:
+        """The layered contract: parse leniently, score strictly.
+
+        `[}` closes into an empty list rather than losing the whole stage. The
+        empty list is not hidden - it lands in the contract score, which is
+        where thin output is supposed to be judged.
+        """
+        runner, _ = make_runner(['{"company_name": "Acme", "offerings": [}'])
+        result = await runner.run(spec(), StageContext())
+        assert result.value.company_name == "Acme"
+        assert result.value.offerings == []
 
     async def test_no_json_at_all_says_so(self) -> None:
         runner, _ = make_runner(["I'm afraid I can't help with that."])

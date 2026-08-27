@@ -184,7 +184,7 @@ function StatusGlyph({ status }: { status: StageReport['status'] }) {
     running: null,
     succeeded: { mark: '✓', tone: 'text-positive' },
     failed: { mark: '✕', tone: 'text-negative' },
-    skipped: { mark: '–', tone: 'text-faint' },
+    skipped: { mark: '-', tone: 'text-faint' },
     pending: { mark: '·', tone: 'text-faint' },
   }[status]
 

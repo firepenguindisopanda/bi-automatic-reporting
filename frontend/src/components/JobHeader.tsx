@@ -42,7 +42,7 @@ export function JobHeader({
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 font-sans text-[13px] text-muted">
         {queued ? (
           <span>
-            Queued — {progress.queue_position} ahead of this one
+            Queued, {progress.queue_position} ahead of this one
           </span>
         ) : remaining ? (
           <span>{remaining}</span>
@@ -63,7 +63,7 @@ export function JobHeader({
         ) : null}
 
         {connection === 'polling' ? (
-          <span className="text-warning">Live updates unavailable — checking every 3s</span>
+          <span className="text-warning">Live updates unavailable, checking every 3s</span>
         ) : null}
       </div>
 

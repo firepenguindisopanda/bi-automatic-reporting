@@ -654,7 +654,7 @@ class MarketResearchReportGenerator:
             run = p.add_run(r.name)
             run.bold = True
             if r.url:
-                p.add_run(f" — {r.url}")
+                p.add_run(f" - {r.url}")
             doc.add_paragraph(r.description, style="List Bullet")
             if r.relevance:
                 doc.add_paragraph(f"Relevance: {r.relevance}", style="List Bullet")

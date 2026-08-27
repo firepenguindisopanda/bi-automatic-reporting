@@ -1,0 +1,57 @@
+
+##### run1 (pre-repair)
+
+Against baseline:
+  overall 94.7 -> 90.3 (-4.4) ok
+  profile      97.6 -> 100.0 (+2.4) ok
+  market       100.0 -> 100.0 (+0.0) ok
+  competitive  92.9 -> 100.0 (+7.1) ok
+  swot         89.3 -> 89.3 (+0.0) ok
+  marketing    98.2 -> 100.0 (+1.8) ok
+  report       90.5 -> 52.4 (-38.1) REGRESSION
+
+  confidence:
+    profile      92.4 -> 93.0 (+0.6) ok
+    competitive  67.0 -> 66.5 (-0.5) ok
+    swot         56.8 -> 54.8 (-2.0) ok
+    marketing    66.4 -> 75.0 (+8.6) ok
+    market       53.5 -> 56.7 (+3.2) ok
+  --check exit code: 1  (FAIL)
+
+##### run2 (pre-repair)
+
+Against baseline:
+  overall 94.7 -> 92.6 (-2.1) ok
+  profile      97.6 -> 100.0 (+2.4) ok
+  market       100.0 -> 100.0 (+0.0) ok
+  competitive  92.9 -> 98.2 (+5.3) ok
+  swot         89.3 -> 100.0 (+10.7) ok
+  marketing    98.2 -> 100.0 (+1.8) ok
+  report       90.5 -> 57.1 (-33.4) REGRESSION
+
+  confidence:
+    profile      92.4 -> 80.1 (-12.3) ok
+    market       53.5 -> 65.0 (+11.5) ok
+    competitive  67.0 -> 77.3 (+10.3) ok
+    marketing    66.4 -> 61.3 (-5.1) ok
+    swot         56.8 -> 61.4 (+4.6) ok
+  --check exit code: 1  (FAIL)
+
+##### run3 (the baseline itself)
+
+Against baseline:
+  overall 94.7 -> 94.7 (+0.0) ok
+  profile      97.6 -> 97.6 (+0.0) ok
+  market       100.0 -> 100.0 (+0.0) ok
+  competitive  92.9 -> 92.9 (+0.0) ok
+  swot         89.3 -> 89.3 (+0.0) ok
+  marketing    98.2 -> 98.2 (+0.0) ok
+  report       90.5 -> 90.5 (+0.0) ok
+
+  confidence:
+    profile      92.4 -> 92.4 (+0.0) ok
+    market       53.5 -> 53.5 (+0.0) ok
+    competitive  67.0 -> 67.0 (+0.0) ok
+    swot         56.8 -> 56.8 (+0.0) ok
+    marketing    66.4 -> 66.4 (+0.0) ok
+  --check exit code: 0  (PASS)

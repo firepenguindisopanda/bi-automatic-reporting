@@ -99,7 +99,7 @@ def test_uncritiqued_stage_renders_as_absent_not_zero():
     outcomes = [CaseOutcome(case="a", stages=[stage("report", confidence=None)])]
     report = render_markdown(outcomes, ["report"])
     confidence_table = report.split("## Critic confidence")[1]
-    assert "| a | – | – |" in confidence_table
+    assert "| a | - | - |" in confidence_table
 
 
 # --- summary ---------------------------------------------------------------

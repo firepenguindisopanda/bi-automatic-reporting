@@ -24,12 +24,13 @@ def per_stage(path: Path) -> tuple[dict, dict, float]:
     )
 
 
+NAME_A, NAME_B = Path(sys.argv[1]).stem, Path(sys.argv[2]).stem
 a_comp, a_conf, a_all = per_stage(Path(sys.argv[1]))
 b_comp, b_conf, b_all = per_stage(Path(sys.argv[2]))
 
 print(f"overall: {a_all:.1f} -> {b_all:.1f}  ({b_all - a_all:+.1f})\n")
 for label, a, b in (("COMPLETENESS", a_comp, b_comp), ("CONFIDENCE", a_conf, b_conf)):
-    print(f"=== {label} per-stage mean, run1 -> run2 ===")
+    print(f"=== {label} per-stage mean, {NAME_A} -> {NAME_B} ===")
     breaches = 0
     for stage in ("profile", "market", "competitive", "swot", "marketing", "report"):
         if stage not in a or stage not in b:

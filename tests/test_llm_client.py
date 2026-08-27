@@ -4,6 +4,8 @@ Verifies that ``with_model`` produces a cloned instance with a different
 model while leaving the original unchanged.
 """
 
+import pytest
+
 from app.llm.client import LLMClient
 
 
@@ -109,3 +111,162 @@ class TestUsageExtraction:
         from app.llm.client import _usage
 
         assert _usage(object()) == (0, 0)
+
+
+# --- delimiter repair -------------------------------------------------------
+#
+# Models drop a closing bracket at the end of a long answer. The repair pass runs
+# only after strict parsing fails, so these tests have to prove both halves: that
+# it recovers the real failures, and that it never touches a clean reply.
+
+from pathlib import Path
+
+from pydantic import BaseModel
+
+from app.models.bi import BIReport
+
+KNOWN_BAD = Path(__file__).parent.parent / "evals" / "fixtures" / "known_bad"
+
+
+class Simple(BaseModel):
+    items: list[str] = []
+    name: str = ""
+
+
+class TestRepairsTheRealFailure:
+    """The captured artifact, not a hand-written approximation of one."""
+
+    def test_the_fixture_still_fails_strict_json(self) -> None:
+        """If this ever passes, the fixture stopped being a known-bad case."""
+        import json
+
+        raw = (KNOWN_BAD / "report_unclosed_array.json.txt").read_text()
+        with pytest.raises(json.JSONDecodeError):
+            json.loads(raw[raw.find("{") :])
+
+    def test_it_recovers(self) -> None:
+        raw = (KNOWN_BAD / "report_unclosed_array.json.txt").read_text()
+        diagnosis: list[str] = []
+        parsed = LLMClient().parse_json_response(raw, BIReport, diagnosis=diagnosis)
+
+        assert parsed is not None, diagnosis
+        assert "recovered by repairing mismatched delimiters" in diagnosis
+
+    def test_no_data_is_lost_in_the_repair(self) -> None:
+        """Closing the array must keep its last element, not truncate to it."""
+        raw = (KNOWN_BAD / "report_unclosed_array.json.txt").read_text()
+        parsed = LLMClient().parse_json_response(raw, BIReport)
+
+        assert parsed is not None
+        assert len(parsed.risk_factors) == 3
+        assert len(parsed.recommendations) == 6
+        assert "monitor cost trends" in parsed.risk_factors[-1]
+
+
+class TestRepairIsALastResort:
+    """A repaired parse must never pre-empt a clean one."""
+
+    def test_valid_json_never_reports_a_repair(self) -> None:
+        diagnosis: list[str] = []
+        parsed = LLMClient().parse_json_response(
+            '{"items": ["a", "b"], "name": "x"}', Simple, diagnosis=diagnosis
+        )
+
+        assert parsed is not None
+        assert parsed.items == ["a", "b"]
+        assert diagnosis == []
+
+    def test_the_schema_echo_still_wins_over_a_repair(self) -> None:
+        """The parser prefers the last *valid* object; repair must not change that."""
+        parsed = LLMClient().parse_json_response(
+            '{"name": "echo"} then the real one: {"name": "data"}', Simple
+        )
+
+        assert parsed is not None
+        assert parsed.name == "data"
+
+    def test_a_reply_with_no_json_is_still_unparseable(self) -> None:
+        assert LLMClient().parse_json_response("no json here at all", Simple) is None
+
+
+class TestRepairDiagnosisTellsTheTruth:
+    """`diagnosis` is what runner.py puts in the repair turn, so a wrong
+    message here is not cosmetic - it is what the model gets asked to fix.
+
+    Caught in a live run: the note was appended before validation, so a reply
+    whose delimiters repaired but whose schema still mismatched reported
+    "recovered by repairing mismatched delimiters" *and* failed the stage.
+    """
+
+    def test_a_repair_that_still_fails_validation_does_not_claim_recovery(self) -> None:
+        # Delimiters repairable, but `items` is a list[str] and this gives ints.
+        diagnosis: list[str] = []
+        parsed = LLMClient().parse_json_response(
+            '{"items": [1, 2}', Simple, diagnosis=diagnosis
+        )
+
+        assert parsed is None
+        assert "recovered by repairing mismatched delimiters" not in diagnosis
+
+    def test_it_names_the_field_instead(self) -> None:
+        """The repair turn needs the schema problem, not a success notice."""
+        diagnosis: list[str] = []
+        LLMClient().parse_json_response('{"items": [1, 2}', Simple, diagnosis=diagnosis)
+
+        assert any("items" in d for d in diagnosis), diagnosis
+
+    def test_a_real_recovery_still_says_so(self) -> None:
+        diagnosis: list[str] = []
+        parsed = LLMClient().parse_json_response(
+            '{"items": ["a", "b"}', Simple, diagnosis=diagnosis
+        )
+
+        assert parsed is not None
+        assert "recovered by repairing mismatched delimiters" in diagnosis
+
+
+class TestRepairMechanics:
+    """Directly, so the failure modes are legible without a 12KB fixture."""
+
+    def test_array_closed_with_a_brace(self) -> None:
+        parsed = LLMClient().parse_json_response('{"items": ["a", "b"}', Simple)
+
+        assert parsed is not None
+        assert parsed.items == ["a", "b"]
+
+    def test_truncated_reply_is_closed_in_order(self) -> None:
+        parsed = LLMClient().parse_json_response('{"items": ["a", "b"', Simple)
+
+        assert parsed is not None
+        assert parsed.items == ["a", "b"]
+
+    def test_an_unterminated_string_is_closed(self) -> None:
+        parsed = LLMClient().parse_json_response('{"name": "half a sen', Simple)
+
+        assert parsed is not None
+        assert parsed.name == "half a sen"
+
+    def test_braces_inside_strings_are_not_counted(self) -> None:
+        """The scanner above counts braces in prose; the repair must not."""
+        parsed = LLMClient().parse_json_response(
+            '{"name": "a } and a { in prose", "items": ["x"}', Simple
+        )
+
+        assert parsed is not None
+        assert parsed.name == "a } and a { in prose"
+        assert parsed.items == ["x"]
+
+    def test_an_escaped_quote_does_not_end_the_string(self) -> None:
+        parsed = LLMClient().parse_json_response(
+            r'{"name": "she said \"hi\" then left", "items": ["x"}', Simple
+        )
+
+        assert parsed is not None
+        assert parsed.name == 'she said "hi" then left'
+
+    def test_repair_returns_none_when_nothing_needed_fixing(self) -> None:
+        assert LLMClient._repair_delimiters('{"a": [1, 2]}') is None
+
+    def test_nested_containers_close_innermost_first(self) -> None:
+        repaired = LLMClient._repair_delimiters('{"a": {"b": ["c"')
+        assert repaired == '{"a": {"b": ["c"]}}'

@@ -88,7 +88,7 @@ export default function MarketResearchPage() {
             placeholder="Sustainable packaging for food producers"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            hint="Be as specific as you can — a narrower market gets a sharper answer."
+            hint="Be as specific as you can. A narrower market gets a sharper answer."
           />
           {error ? (
             <Callout tone="bad" title="Could not start">

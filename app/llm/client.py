@@ -227,6 +227,78 @@ class LLMClient:
             messages.append(HumanMessage(content=user_prompt))
         return messages
 
+    @staticmethod
+    def _repair_delimiters(text: str) -> str | None:
+        """Close containers the model left mismatched, or return None.
+
+        Models drop a closing bracket at the end of a long answer. Observed on
+        `gpt-oss-20b` writing a BIReport: the last field is `risk_factors`, a
+        list of strings, and the reply ends
+
+            "risk_factors":[ "...", "...", "monitor cost trends."}
+
+        - the array closed with `}` instead of `]}`. Everything before it, some
+        12,000 characters, is valid. Measured at 3 failures in 6 calls on one
+        prompt, always that same shape.
+
+        Walks the text with a stack of open containers, ignoring braces inside
+        string literals (which the scanner above does not, so a `}` in prose
+        would mislead it). A closer that does not match the innermost opener
+        closes the inner containers first rather than being discarded, which is
+        what turns `[ ... }` into `[ ... ]}`. Anything still open at the end is
+        closed in order, which also recovers a genuinely truncated reply.
+
+        Returns None when nothing needed repairing, so callers can tell a
+        repair from a no-op. This never runs unless strict parsing has already
+        failed.
+        """
+        out: list[str] = []
+        stack: list[str] = []
+        closer = {"{": "}", "[": "]"}
+        in_string = False
+        escaped = False
+        repaired = False
+
+        for ch in text:
+            if in_string:
+                out.append(ch)
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == '"':
+                    in_string = False
+                continue
+
+            if ch == '"':
+                in_string = True
+                out.append(ch)
+            elif ch in "{[":
+                stack.append(ch)
+                out.append(ch)
+            elif ch in "}]":
+                # Close every container the model skipped over, innermost first.
+                while stack and closer[stack[-1]] != ch:
+                    out.append(closer[stack.pop()])
+                    repaired = True
+                if stack:
+                    stack.pop()
+                    out.append(ch)
+                else:
+                    # A closer with nothing open: drop it rather than emit junk.
+                    repaired = True
+            else:
+                out.append(ch)
+
+        if in_string:
+            out.append('"')
+            repaired = True
+        while stack:
+            out.append(closer[stack.pop()])
+            repaired = True
+
+        return "".join(out) if repaired else None
+
     def parse_json_response(
         self, content: str, output_model: type[T], diagnosis: list[str] | None = None
     ) -> T | None:
@@ -282,6 +354,37 @@ class LLMClient:
                         f"{'.'.join(str(p) for p in err['loc']) or '(root)'}: {err['msg']}"
                         for err in e.errors()[:4]
                     )
+
+        # Strict parsing found nothing usable. Only now try closing delimiters
+        # the model mismatched - a repaired parse must never pre-empt a clean
+        # one, and a reply that already parses never reaches this line.
+        start = text.find("{")
+        if start >= 0:
+            repaired = self._repair_delimiters(text[start:])
+            if repaired is not None:
+                try:
+                    data = json.loads(repaired)
+                except json.JSONDecodeError:
+                    data = None
+                if isinstance(data, dict):
+                    try:
+                        parsed = output_model.model_validate(data)
+                    except ValidationError as e:
+                        # Repairing the delimiters worked; the schema still does
+                        # not match. Say which fields, because `diagnosis` is
+                        # what runner.py puts in the repair turn - telling the
+                        # model "recovered" here would hand it back a success
+                        # notice instead of the problem to fix.
+                        if diagnosis is not None:
+                            diagnosis.extend(
+                                f"{'.'.join(str(p) for p in err['loc']) or '(root)'}: {err['msg']}"
+                                for err in e.errors()[:4]
+                            )
+                    else:
+                        # Only once it has actually validated.
+                        if diagnosis is not None:
+                            diagnosis.append("recovered by repairing mismatched delimiters")
+                        return parsed
         return None
 
     async def ainvoke_structured(

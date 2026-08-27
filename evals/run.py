@@ -294,9 +294,9 @@ def _health_line(label: str, values: list[float]) -> str:
     plural = "" if health["distinct"] == 1 else "s"
     note = ""
     if health["dead"]:
-        note = " — **DEAD**: one value everywhere, it cannot rank runs"
+        note = " - **DEAD**: one value everywhere, it cannot rank runs"
     elif health["n"] >= 10 and health["distinct"] <= 2:
-        note = " — **near-dead**: two values across many stages"
+        note = " - **near-dead**: two values across many stages"
     return (
         f"- **{label}**: {health['n']} stages, {health['distinct']} distinct value{plural}, "
         f"mean {health['mean']}{note}"
@@ -314,14 +314,14 @@ def render_markdown(outcomes: list[CaseOutcome], stages: list[str]) -> str:
 
     def contract_cell(s: StageOutcome | None) -> str:
         if s is None:
-            return "–"
+            return "-"
         if not s.ok:
             return "**fail**"
         return f"{s.score:.0f}" + ("!" if s.assertion_failures else "")
 
     def confidence_cell(s: StageOutcome | None) -> str:
         if s is None or not s.ok or s.confidence is None:
-            return "–"
+            return "-"
         return f"{s.confidence:.0f}"
 
     lines = [
@@ -357,7 +357,7 @@ def render_markdown(outcomes: list[CaseOutcome], stages: list[str]) -> str:
         by_stage = {s.stage: s for s in outcome.stages}
         cells = [confidence_cell(by_stage.get(stage)) for stage in columns]
         mean_conf = outcome.mean_confidence
-        lines.append(_row(outcome.case, cells, "–" if mean_conf is None else f"{mean_conf:.1f}"))
+        lines.append(_row(outcome.case, cells, "-" if mean_conf is None else f"{mean_conf:.1f}"))
     lines.append("")
 
     # The point of this section: completeness sat at 100 for 42 straight stages

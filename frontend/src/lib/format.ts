@@ -1,6 +1,6 @@
 /** Duration for a folio column: compact, and never wider than it needs to be. */
 export function duration(ms: number | null | undefined): string {
-  if (ms === null || ms === undefined) return '—'
+  if (ms === null || ms === undefined) return '-'
   if (ms < 1000) return `${ms}ms`
   const seconds = ms / 1000
   if (seconds < 60) return `${seconds.toFixed(1)}s`
@@ -32,7 +32,7 @@ export function modelName(model: string | null): string {
 }
 
 export function tokens(n: number | null | undefined): string {
-  if (!n) return '—'
+  if (!n) return '-'
   if (n < 1000) return String(n)
   return `${(n / 1000).toFixed(1)}k`
 }

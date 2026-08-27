@@ -103,7 +103,7 @@ function Outcome({
         <p className="text-[18px]">Report ready, but the email didn&rsquo;t send</p>
         <p className="mt-1 text-[15px] text-muted">
           {progress.error ?? 'The mail provider rejected the message.'} The report itself is
-          finished — download it here, or try sending again.
+          finished. Download it here, or try sending again.
         </p>
         <Downloads kind={kind} jobId={progress.job_id} />
         {kind === 'bi' ? <ResendButton jobId={progress.job_id} onDone={onChanged} /> : null}

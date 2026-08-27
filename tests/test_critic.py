@@ -110,14 +110,21 @@ class TestTruncatedReasoningIsUnparseable:
         assert parsed is None
         assert "no JSON object found in the response" in diagnosis
 
-    def test_unterminated_object_does_not_parse(self) -> None:
-        """A budget that dies mid-JSON is just as unparseable as one that
-        dies before it."""
+    def test_an_object_cut_mid_json_is_now_recovered(self) -> None:
+        """This asserted `is None` until the delimiter repair landed.
+
+        A reply cut mid-JSON is closed and salvaged now, which is strictly
+        better for a critic that gets one attempt with no repair turn. The
+        failure that still cannot be recovered is the one above: reasoning
+        truncated *before* any JSON, where there is nothing to close.
+        """
         parsed = LLMClient().parse_json_response(
             '{"score": 72, "verdict": "grounded but gener', CriticVerdict
         )
 
-        assert parsed is None
+        assert parsed is not None
+        assert parsed.score == 72
+        assert parsed.verdict == "grounded but gener"
 
     def test_the_same_verdict_parses_once_it_is_complete(self) -> None:
         parsed = LLMClient().parse_json_response(

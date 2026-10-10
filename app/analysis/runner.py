@@ -8,15 +8,20 @@ each of which carried its prompt twice and had no retry at all.
 Retry ladder, per attempt:
   1. normal request
   2. repair turn - the invalid reply and the parse error are fed back
-  3. reduced schema example, in case the full one was too much to follow
+  3. clean retry - a fresh request without the failed exchange, in case the
+     repair context itself is what the model is stuck on
 
-Transport failures (timeout, reset, 5xx) are retried separately with backoff,
-since those say nothing about the prompt.
+Transport failures (timeout, connection reset, 408/429/5xx) are retried with
+exponential backoff and jitter on their own budget, since they say nothing
+about the prompt and must not use up a step of the ladder. Other 4xx responses
+(bad key, retired model, oversized request) fail at once: repeating the same
+request cannot fix them.
 """
 
 import asyncio
 import logging
 import random
+import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -36,7 +41,7 @@ from app.models.bi import (
     ScrapedContent,
     SWOTAnalysis,
 )
-from app.pipeline.contracts import EMPTY_CONTRACT, StageContract
+from app.pipeline.contracts import EMPTY_CONTRACT, TRUNCATION_PENALTY, StageContract
 from app.pipeline.stages import ErrorKind
 
 logger = logging.getLogger(__name__)
@@ -68,11 +73,39 @@ class StageError(RuntimeError):
         self.metrics = metrics
 
 
+_STATUS_PREFIX = re.compile(r"^\s*\[(\d{3})\]")
+_STATUS_IN_TEXT = re.compile(r"\b(?:status(?: code)?:?\s*|http\s*)(\d{3})\b", re.IGNORECASE)
+RETRYABLE_STATUSES = frozenset({408, 425, 429})
+
+
+def http_status(exc: BaseException) -> int | None:
+    """The HTTP status behind an upstream error, when it can be recovered.
+
+    ChatNVIDIA raises a bare ``Exception("[404] Not Found ...")`` rather than an
+    HTTP error type, so the status has to be read back out of the message.
+    """
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code
+    text = str(exc)
+    match = _STATUS_PREFIX.match(text) or _STATUS_IN_TEXT.search(text)
+    return int(match.group(1)) if match else None
+
+
+def is_retryable(exc: BaseException, kind: ErrorKind) -> bool:
+    """Whether repeating the identical request could plausibly succeed."""
+    if kind not in RETRYABLE_KINDS:
+        return False
+    status = http_status(exc)
+    if status is None:
+        return True
+    return status >= 500 or status in RETRYABLE_STATUSES
+
+
 def classify(exc: BaseException) -> ErrorKind:
     """Map an exception to the error kind shown alongside the failed stage."""
     if isinstance(exc, asyncio.TimeoutError | httpx.TimeoutException):
         return ErrorKind.TIMEOUT
-    if isinstance(exc, httpx.HTTPStatusError):
+    if isinstance(exc, httpx.HTTPStatusError) or http_status(exc) is not None:
         return ErrorKind.HTTP_ERROR
     if isinstance(exc, httpx.TransportError | ConnectionError | OSError):
         return ErrorKind.UPSTREAM_ERROR
@@ -85,6 +118,15 @@ def classify(exc: BaseException) -> ErrorKind:
     if any(w in text for w in ("status", "rate limit", "429", "500", "502", "503")):
         return ErrorKind.HTTP_ERROR
     return ErrorKind.INTERNAL
+
+
+def ms_since(started: float) -> int:
+    """Milliseconds since a ``time.monotonic()`` reading; never 0 for work that ran.
+
+    Truncating sub-millisecond work to 0 made a finished stage look unstarted
+    and a job that failed fast report 0s elapsed.
+    """
+    return max(1, round((time.monotonic() - started) * 1000))
 
 
 RETRYABLE_KINDS = frozenset(
@@ -161,8 +203,18 @@ class AgentSpec[T: BaseModel]:
     temperature: float = 0.0
     max_tokens: int = 4096
     max_attempts: int = 3
+    """Steps of the repair ladder: normal, repair turn, clean retry."""
+    max_transport_retries: int = 3
+    """Backoff retries for timeouts and 408/429/5xx, separate from the ladder."""
     contract: StageContract = EMPTY_CONTRACT
     critic: bool = True
+    critic_source: Callable[[StageContext], str] | None = None
+    """What the critic judges groundedness against, when not the scraped page.
+
+    The report writer is given the upstream analyses, not the page, so judging
+    its synthesis against the page would penalise every recommendation that
+    rests on the market or competitive stage.
+    """
 
 
 @dataclass
@@ -172,6 +224,7 @@ class StageMetrics:
     model: str
     prompt_version: str
     attempts: int = 0
+    """Requests actually sent, including ones lost to transport errors."""
     duration_ms: int = 0
     prompt_tokens: int = 0
     completion_tokens: int = 0
@@ -245,12 +298,10 @@ class AgentRunner:
                 + "\n".join(f"- {issue}" for issue in ctx.critic_issues)
             )
 
-        # Third attempt: the full example may be more structure than the model
-        # can follow, so show a shallower one.
-        schema_depth = 2 if attempt >= 3 else 3
-        messages = client.build_json_messages(
-            spec.output_model, spec.system_prompt, user_prompt, schema_depth=schema_depth
-        )
+        # Attempts 1 and 3 are both a clean request. The third deliberately
+        # drops the repair exchange: a model that could not fix its own reply
+        # when shown it is sometimes anchored on that reply.
+        messages = client.build_json_messages(spec.output_model, spec.system_prompt, user_prompt)
 
         # Second attempt: show the model its own invalid reply and the problem.
         if attempt == 2 and last_output:
@@ -273,46 +324,26 @@ class AgentRunner:
         started = time.monotonic()
 
         value: T | None = None
+        truncated = False
         last_output: str | None = None
         last_error: str | None = None
         transport_failures = 0
 
         def give_up(kind: ErrorKind, message: str) -> StageError:
             """Stamp the elapsed time and hand the metrics to the caller."""
-            metrics.duration_ms = int((time.monotonic() - started) * 1000)
+            metrics.duration_ms = ms_since(started)
             return StageError(spec.key, kind, message, last_output, metrics)
 
         attempt = 0
         while attempt < spec.max_attempts:
             attempt += 1
-            metrics.attempts = attempt
+            messages = self._messages(client, spec, ctx, attempt, last_output, last_error)
+            metrics.attempts += 1
             try:
-                messages = self._messages(
-                    client, spec, ctx, attempt, last_output, last_error
-                )
                 raw = await client.acomplete(messages)
-                metrics.prompt_tokens += raw.prompt_tokens
-                metrics.completion_tokens += raw.completion_tokens
-
-                diagnosis: list[str] = []
-                parsed = client.parse_json_response(raw.content, spec.output_model, diagnosis)
-                if parsed is not None:
-                    value = parsed
-                    break
-
-                last_output = raw.content
-                # Say *why* it could not be used. "No valid X found" is the same
-                # message for malformed JSON and for a schema mismatch, which
-                # makes an intermittent failure needlessly hard to chase - and
-                # the repair turn is only useful if it names the actual problem.
-                detail = "; ".join(diagnosis[:4]) or "no parseable object"
-                last_error = f"{spec.output_model.__name__} could not be built: {detail}"
-                logger.warning(
-                    "Stage %s attempt %d/%d: %s", spec.key, attempt, spec.max_attempts, last_error
-                )
             except Exception as exc:  # noqa: BLE001 - classified immediately below
                 kind = classify(exc)
-                if kind not in RETRYABLE_KINDS or attempt >= spec.max_attempts:
+                if not is_retryable(exc, kind) or transport_failures >= spec.max_transport_retries:
                     raise give_up(kind, str(exc)) from exc
                 transport_failures += 1
                 delay = min(
@@ -320,16 +351,38 @@ class AgentRunner:
                 )
                 delay += random.uniform(0, delay * 0.25)  # noqa: S311 - jitter, not crypto
                 logger.warning(
-                    "Stage %s attempt %d/%d hit %s (%s); retrying in %.1fs",
-                    spec.key, attempt, spec.max_attempts, kind, exc, delay,
+                    "Stage %s attempt %d/%d hit %s (%s); retry %d/%d in %.1fs",
+                    spec.key, attempt, spec.max_attempts, kind, exc,
+                    transport_failures, spec.max_transport_retries, delay,
                 )
                 await asyncio.sleep(delay)
-                # A transport failure is not the prompt's fault - do not burn an
-                # attempt escalating the repair strategy.
+                # A transport failure is not the prompt's fault: repeat this
+                # step of the ladder rather than escalating past it.
                 attempt -= 1
-                metrics.attempts = attempt
-                if transport_failures >= spec.max_attempts:
-                    raise give_up(kind, str(exc)) from exc
+                continue
+
+            metrics.prompt_tokens += raw.prompt_tokens
+            metrics.completion_tokens += raw.completion_tokens
+
+            diagnosis: list[str] = []
+            parsed = client.parse_json_response(raw.content, spec.output_model, diagnosis)
+            if parsed is not None:
+                value = parsed
+                truncated = raw.finish_reason == "length"
+                break
+
+            last_output = raw.content
+            # Say *why* it could not be used. "No valid X found" is the same
+            # message for malformed JSON and for a schema mismatch, which
+            # makes an intermittent failure needlessly hard to chase - and
+            # the repair turn is only useful if it names the actual problem.
+            detail = "; ".join(diagnosis[:4]) or "no parseable object"
+            if raw.finish_reason == "length":
+                detail = f"the reply hit the {spec.max_tokens}-token limit and was cut off; {detail}"
+            last_error = f"{spec.output_model.__name__} could not be built: {detail}"
+            logger.warning(
+                "Stage %s attempt %d/%d: %s", spec.key, attempt, spec.max_attempts, last_error
+            )
 
         if value is None:
             raise give_up(
@@ -337,16 +390,30 @@ class AgentRunner:
                 last_error or "the model returned no usable output",
             )
 
-        result = self._score(spec, ctx, value, metrics)
-        metrics.duration_ms = int((time.monotonic() - started) * 1000)
+        result = self._score(spec, ctx, value, metrics, truncated=truncated)
+        metrics.duration_ms = ms_since(started)
         return result
 
     def _score[T: BaseModel](
-        self, spec: AgentSpec[T], ctx: StageContext, value: T, metrics: StageMetrics
+        self,
+        spec: AgentSpec[T],
+        ctx: StageContext,
+        value: T,
+        metrics: StageMetrics,
+        *,
+        truncated: bool = False,
     ) -> StageResult[T]:
         contract = spec.contract.evaluate(value, ctx)
         metrics.completeness = contract.completeness
-        metrics.warnings = contract.warnings
+        metrics.warnings = list(contract.warnings)
+        if truncated:
+            # The reply parsed only because the parser closed what the model
+            # never finished. The shape is valid; the last field is not whole.
+            metrics.completeness = max(0.0, metrics.completeness - TRUNCATION_PENALTY)
+            metrics.warnings.append(
+                f"reply hit the {spec.max_tokens}-token limit and was cut off; "
+                "the last fields may be incomplete"
+            )
         return StageResult(value=value, metrics=metrics)
 
     async def _review[T: BaseModel](

@@ -22,7 +22,11 @@ from app.llm.client import LLMClient
 logger = logging.getLogger(__name__)
 
 MAX_SOURCE_CHARS = 4000
-MAX_OUTPUT_CHARS = 6000
+# Compact JSON, so the same budget covers about a third more of the output. A
+# stage that still overruns is cut with an explicit note: a silently truncated
+# output reads as an incomplete one, and the critic marked it down for that.
+MAX_OUTPUT_CHARS = 8000
+TRUNCATION_NOTE = "\n[output truncated for review - the remainder exists and is not missing]"
 
 # The critic runs on a reasoning model, which spends completion tokens thinking
 # before it emits any JSON. At 1024 the thinking was cut off mid-sentence and the
@@ -112,15 +116,20 @@ class StageCritic:
         return float(verdict.score), verdict.verdict.strip(), issues
 
     def _build_prompt(self, spec: AgentSpec[Any], ctx: StageContext, value: BaseModel) -> str:
+        output = value.model_dump_json()
+        if len(output) > MAX_OUTPUT_CHARS:
+            output = output[:MAX_OUTPUT_CHARS] + TRUNCATION_NOTE
         return (
             f"ANALYSIS STAGE: {spec.key}\n\n"
-            f"SOURCE MATERIAL THE ANALYST WAS GIVEN:\n{self._source(ctx)}\n\n"
-            f"ANALYSIS THEY PRODUCED:\n{value.model_dump_json(indent=2)[:MAX_OUTPUT_CHARS]}\n\n"
+            f"SOURCE MATERIAL THE ANALYST WAS GIVEN:\n{self._source(spec, ctx)}\n\n"
+            f"ANALYSIS THEY PRODUCED:\n{output}\n\n"
             "Review this analysis and return your score, verdict and issues."
         )
 
-    def _source(self, ctx: StageContext) -> str:
+    def _source(self, spec: AgentSpec[Any], ctx: StageContext) -> str:
         """The grounding material, trimmed to keep the critic prompt bounded."""
+        if spec.critic_source is not None:
+            return spec.critic_source(ctx)
         if ctx.scraped is not None:
             s = ctx.scraped
             return (

@@ -493,3 +493,141 @@ class TestFailureDiagnosis:
         client = LLMClient(model="test-model")
         assert client.parse_json_response(VALID, Sample) is not None
         assert client.parse_json_response("nonsense", Sample) is None
+
+
+class TruncatingLLM(ScriptedLLM):
+    """Like ScriptedLLM, but reports finish_reason for the replies it is told to."""
+
+    def __init__(self, script: list[Any], cut_off: set[int]) -> None:
+        super().__init__(script)
+        self.cut_off = cut_off
+
+    async def ainvoke(self, messages: list[Any]) -> Any:
+        msg = await super().ainvoke(messages)
+        msg.response_metadata = {
+            "finish_reason": "length" if len(self.calls) - 1 in self.cut_off else "stop"
+        }
+        return msg
+
+
+class TestTransportBudget:
+    """Transport retries do not compete with the repair ladder for attempts."""
+
+    async def test_a_timeout_after_two_bad_replies_is_still_retried(self) -> None:
+        runner, llm = make_runner([GARBAGE, GARBAGE, httpx.ReadTimeout("slow"), VALID])
+        result = await runner.run(spec(), StageContext())
+        assert result.value.company_name == "Acme"
+        assert len(llm.calls) == 4
+
+    async def test_attempts_count_every_request_sent(self) -> None:
+        runner, _ = make_runner([httpx.ConnectError("reset"), GARBAGE, VALID])
+        result = await runner.run(spec(), StageContext())
+        assert result.metrics.attempts == 3
+
+    async def test_persistent_failure_stops_at_the_transport_budget(self) -> None:
+        runner, llm = make_runner([httpx.ConnectError("down")])
+        with pytest.raises(StageError) as excinfo:
+            await runner.run(spec(max_transport_retries=2), StageContext())
+        assert len(llm.calls) == 3  # the first try plus two retries
+        assert excinfo.value.metrics is not None
+        assert excinfo.value.metrics.attempts == 3
+
+    async def test_no_backoff_is_wasted_before_giving_up(self, monkeypatch) -> None:
+        sleeps: list[float] = []
+
+        async def record(seconds: float) -> None:
+            sleeps.append(seconds)
+
+        monkeypatch.setattr(asyncio, "sleep", record)
+        runner, _ = make_runner([httpx.ConnectError("down")])
+        with pytest.raises(StageError):
+            await runner.run(spec(max_transport_retries=2), StageContext())
+        assert len(sleeps) == 2
+
+    async def test_backoff_grows_and_carries_jitter(self, monkeypatch) -> None:
+        sleeps: list[float] = []
+
+        async def record(seconds: float) -> None:
+            sleeps.append(seconds)
+
+        monkeypatch.setattr(asyncio, "sleep", record)
+        runner, _ = make_runner([httpx.ConnectError("down")])
+        with pytest.raises(StageError):
+            await runner.run(spec(max_transport_retries=3), StageContext())
+        assert 1.5 <= sleeps[0] <= 1.5 * 1.25
+        assert 3.0 <= sleeps[1] <= 3.0 * 1.25
+        assert sleeps[0] < sleeps[1] < sleeps[2]
+
+
+class TestHttpStatusHandling:
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            Exception("[401] Unauthorized\nPlease check or regenerate your API key."),
+            Exception("[404] Not Found\nmodel retired"),
+            Exception("[400] Bad Request\ncontext length exceeded"),
+        ],
+    )
+    async def test_client_errors_fail_at_once(self, exc: Exception) -> None:
+        runner, llm = make_runner([exc, VALID])
+        with pytest.raises(StageError) as excinfo:
+            await runner.run(spec(), StageContext())
+        assert excinfo.value.error_kind == ErrorKind.HTTP_ERROR
+        assert len(llm.calls) == 1
+
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            Exception("[429] Too Many Requests"),
+            Exception("[503] Service Unavailable"),
+            Exception("[408] Request Timeout"),
+        ],
+    )
+    async def test_throttling_and_server_errors_are_retried(self, exc: Exception) -> None:
+        runner, llm = make_runner([exc, VALID])
+        result = await runner.run(spec(), StageContext())
+        assert result.value.company_name == "Acme"
+        assert len(llm.calls) == 2
+
+    def test_status_is_read_from_an_http_error(self) -> None:
+        from app.analysis.runner import http_status
+
+        request = httpx.Request("POST", "https://example.invalid")
+        error = httpx.HTTPStatusError(
+            "nope", request=request, response=httpx.Response(404, request=request)
+        )
+        assert http_status(error) == 404
+        assert http_status(Exception("[502] Bad Gateway")) == 502
+        assert http_status(ValueError("nothing here")) is None
+
+
+class TestTruncation:
+    def _runner(self, script: list[Any], cut_off: set[int]) -> AgentRunner:
+        scripted = TruncatingLLM(script, cut_off)
+
+        def factory(model: str, temperature: float, max_tokens: int) -> LLMClient:
+            client = LLMClient(model="test-model")
+            client._llm = scripted  # type: ignore[assignment]
+            return client
+
+        return AgentRunner(client_factory=factory)
+
+    async def test_a_reply_cut_off_at_the_limit_is_flagged(self) -> None:
+        cut = '{"company_name": "Acme", "offerings": ["widgets", "gadgets", "giz'
+        runner = self._runner([cut], cut_off={0})
+        contract = StageContract(rules=(required("company_name"),))
+        result = await runner.run(spec(contract=contract), StageContext())
+        assert result.metrics.completeness < 100.0
+        assert any("cut off" in w for w in result.metrics.warnings)
+
+    async def test_a_complete_reply_is_not_flagged(self) -> None:
+        runner = self._runner([VALID], cut_off=set())
+        result = await runner.run(spec(), StageContext())
+        assert not any("cut off" in w for w in result.metrics.warnings)
+
+    async def test_an_unparseable_cut_off_reply_says_why(self) -> None:
+        runner = self._runner(["{\"company_name\": ", VALID], cut_off={0})
+        await runner.run(spec(), StageContext())
+        # The repair turn names the token limit, not just a JSON error.
+        repair = runner._client_factory("m", 0.0, 1)._llm.calls[1]  # type: ignore[attr-defined]
+        assert "token limit" in " ".join(str(m.content) for m in repair)

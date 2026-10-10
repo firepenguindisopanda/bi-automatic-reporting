@@ -1,8 +1,8 @@
 """LLM client wrapping ChatNVIDIA for all agent calls.
 
-Async only. The sync path was removed: ChatNVIDIA's ``.invoke()`` returns
-truncated response bodies under concurrency, which is what made structured
-parsing fail intermittently (see AGENTS.md).
+Async only. The sync path was removed: ChatNVIDIA's ``.invoke()`` returned
+truncated response bodies when called from worker threads, which is what made
+structured parsing fail intermittently.
 
 Structured output is produced by asking for JSON directly and parsing the
 reply, not via ``with_structured_output`` - the same reason. The runner in
@@ -65,6 +65,8 @@ class RawResponse:
     content: str
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    finish_reason: str | None = None
+    """``"length"`` means the reply was cut off at ``max_tokens``."""
 
 
 def _usage(message: Any) -> tuple[int, int]:
@@ -114,10 +116,13 @@ class LLMClient:
         response = await self._llm.ainvoke(messages)
         prompt_tokens, completion_tokens = _usage(response)
         content = response.content
+        meta = getattr(response, "response_metadata", None)
+        finish = meta.get("finish_reason") if isinstance(meta, dict) else None
         return RawResponse(
             content=content if isinstance(content, str) else str(content),
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
+            finish_reason=str(finish) if finish else None,
         )
 
     async def ainvoke(

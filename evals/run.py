@@ -13,6 +13,7 @@ Usage:
     uv run python -m evals.run --stages profile,market
     uv run python -m evals.run --suite market     # macro -> sizing -> resources
     uv run python -m evals.run --repeat 3         # every case 3 times: mean and spread
+    uv run python -m evals.run --model moonshotai/kimi-k3 --label kimi   # one model, every stage
     uv run python -m evals.run --check            # fail on a completeness or
                                                   # confidence regression
     uv run python -m evals.run --update-baseline  # a --case/--stages run merges
@@ -31,7 +32,7 @@ import math
 import statistics
 import sys
 from collections.abc import Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -629,6 +630,10 @@ async def main_async(args: argparse.Namespace) -> int:
         print("NVIDIA_API_KEY is not set - the agents are real, so this cannot run.")
         return 2
 
+    if args.model:
+        # Every stage on one model; the critic keeps its own, so candidates are
+        # judged by the same reviewer. Compare runs with evals.models.
+        suite = replace(suite, specs=tuple(replace(s, model=args.model) for s in suite.specs))
     if args.no_critic:
         settings.enable_stage_critic = False
     runner = AgentRunner(
@@ -637,6 +642,7 @@ async def main_async(args: argparse.Namespace) -> int:
 
     print(
         f"Running {len(cases)} {suite.name} case(s) x {args.repeat} run(s), "
+        f"model={args.model or 'per-stage settings'}, "
         f"critic={'on' if settings.enable_stage_critic else 'off'}\n"
     )
     outcomes: list[CaseOutcome] = []
@@ -665,7 +671,14 @@ async def main_async(args: argparse.Namespace) -> int:
     report_path.write_text(report, encoding="utf-8")
     (RESULTS / f"{stamp}.json").write_text(
         json.dumps(
-            {"repeats": args.repeat, "summary": summary, "cases": [asdict(o) for o in outcomes]},
+            {
+                "repeats": args.repeat,
+                "models": {s.key: s.model for s in suite.specs},
+                "critic": settings.agent_model_critic if settings.enable_stage_critic else None,
+                "critic_retry_threshold": settings.critic_retry_threshold,
+                "summary": summary,
+                "cases": [asdict(o) for o in outcomes],
+            },
             indent=2,
         )
     )
@@ -752,6 +765,9 @@ def main(argv: list[str] | None = None) -> int:
         help="record this run as the baseline; a --case/--stages run merges its cells into it",
     )
     parser.add_argument("--no-critic", action="store_true", help="skip the LLM review pass")
+    parser.add_argument(
+        "--model", help="run every stage on this model (the critic keeps its own); see evals.models"
+    )
     parser.add_argument("--label", help="name for the results files")
     parser.add_argument(
         "--render", help="re-render a stored results JSON; runs no models, needs no key"

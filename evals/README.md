@@ -19,7 +19,22 @@ uv run python -m evals.run --repeat 3           # every case 3 times: mean and s
 uv run python -m evals.run --check              # fail on regression
 uv run python -m evals.run --update-baseline    # record a new baseline
 uv run python -m evals.run --render evals/results/latest.json   # no key, no calls
+uv run python -m evals.run --model moonshotai/kimi-k3 --label model-kimi   # every stage on one model
+uv run python -m evals.models evals/results/model-*.json           # compare models, no calls
 ```
+
+### Choosing models
+
+`--model` puts every stage on one model and leaves the critic on its own, so
+every candidate is judged by the same reviewer. Run each candidate with
+`CRITIC_RETRY_THRESHOLD=0`, so a re-run cannot hide a weak first answer, then
+`evals.models` ranks them per stage on *quality*: the mean of the contract score
+and the critic's confidence, with a stage that failed or was never reached
+counting 0. Pick per stage, then set `AGENT_MODEL_*` (or the constants in
+`app/config.py`). Candidates run in parallel without trouble: one process each.
+
+Ask the API what exists, not the client library: `GET /v1/models` lists far
+more models than answer a chat completion, so probe before sweeping.
 
 A full run is roughly 7 cases × 6 stages of real model calls, and `--repeat N`
 multiplies that by N. Use `--stages` or `--case` while iterating, and save the
@@ -82,6 +97,20 @@ The set is chosen to cover different failure modes:
 | basecamp | Very little text — tests behaviour when starved of input |
 | flyio | Jargon-heavy developer infrastructure |
 | govuk | **Not a business at all** — the hallucination canary |
+| valcrest | Local B2B software, one-time TTD price, runs on-premise — must not be called cloud-based |
+| riomed | Healthcare platform page that is mostly a product menu |
+| asawright | Nonprofit land trust, 1,400 characters — a second not-a-business canary |
+| angostura | Real business behind an age gate whose dropdowns dominate the text |
+| tormach | Small manufacturer: B2B hardware, not software |
+| pilot | Bookkeeping services sold like software |
+| tartine | Bakery chain; short copy, mostly navigation |
+| harvestright | Direct-to-consumer appliance storefront |
+| allbirds | E-commerce storefront of product tiles — must still find the materials story |
+
+The last nine (added 2026-10) are the sites this app is actually pointed at:
+small and mid-sized businesses, several in Trinidad and Tobago. Their pages
+were saved with scripts, styles, comments and inline images stripped, after
+checking that extraction was identical to the live page.
 
 Each case's purpose is backed by an assertion, not just stated:
 

@@ -158,3 +158,139 @@ cases:
           - 'subscription (?:plan|tier|fee|price|pricing)s?'
     notes: Not a business at all. Market sizing and competitors here should be
            hedged rather than confidently invented - the hallucination canary.
+
+  # --- Small and mid-sized businesses (2026-10) ------------------------------
+  # The seven cases above are all developer tools or big platforms. These are
+  # the kind of site this app is actually pointed at: local firms, a nonprofit,
+  # a manufacturer, food, direct-to-consumer retail, several in Trinidad and
+  # Tobago. Pages saved 2026-10-10 with scripts, styles, comments and inline
+  # images stripped; extraction was checked identical to the live page.
+
+  - name: valcrest
+    fixture: valcrest.html
+    url: https://valcresthq.com/
+    company: Valcrest
+    must_mention: [["payroll"], ["trinidad", "tobago", "t&t"]]
+    industry_terms: [payroll, software, hr, accounting, saas]
+    forbidden: [Acme Corp]
+    min_offerings: 2
+    assertions:
+      # The product runs on the customer's own computer ("Nothing uploaded
+      # anywhere"). Calling Valcrest itself cloud-based is the commonest wrong
+      # guess for payroll software. Profile only: rivals may well be cloud-based.
+      - stage: profile
+        forbid_regex: ['\bcloud[- ]based\b', '\bsaas platform\b']
+      # The page states a one-time fee in TTD; the pricing strategy has to say so.
+      - stage: market
+        path: pricing_strategy
+        require_any_regex: ['one[- ]time', '\bttd\b', 'perpetual', 'licen[cs]e fee']
+    notes: Local B2B software with a stated one-time TTD price and an on-premise
+           model - tests grounding against the obvious SaaS assumption.
+
+  - name: riomed
+    fixture: riomed.html
+    url: https://www.riomed.com/cellmaflex/
+    must_mention: [["cellmaflex"], ["patient", "clinic", "health"]]
+    industry_terms: [health, medical, clinic, hospital, software, technology]
+    forbidden: [Acme Corp]
+    min_offerings: 3
+    notes: The page is mostly a long product menu (care settings, solution
+           modules). In production this run returned a SWOT with only
+           strengths - tests whether a menu-heavy page still yields a full
+           analysis.
+
+  - name: asawright
+    fixture: asawright.html
+    url: https://asawright.org/
+    company: Asa Wright
+    must_mention: [["non-profit", "nonprofit", "land trust", "conservation"]]
+    industry_terms: [conservation, nature, nonprofit, non-profit, tourism, eco, environment, land trust]
+    forbidden: [Acme Corp, Salesforce, Shopify]
+    min_offerings: 1
+    assertions:
+      # A nonprofit land trust with almost no copy. Software-business vocabulary
+      # here is invention, the same canary as govuk.
+      - stages: [profile, marketing]
+        forbid_regex:
+          - 'pricing (?:tier|plan)s?'
+          - 'free trials?'
+          - '\bfreemium\b'
+          - '\bsaas\b'
+          - 'subscription (?:plan|tier|fee|price|pricing)s?'
+    notes: Thin page (about 1,400 characters, mostly news items) for a
+           nonprofit - tests behaviour when starved of input and not a business.
+
+  - name: angostura
+    fixture: angostura.html
+    url: https://www.angostura.com/
+    company: Angostura
+    must_mention: [["bitters"], ["rum"]]
+    industry_terms: [beverage, spirits, rum, bitters, drinks, alcohol, food, consumer]
+    forbidden: [Acme Corp]
+    min_offerings: 2
+    notes: Most of the extracted text is an age gate's day, month and year
+           dropdowns. Tests reading a real business through heavy noise.
+
+  - name: tormach
+    fixture: tormach.html
+    url: https://tormach.com/
+    company: Tormach
+    must_mention: [["cnc"]]
+    industry_terms: [cnc, machine, machinery, manufacturing, industrial, tools, equipment]
+    forbidden: [Acme Corp]
+    min_offerings: 3
+    notes: Small manufacturer selling machines, tooling and training online -
+           B2B hardware rather than software.
+
+  - name: pilot
+    fixture: pilot.html
+    url: https://pilot.com/
+    company: Pilot
+    must_mention: [["bookkeeping"], ["startup", "small business"]]
+    industry_terms: [accounting, bookkeeping, finance, financial, tax, professional services]
+    forbidden: [Acme Corp]
+    min_offerings: 3
+    notes: Professional services sold like software ("50/50 people and
+           software") - tests reading a hybrid business model.
+
+  - name: tartine
+    fixture: tartine.html
+    url: https://tartinebakery.com/
+    company: Tartine
+    must_mention: [["bakery", "bread", "cake", "pastr", "food"]]
+    industry_terms: [bakery, food, restaurant, cafe, hospitality, baked goods]
+    forbidden: [Acme Corp]
+    min_offerings: 1
+    assertions:
+      # A bakery chain. Software pricing language is a wrong-subject failure.
+      - stages: [profile, marketing]
+        forbid_regex: ['\bsaas\b', 'free trials?', '\bfreemium\b', 'subscription (?:plan|tier)s?']
+    notes: Local food business with locations in three regions and shipping
+           through a partner - short copy, mostly navigation.
+
+  - name: harvestright
+    fixture: harvestright.html
+    url: https://harvestright.com/
+    company: Harvest Right
+    must_mention: [["freeze dr"]]
+    industry_terms: [appliance, freeze, food, preservation, consumer, home, kitchen, durable]
+    forbidden: [Acme Corp]
+    min_offerings: 1
+    notes: Direct-to-consumer appliance maker; the page is a storefront with a
+           sale banner and a giveaway.
+
+  - name: allbirds
+    fixture: allbirds.html
+    url: https://www.allbirds.com/
+    company: Allbirds
+    must_mention: [["shoe", "footwear", "sneaker"]]
+    industry_terms: [footwear, apparel, shoes, fashion, retail, clothing, e-commerce, consumer]
+    forbidden: [Acme Corp]
+    min_offerings: 2
+    assertions:
+      # The brand's whole position is its materials, stated in the meta
+      # description; a profile that misses them has not read the page.
+      - stage: profile
+        require_any: [merino, eucalyptus, natural material, sustainab]
+    notes: E-commerce storefront whose text is mostly product tiles and cart
+           furniture - 56 headings, 1,500 characters.

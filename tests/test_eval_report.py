@@ -378,7 +378,7 @@ class TestMarketCases:
             assert case.get("market_query"), case["name"]
 
     def test_the_bi_cases_still_load(self):
-        assert len(load_cases(BI_SUITE)) == 7
+        assert len(load_cases(BI_SUITE)) == 16
 
 
 class TestOneRendererServesBothSuites:

@@ -21,7 +21,13 @@ from app.llm.client import LLMClient
 
 logger = logging.getLogger(__name__)
 
-MAX_SOURCE_CHARS = 4000
+# As much of the page as any analyst is given (the profile stage reads 15,000
+# characters). At 4,000 the critic could not see facts the analyst had read
+# further down - Valcrest's prices sit at 5,400-6,500 and its email at 9,700 - and
+# scored a profile that quoted them correctly as fabricated, 30-50 for the most
+# thorough answer. That ranked models backwards: the less of the page an answer
+# used, the more of it the critic could verify.
+MAX_SOURCE_CHARS = 15000
 # Compact JSON, so the same budget covers about a third more of the output. A
 # stage that still overruns is cut with an explicit note: a silently truncated
 # output reads as an incomplete one, and the critic marked it down for that.

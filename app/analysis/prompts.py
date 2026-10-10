@@ -263,7 +263,9 @@ MARKET_RESOURCES = (
     "- Relevance: explain WHY this resource matters for THIS specific market"
 )
 
-CRITIC_V = "critic/1"
+# critic/2: same text; the critic now sees up to 15,000 characters of the page
+# (MAX_SOURCE_CHARS), so its scores are not comparable with critic/1.
+CRITIC_V = "critic/2"
 CRITIC = (
     "You are a rigorous quality reviewer for business analysis output. You are shown "
     "the source material an analyst was given and the structured analysis they produced. "

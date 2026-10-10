@@ -21,12 +21,18 @@ from app.models.bi import (
     SWOTAnalysis,
 )
 from app.pipeline.contracts import (
+    RANGE_PATTERN,
     StageContract,
     field_differs_from,
     grounded_in_source,
     items_have,
+    items_have_any,
+    items_min_list,
+    matches,
+    max_items,
     min_items,
     min_length,
+    min_words,
     no_cross_list_duplicates,
     no_duplicate_names,
     no_near_identical_items,
@@ -160,6 +166,9 @@ PROFILE_CONTRACT = StageContract(
         required("company_name"),
         required("industry"),
         required("value_proposition"),
+        # The prompt asks for "the sector and the niche, not a one-word
+        # category". "Technology" is the classic miss.
+        min_words("industry", 2),
         min_items("offerings", 3),
         min_items("target_audience", 1),
     ),
@@ -170,6 +179,7 @@ MARKET_CONTRACT = StageContract(
     rules=(
         required("target_market"),
         required("market_size"),
+        matches("market_size", RANGE_PATTERN, "is not a range; the prompt asks for one"),
         required("pricing_strategy"),
         required("market_positioning"),
         min_items("market_trends", 3),
@@ -179,10 +189,18 @@ MARKET_CONTRACT = StageContract(
 
 COMPETITIVE_CONTRACT = StageContract(
     rules=(
+        # The prompt asks for 3-5 direct and 2-3 indirect competitors. Past the
+        # upper bound the extra entries are usually invented to fill space.
         min_items("direct_competitors", 3),
+        max_items("direct_competitors", 5),
         min_items("indirect_competitors", 2),
+        max_items("indirect_competitors", 3),
         items_have("direct_competitors", ("name",)),
+        items_have("indirect_competitors", ("name",)),
+        items_have_any("direct_competitors", ("offering", "description"), "what it offers"),
+        items_have_any("indirect_competitors", ("offering", "description"), "what it offers"),
         no_duplicate_names("direct_competitors"),
+        no_duplicate_names("indirect_competitors"),
         # A company cannot coherently be both a direct and an indirect
         # competitor. Unlike the resources rules this is a logical
         # contradiction rather than a style judgement, so it needs no threshold.
@@ -206,8 +224,11 @@ SWOT_CONTRACT = StageContract(
 MARKETING_CONTRACT = StageContract(
     rules=(
         min_items("personas", 2),
+        max_items("personas", 4),
         items_have("personas", ("name", "description")),
+        items_min_list("personas", "pain_points", 2),
         min_items("faq", 5),
+        max_items("faq", 8),
         min_items("customer_journey", 4),
         min_items("geo_tactics", 2),
         required("brand_personality"),

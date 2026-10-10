@@ -61,6 +61,29 @@ NEAR_IDENTICAL_THRESHOLD = 0.85
 PLACEHOLDER_PENALTY = 25.0
 DUPLICATE_PENALTY = 10.0
 ECHOED_EXAMPLE_PENALTY = 30.0
+TRUNCATION_MARKER_PENALTY = 10.0
+TRUNCATION_PENALTY = 20.0
+"""Applied by the runner when the provider reports the reply hit max_tokens."""
+
+# The example schema renders a scalar as its field title in angle brackets -
+# "<Company Name>" - so a model that echoes the example returns exactly that.
+# A whole value in angle brackets is never a real answer.
+_BRACKETED_PLACEHOLDER = re.compile(r"^<[^<>]{1,80}>$")
+
+# Text that ends mid-thought. A long field trailing off in an ellipsis, or
+# carrying an explicit marker, was cut short rather than finished.
+_TRUNCATION_MARKERS = re.compile(r"(\.\.\.|…)\s*$|\[(?:truncated|continued|cut off)\]", re.IGNORECASE)
+_TRUNCATION_MIN_CHARS = 40
+
+# Words that say what kind of entity a company is, not which one. "Acme
+# Corporation" is grounded by "Acme" appearing on the page, not by "corporation".
+_COMPANY_SUFFIXES = frozenset(
+    {
+        "inc", "inc.", "corp", "corp.", "corporation", "company", "co", "co.", "ltd", "ltd.",
+        "limited", "llc", "plc", "gmbh", "group", "holdings", "the", "and", "technologies",
+        "technology", "labs", "software", "solutions", "services", "systems",
+    }
+)
 
 # Literal examples that appear inside the prompts. A model that returns one has
 # copied the instruction rather than answered it - and because the value looks
@@ -76,7 +99,6 @@ PROMPT_EXAMPLE_LITERALS = frozenset(
         "strong team",
         "good product",
         "bad support",
-        "technology",
     }
 )
 
@@ -141,6 +163,107 @@ def min_length(path: str, chars: int, label: str | None = None) -> Rule:
     return rule
 
 
+def max_items(path: str, count: int, label: str | None = None) -> Rule:
+    """List must carry at most ``count`` entries.
+
+    The prompts ask for bounded lists - "3-5 direct competitors", "2-4
+    personas" - and a model padding past the bound is usually inventing the
+    extra entries. Missing lists are ``min_items``' job, not this one.
+    """
+    name = label or path
+
+    def rule(value: BaseModel) -> str | None:
+        got = _get(value, path)
+        if isinstance(got, list) and len(got) > count:
+            return f"{name} has {len(got)} items, expected at most {count}"
+        return None
+
+    return rule
+
+
+def min_words(path: str, count: int, label: str | None = None) -> Rule:
+    """String must run to at least ``count`` words - catches one-word categories."""
+    name = label or path
+
+    def rule(value: BaseModel) -> str | None:
+        got = _get(value, path)
+        if not isinstance(got, str) or not got.strip():
+            return None  # emptiness is `required`'s job
+        if len(got.split()) < count:
+            return f"{name} {got.strip()[:40]!r} is too generic, expected at least {count} words"
+        return None
+
+    return rule
+
+
+def matches(path: str, pattern: str, explanation: str, label: str | None = None) -> Rule:
+    """String must match ``pattern`` (searched, case-insensitive)."""
+    name = label or path
+    compiled = re.compile(pattern, re.IGNORECASE)
+
+    def rule(value: BaseModel) -> str | None:
+        got = _get(value, path)
+        if not isinstance(got, str) or not got.strip():
+            return None  # emptiness is `required`'s job
+        if compiled.search(got) is None:
+            return f"{name} {got.strip()[:50]!r} {explanation}"
+        return None
+
+    return rule
+
+
+# A market size the prompt would accept: a range ("$2-5B", "1.2 to 3 billion")
+# or a TAM/SAM/SOM breakdown. A single precise figure is what it forbids.
+RANGE_PATTERN = (
+    r"\d[\d.,]*\s*(?:[kmbt]|bn|mn|million|billion|trillion)?\s*(?:-|–|—|to)\s*"
+    r"[$€£]?\s*\d"
+    r"|\b(?:tam|sam|som)\b"
+)
+
+
+def items_have_any(
+    path: str, alternatives: Iterable[str], what: str, label: str | None = None
+) -> Rule:
+    """Every entry must carry at least one of ``alternatives``, non-empty.
+
+    For a field the model names inconsistently - a competitor's offering comes
+    back as ``offering`` or ``description`` - where either counts.
+    """
+    name = label or path
+    keys = tuple(alternatives)
+
+    def rule(value: BaseModel) -> str | None:
+        got = _get(value, path)
+        if not isinstance(got, list) or not got:
+            return None  # emptiness is `min_items`' job
+        for i, item in enumerate(got):
+            if not any(_field(item, key) for key in keys):
+                return f"{name}[{i}] is missing {what}"
+        return None
+
+    return rule
+
+
+def items_min_list(path: str, field: str, count: int, label: str | None = None) -> Rule:
+    """Every entry's ``field`` list must carry at least ``count`` entries."""
+    name = label or path
+
+    def rule(value: BaseModel) -> str | None:
+        got = _get(value, path)
+        if not isinstance(got, list) or not got:
+            return None  # emptiness is `min_items`' job
+        short = []
+        for i, item in enumerate(got):
+            inner = item.get(field) if isinstance(item, dict) else getattr(item, field, None)
+            if not isinstance(inner, list) or len(inner) < count:
+                short.append(str(i))
+        if short:
+            return f"{name} entries {', '.join(short[:5])} have fewer than {count} {field}"
+        return None
+
+    return rule
+
+
 def items_have(path: str, keys: Iterable[str], label: str | None = None) -> Rule:
     """Every entry in a list of dicts/models must carry these keys, non-empty."""
     name = label or path
@@ -199,6 +322,9 @@ def find_placeholders(value: BaseModel) -> list[str]:
         stripped = text.strip().lower()
         if not stripped:
             continue
+        if _BRACKETED_PLACEHOLDER.match(stripped):
+            hits.append(f"placeholder text {text.strip()[:60]!r}")
+            continue
         for marker in PLACEHOLDER_MARKERS:
             # Exact-match short markers so a legitimate sentence containing
             # "not applicable" mid-flow is not punished; substring-match the
@@ -207,6 +333,21 @@ def find_placeholders(value: BaseModel) -> list[str]:
             if hit:
                 hits.append(f"placeholder text {text.strip()[:60]!r}")
                 break
+    return hits
+
+
+def find_truncation_markers(value: BaseModel) -> list[str]:
+    """Long text fields that stop mid-thought.
+
+    The bare placeholder check already catches a value that is only "...";
+    this is for a real sentence that trails off, which is what a reply cut
+    short and then repaired into valid JSON looks like.
+    """
+    hits: list[str] = []
+    for text in _iter_strings(value.model_dump()):
+        stripped = text.strip()
+        if len(stripped) >= _TRUNCATION_MIN_CHARS and _TRUNCATION_MARKERS.search(stripped):
+            hits.append(f"text appears cut off: {stripped[-50:]!r}")
     return hits
 
 
@@ -219,14 +360,30 @@ def find_echoed_examples(value: BaseModel) -> list[str]:
     return hits
 
 
+def _string_lists(value: Any, path: str = "") -> Iterable[tuple[str, list[str]]]:
+    """Every list of plain strings in a nested structure, with its dotted path."""
+    if isinstance(value, dict):
+        for key, inner in value.items():
+            yield from _string_lists(inner, f"{path}.{key}" if path else str(key))
+    elif isinstance(value, list) and value:
+        if all(isinstance(x, str) for x in value):
+            yield path, value
+        else:
+            for i, inner in enumerate(value):
+                yield from _string_lists(inner, f"{path}[{i}]")
+
+
 def find_duplicate_list_entries(value: BaseModel) -> list[str]:
-    """Repeated entries inside any list of plain strings."""
+    """Repeated entries inside any list of plain strings, at any depth.
+
+    Nested lists matter as much as top-level ones: a persona's pain points or a
+    journey stage's touchpoints padded with a repeat is the same failure.
+    """
     warnings: list[str] = []
-    for field_name, raw in value.model_dump().items():
-        if isinstance(raw, list) and raw and all(isinstance(x, str) for x in raw):
-            normalised = [x.strip().lower() for x in raw if x.strip()]
-            if len(normalised) != len(set(normalised)):
-                warnings.append(f"{field_name} contains duplicate entries")
+    for path, raw in _string_lists(value.model_dump()):
+        normalised = [x.strip().lower() for x in raw if x.strip()]
+        if len(normalised) != len(set(normalised)):
+            warnings.append(f"{path} contains duplicate entries")
     return warnings
 
 
@@ -388,12 +545,17 @@ def grounded_in_source(path: str, label: str | None = None) -> ContextRule:
         if not haystack.strip():
             return None
         needle = got.strip().lower()
-        if needle in haystack:
+        if re.search(rf"(?<!\w){re.escape(needle)}(?!\w)", haystack):
             return None
         # Accept a partial match so "Acme Corporation Ltd" still counts when
-        # the page only ever says "Acme".
-        words = [w for w in needle.split() if len(w) > 3]
-        if words and any(w in haystack for w in words):
+        # the page only ever says "Acme" - but only on the distinctive words.
+        # Matching any word let "Globex Software" pass on a page that merely
+        # mentions software.
+        words = [
+            w for w in re.findall(r"[\w'&.-]+", needle)
+            if len(w) >= 3 and w not in _COMPANY_SUFFIXES
+        ]
+        if words and any(re.search(rf"(?<!\w){re.escape(w)}(?!\w)", haystack) for w in words):
             return None
         return f"{name} {got.strip()[:40]!r} does not appear in the page content"
 
@@ -440,6 +602,11 @@ class StageContract:
             if echoed:
                 warnings.extend(echoed[:3])
                 score -= ECHOED_EXAMPLE_PENALTY
+
+            cut_off = find_truncation_markers(value)
+            if cut_off:
+                warnings.extend(cut_off[:3])
+                score -= TRUNCATION_MARKER_PENALTY
 
         if self.check_duplicates:
             dupes = find_duplicate_list_entries(value)

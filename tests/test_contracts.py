@@ -511,8 +511,15 @@ class TestCompetitorCrossListRule:
 
     def test_distinct_lists_pass(self) -> None:
         value = CompetitiveAnalysis(
-            direct_competitors=[{"name": "Stripe"}, {"name": "Adyen"}, {"name": "Braintree"}],
-            indirect_competitors=[{"name": "PayPal"}, {"name": "Wise"}],
+            direct_competitors=[
+                {"name": "Stripe", "offering": "payments API"},
+                {"name": "Adyen", "offering": "enterprise acquiring"},
+                {"name": "Braintree", "description": "PayPal-owned gateway"},
+            ],
+            indirect_competitors=[
+                {"name": "PayPal", "offering": "wallet checkout"},
+                {"name": "Wise", "offering": "cross-border transfers"},
+            ],
             competitive_advantages=["a", "b"], market_gaps=["c", "d"],
             threat_assessment="x" * 130,
         )
@@ -528,3 +535,132 @@ class TestCompetitorCrossListRule:
         result = COMPETITIVE_CONTRACT.evaluate(value)
         assert result.completeness < 100.0
         assert any("PayPal" in w for w in result.warnings)
+
+
+# --- Rules the write-up's contract table promised ---------------------------
+
+
+class TestBoundedLists:
+    def test_max_items_flags_padding(self) -> None:
+        from app.pipeline.contracts import max_items
+
+        rule = max_items("items", 2)
+        assert rule(Sample(items=["a", "b"])) is None
+        assert "at most 2" in (rule(Sample(items=["a", "b", "c"])) or "")
+
+    def test_competitive_contract_caps_both_lists(self) -> None:
+        many = [{"name": f"C{i}", "offering": "x"} for i in range(7)]
+        value = CompetitiveAnalysis(
+            direct_competitors=many, indirect_competitors=many,
+            competitive_advantages=["a", "b"], market_gaps=["c", "d"], threat_assessment="x" * 130,
+        )
+        warnings = COMPETITIVE_CONTRACT.evaluate(value).warnings
+        assert any("direct_competitors has 7 items, expected at most 5" in w for w in warnings)
+        assert any("indirect_competitors has 7 items, expected at most 3" in w for w in warnings)
+
+    def test_competitors_need_an_offering(self) -> None:
+        value = CompetitiveAnalysis(
+            direct_competitors=[{"name": "A"}, {"name": "B", "offering": "y"}, {"name": "C", "description": "z"}],
+            indirect_competitors=[{"name": "D", "offering": "w"}, {"name": "E", "offering": "v"}],
+            competitive_advantages=["a", "b"], market_gaps=["c", "d"], threat_assessment="x" * 130,
+        )
+        warnings = COMPETITIVE_CONTRACT.evaluate(value).warnings
+        assert warnings == ["direct_competitors[0] is missing what it offers"]
+
+
+class TestMarketSizeShape:
+    @pytest.mark.parametrize(
+        "size",
+        ["$2B-$5B (estimate)", "1.2 to 3 billion USD", "€400m–€900m", "TAM: $10B, SAM: $2B"],
+    )
+    def test_ranges_pass(self, size: str) -> None:
+        from app.pipeline.contracts import RANGE_PATTERN, matches
+
+        assert matches("name", RANGE_PATTERN, "is not a range")(Sample(name=size)) is None
+
+    @pytest.mark.parametrize("size", ["$4.2B", "Large and growing", "about 3 billion"])
+    def test_single_figures_fail(self, size: str) -> None:
+        from app.pipeline.contracts import RANGE_PATTERN, matches
+
+        assert matches("name", RANGE_PATTERN, "is not a range")(Sample(name=size)) is not None
+
+
+class TestPersonas:
+    def test_each_persona_needs_two_pain_points(self) -> None:
+        from app.models.bi import MarketingAnalysis, TargetAudiencePersona
+        from app.pipeline.contracts import items_min_list
+
+        value = MarketingAnalysis(
+            personas=[
+                TargetAudiencePersona(name="A", description="d", pain_points=["x", "y"]),
+                TargetAudiencePersona(name="B", description="d", pain_points=["x"]),
+            ]
+        )
+        warning = items_min_list("personas", "pain_points", 2)(value)
+        assert warning is not None and "1" in warning
+
+    def test_marketing_contract_caps_personas_and_faq(self) -> None:
+        from app.models.bi import FAQItem, MarketingAnalysis, TargetAudiencePersona
+
+        value = MarketingAnalysis(
+            personas=[
+                TargetAudiencePersona(name=f"P{i}", description="d", pain_points=["x", "y"])
+                for i in range(6)
+            ],
+            faq=[FAQItem(question=f"q{i}", answer="a") for i in range(10)],
+        )
+        warnings = MARKETING_CONTRACT.evaluate(value).warnings
+        assert any("personas has 6 items, expected at most 4" in w for w in warnings)
+        assert any("faq has 10 items, expected at most 8" in w for w in warnings)
+
+
+class TestIndustrySpecificity:
+    def test_a_one_word_industry_is_too_generic(self) -> None:
+        from app.pipeline.contracts import min_words
+
+        assert min_words("name", 2)(Sample(name="Technology")) is not None
+        assert min_words("name", 2)(Sample(name="Static site generation")) is None
+
+    def test_technology_is_no_longer_called_a_copied_example(self) -> None:
+        assert not find_echoed_examples(Sample(name="Technology"))
+
+
+class TestUniversalChecks:
+    def test_a_bracketed_field_title_is_a_placeholder(self) -> None:
+        """The example schema shows scalars as "<Company Name>"; echoing it is not an answer."""
+        assert find_placeholders(Sample(name="<Company Name>"))
+        assert not find_placeholders(Sample(name="Uses <b> tags in templates"))
+
+    def test_trailing_off_text_is_flagged(self) -> None:
+        from app.pipeline.contracts import find_truncation_markers
+
+        assert find_truncation_markers(Sample(body="The company sells to retailers across the region and..."))
+        assert find_truncation_markers(Sample(body="A long enough sentence that was then cut [truncated]"))
+        assert not find_truncation_markers(Sample(body="A complete sentence about the business."))
+        assert not find_truncation_markers(Sample(body="Short..."))
+
+    def test_duplicates_are_found_in_nested_lists(self) -> None:
+        from app.pipeline.contracts import find_duplicate_list_entries
+
+        value = Sample(entries=[{"tags": ["fast", "Fast "]}])
+        assert find_duplicate_list_entries(value) == ["entries[0].tags contains duplicate entries"]
+
+
+class TestStricterGrounding:
+    def _ctx(self, text: str):
+        class Ctx:
+            scraped = ScrapedContent(url="https://x.example", title="", description="", text_content=text)
+
+        return Ctx()
+
+    def test_a_generic_word_does_not_ground_a_name(self) -> None:
+        rule = grounded_in_source("name")
+        assert rule(Sample(name="Globex Software"), self._ctx("We build software for teams")) is not None
+
+    def test_the_distinctive_word_still_does(self) -> None:
+        rule = grounded_in_source("name")
+        assert rule(Sample(name="Globex Software Ltd"), self._ctx("Welcome to Globex")) is None
+
+    def test_a_word_inside_another_word_does_not_count(self) -> None:
+        rule = grounded_in_source("name")
+        assert rule(Sample(name="Acme"), self._ctx("the acmeist movement")) is not None

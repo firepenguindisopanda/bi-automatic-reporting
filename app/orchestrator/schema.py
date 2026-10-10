@@ -3,7 +3,13 @@
 SQLite and PostgreSQL differ in exactly two places for this schema: the
 autoincrement primary key, and the timestamp column type plus its default.
 Everything else is shared, so the DDL is written once and parameterised.
+
+Changes after the base tables are numbered migrations (``MIGRATIONS``), applied
+once each and recorded in ``schema_migrations``.
 """
+
+from collections.abc import Callable
+from dataclasses import dataclass, field
 
 
 def ddl(is_pg: bool) -> list[str]:
@@ -111,15 +117,75 @@ def ddl(is_pg: bool) -> list[str]:
     ]
 
 
-# Best-effort column additions for databases created by an earlier version.
-# Each runs inside its own try/except; "already exists" is the expected outcome.
-BACKFILL_COLUMNS: list[tuple[str, str, str]] = [
-    ("market_research_jobs", "pdf_path", "TEXT"),
-    ("market_research_jobs", "docx_path", "TEXT"),
-    # Retry arbitration: the score before the re-run and the re-run's own score.
-    # Both stay NULL for a stage that never retried - absent is not the same as
-    # unchanged, so a stage that never retried must not look like one that
-    # retried to no effect.
-    ("job_stages", "confidence_before_retry", "REAL"),
-    ("job_stages", "retry_confidence", "REAL"),
-]
+@dataclass(frozen=True)
+class Migration:
+    """One numbered step from an older schema to a newer one.
+
+    Applied in order and recorded in ``schema_migrations``, so each runs once
+    per database. Every step is also idempotent - ``IF NOT EXISTS`` DDL, and
+    columns added only when absent - because databases created before this
+    table existed have some of these changes already and no record of them.
+
+    A failure raises. The previous approach wrapped each ALTER in a bare
+    ``except: pass`` on the theory that "already exists" was the only possible
+    error, which also hid every error that was not that.
+    """
+
+    version: int
+    description: str
+    statements: Callable[[bool], list[str]] = field(default=lambda is_pg: [])
+    columns: tuple[tuple[str, str, str], ...] = ()
+    """(table, column, type) to add when the column is missing."""
+
+
+def _v3_indexes(is_pg: bool) -> list[str]:
+    return [
+        # Per-recipient daily caps count recent rows for one address.
+        "CREATE INDEX IF NOT EXISTS idx_jobs_email_created ON jobs (email, created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_deliveries_to_created ON deliveries (to_email, created_at)",
+        # The ETA reads recent successful durations per (stage, model).
+        "CREATE INDEX IF NOT EXISTS idx_job_stages_eta ON job_stages (stage, model, status)",
+        # Retention sweeps by age.
+        "CREATE INDEX IF NOT EXISTS idx_jobs_updated ON jobs (updated_at)",
+        "CREATE INDEX IF NOT EXISTS idx_mr_jobs_updated ON market_research_jobs (updated_at)",
+    ]
+
+
+MIGRATIONS: tuple[Migration, ...] = (
+    Migration(1, "base tables", statements=ddl),
+    Migration(
+        2,
+        "render paths on market research; retry arbitration scores",
+        columns=(
+            ("market_research_jobs", "pdf_path", "TEXT"),
+            ("market_research_jobs", "docx_path", "TEXT"),
+            # The score before a critic re-run and the re-run's own score. Both
+            # stay NULL for a stage that never retried - absent is not the same
+            # as unchanged.
+            ("job_stages", "confidence_before_retry", "REAL"),
+            ("job_stages", "retry_confidence", "REAL"),
+        ),
+    ),
+    Migration(
+        3,
+        "retry counts; indexes for recipient caps, ETA and retention",
+        statements=_v3_indexes,
+        columns=(
+            ("jobs", "retries", "INTEGER NOT NULL DEFAULT 0"),
+            ("market_research_jobs", "retries", "INTEGER NOT NULL DEFAULT 0"),
+        ),
+    ),
+)
+
+SCHEMA_VERSION = MIGRATIONS[-1].version
+
+
+def migrations_table(is_pg: bool) -> str:
+    ts = "TIMESTAMP" if is_pg else "TEXT"
+    now = "CURRENT_TIMESTAMP" if is_pg else "(datetime('now'))"
+    return (
+        "CREATE TABLE IF NOT EXISTS schema_migrations ("
+        "version INTEGER PRIMARY KEY, "
+        "description TEXT NOT NULL, "
+        f"applied_at {ts} NOT NULL DEFAULT {now})"
+    )

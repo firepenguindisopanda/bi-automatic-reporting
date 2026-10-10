@@ -4,7 +4,7 @@ from typing import Any
 import aiosqlite
 
 from app.config import settings
-from app.orchestrator.schema import BACKFILL_COLUMNS, ddl
+from app.orchestrator.schema import MIGRATIONS, migrations_table
 
 logger = logging.getLogger(__name__)
 
@@ -48,15 +48,37 @@ class Database:
         await self._migrate()
 
     async def _migrate(self) -> None:
-        """Create every table and index. Idempotent - runs on each startup."""
-        for statement in ddl(self._pg):
-            await self._exec(statement)
-        for table, column, coltype in BACKFILL_COLUMNS:
-            try:
-                await self._exec(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
-            except Exception:
-                pass  # column already present - expected on every run after the first
-        await self.commit()
+        """Bring the schema up to date. Safe on every startup; raises on failure."""
+        await self._exec(migrations_table(self._pg))
+        row = await self.fetchrow("SELECT MAX(version) AS v FROM schema_migrations")
+        current = int(row["v"]) if row and row.get("v") is not None else 0
+
+        for migration in MIGRATIONS:
+            if migration.version <= current:
+                continue
+            for statement in migration.statements(self._pg):
+                await self._exec(statement)
+            for table, column, coltype in migration.columns:
+                if column not in await self.columns(table):
+                    await self._exec(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
+            await self._exec(
+                "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
+                migration.version, migration.description,
+            )
+            await self.commit()
+            logger.info("Applied schema migration %d: %s", migration.version, migration.description)
+
+    async def columns(self, table: str) -> set[str]:
+        """Column names of ``table`` in the active dialect."""
+        if self._pg:
+            rows = await self.fetch(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = current_schema() AND table_name = ?",
+                table,
+            )
+            return {str(r["column_name"]) for r in rows}
+        rows = await self.fetch(f"PRAGMA table_info({table})")
+        return {str(r["name"]) for r in rows}
 
     async def _exec(self, sql: str, *args: Any) -> Any:
         if self._pg:
@@ -110,6 +132,17 @@ class Database:
     def now_expr(self) -> str:
         """SQL expression for the current timestamp in the active dialect."""
         return "CURRENT_TIMESTAMP" if self._pg else "(datetime('now'))"
+
+    def ago_expr(self, hours: int) -> str:
+        """SQL for "``hours`` ago", comparable with this dialect's timestamp columns.
+
+        Computed by the database rather than passed in, so it is measured on the
+        same clock and in the same representation that wrote ``created_at``.
+        """
+        hours = int(hours)
+        if self._pg:
+            return f"(CURRENT_TIMESTAMP - INTERVAL '{hours} hours')"
+        return f"(datetime('now', '-{hours} hours'))"
 
     async def close(self) -> None:
         if self._pg and self._pool is not None:

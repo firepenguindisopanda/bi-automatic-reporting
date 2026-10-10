@@ -7,7 +7,7 @@ import pytest
 from app.config import settings
 from app.orchestrator.database import Database
 from app.orchestrator.job_store import JobStore
-from app.orchestrator.schema import ddl
+from app.orchestrator.schema import MIGRATIONS, SCHEMA_VERSION, Migration, ddl
 
 EXPECTED_TABLES = {"jobs", "briefs", "market_research_jobs", "job_stages", "deliveries"}
 
@@ -201,3 +201,53 @@ class TestArbitrationPersistence:
         row = next(s for s in await store.get_stages("j-rec") if s["stage"] == "swot")
         assert row["confidence_before_retry"] == 30.0
         assert row["retry_confidence"] == 80.0
+
+
+class TestMigrations:
+    async def test_every_migration_is_recorded(self, db: Database) -> None:
+        rows = await db.fetch("SELECT version FROM schema_migrations ORDER BY version")
+        assert [r["version"] for r in rows] == [m.version for m in MIGRATIONS]
+        assert rows[-1]["version"] == SCHEMA_VERSION
+
+    async def test_retry_counts_exist(self, db: Database) -> None:
+        assert "retries" in await _columns(db, "jobs")
+        assert "retries" in await _columns(db, "market_research_jobs")
+
+    async def test_versions_are_unique_and_ascending(self) -> None:
+        versions = [m.version for m in MIGRATIONS]
+        assert versions == sorted(set(versions))
+
+    async def test_a_failing_migration_raises_instead_of_being_swallowed(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        import app.orchestrator.database as database_module
+
+        broken = (*MIGRATIONS, Migration(99, "broken", statements=lambda is_pg: ["NOT VALID SQL"]))
+        monkeypatch.setattr(database_module, "MIGRATIONS", broken)
+        monkeypatch.setattr(settings, "database_url", "")
+        monkeypatch.setattr(settings, "jobs_db", str(tmp_path / "broken.db"))
+        database = Database()
+        try:
+            with pytest.raises(Exception, match="syntax"):
+                await database.init()
+        finally:
+            await database.close()
+
+    async def test_a_legacy_database_gains_a_migration_history(self, tmp_path, monkeypatch) -> None:
+        """Created before the table existed: every step re-applies harmlessly."""
+        import aiosqlite
+
+        path = str(tmp_path / "legacy.db")
+        async with aiosqlite.connect(path) as conn:
+            for statement in ddl(False):
+                await conn.execute(statement)
+            await conn.commit()
+        monkeypatch.setattr(settings, "database_url", "")
+        monkeypatch.setattr(settings, "jobs_db", path)
+        database = Database()
+        await database.init()
+        try:
+            row = await database.fetchrow("SELECT MAX(version) AS v FROM schema_migrations")
+            assert row is not None and row["v"] == SCHEMA_VERSION
+        finally:
+            await database.close()

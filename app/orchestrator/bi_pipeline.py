@@ -52,6 +52,7 @@ from app.analysis.specs import (
 from app.config import settings
 from app.email.policy import DAY_HOURS, DeliveryRefusedError, check_recipient_allowed
 from app.email.service import EmailService
+from app.email.templates import ReportDigest
 from app.models.bi import (
     AnalysisArtifact,
     BIReport,
@@ -66,6 +67,7 @@ from app.models.bi import (
 )
 from app.orchestrator.job_store import JobStore
 from app.orchestrator.stage_recorder import StageRecorder
+from app.pipeline.eta import overall_quality
 from app.pipeline.stages import ErrorKind, JobStatus
 from app.report.generator import ReportGenerator
 from app.scraper.engine import ScraperEngine
@@ -229,7 +231,9 @@ class BIPipeline:
         job_id = job["job_id"]
         docx_raw = job.get("docx_path") or ""
         docx_path = Path(docx_raw) if docx_raw and Path(docx_raw).exists() else None
-        company = _company_name_from_artifact(job.get("artifact_json"))
+        digest = _digest_from_artifact(
+            job.get("artifact_json"), score=await self._score(job_id), report_url=_report_url(job_id)
+        )
         was_partial = job["status"] == JobStatus.PARTIAL
 
         recorder = StageRecorder(self._store, job_id, kind="bi")
@@ -237,7 +241,7 @@ class BIPipeline:
             await recorder.start("deliver")
         started = time.monotonic()
         result = await self._email_service.send_report(
-            to_email=job["email"], company_name=company, pdf_path=pdf_path, docx_path=docx_path
+            to_email=job["email"], digest=digest, pdf_path=pdf_path, docx_path=docx_path
         )
         duration = ms_since(started)
         await self._store.record_delivery(
@@ -328,7 +332,8 @@ class BIPipeline:
                 ctx.require_competitive(),
                 ctx.require_swot(),
             )
-            pdf_path, docx_path = await self._render(recorder, ctx, report)
+            score = await self._score(job_id)
+            pdf_path, docx_path = await self._render(recorder, ctx, report, score)
 
             artifact = AnalysisArtifact(
                 url=url,
@@ -347,7 +352,11 @@ class BIPipeline:
                 docx_path=str(docx_path),
                 status=JobStatus.RUNNING,
             )
-            terminal = await self._deliver(job_id, email, recorder, ctx, pdf_path, docx_path)
+            digest = ReportDigest.from_report(
+                report, ctx.require_profile(), ctx.marketing,
+                source_url=url, score=score, report_url=_report_url(job_id),
+            )
+            terminal = await self._deliver(job_id, email, recorder, digest, pdf_path, docx_path)
 
         except StageError as e:
             logger.warning("Job %s failed at stage %s: %s", job_id, e.stage, e.message)
@@ -463,8 +472,19 @@ class BIPipeline:
                 "; ".join(result.metrics.warnings[:3]),
             )
 
+    async def _score(self, job_id: str) -> float | None:
+        """The job's quality score as the page shows it, for the cover and the email.
+
+        Cosmetic there, so a failed read leaves it off rather than failing the job.
+        """
+        try:
+            return overall_quality(await self._store.get_stages(job_id))
+        except Exception:  # noqa: BLE001
+            logger.warning("Job %s: could not read stage scores", job_id, exc_info=True)
+            return None
+
     async def _render(
-        self, recorder: StageRecorder, ctx: StageContext, report: BIReport
+        self, recorder: StageRecorder, ctx: StageContext, report: BIReport, score: float | None
     ) -> tuple[Path, Path]:
         await recorder.start("render")
         started = time.monotonic()
@@ -472,7 +492,8 @@ class BIPipeline:
         try:
             # CPU-bound, and the heaviest step on a small host; keep it off the loop.
             pdf_path = await asyncio.to_thread(
-                self._report_gen.generate_pdf, report, profile, profile.company_name, ctx.marketing
+                self._report_gen.generate_pdf, report, profile, profile.company_name, ctx.marketing,
+                score=score, source_url=ctx.url,
             )
             docx_path = await asyncio.to_thread(
                 self._report_gen.generate_docx, report, profile, profile.company_name, ctx.marketing
@@ -495,7 +516,7 @@ class BIPipeline:
         job_id: str,
         email: str,
         recorder: StageRecorder,
-        ctx: StageContext,
+        digest: ReportDigest,
         pdf_path: Path,
         docx_path: Path,
     ) -> tuple[JobStatus, str | None]:
@@ -506,12 +527,8 @@ class BIPipeline:
         """
         await recorder.start("deliver")
         started = time.monotonic()
-        profile = ctx.require_profile()
         result = await self._email_service.send_report(
-            to_email=email,
-            company_name=profile.company_name,
-            pdf_path=pdf_path,
-            docx_path=docx_path,
+            to_email=email, digest=digest, pdf_path=pdf_path, docx_path=docx_path
         )
         duration = ms_since(started)
 
@@ -558,6 +575,34 @@ def _scrape_completeness(scraped: Any) -> float:
     if getattr(scraped, "headings", []):
         score += 15
     return min(100.0, score)
+
+
+def _report_url(job_id: str) -> str | None:
+    """The job page, for the email's link. None unless PUBLIC_BASE_URL is set."""
+    base = settings.public_base_url.strip().rstrip("/")
+    return f"{base}/jobs/{job_id}" if base else None
+
+
+def _digest_from_artifact(
+    artifact_json: str | None, *, score: float | None, report_url: str | None
+) -> ReportDigest:
+    """The email's view of a stored report, for a re-send.
+
+    An artifact that no longer validates still gets a message: just the
+    company name, which is all the old template ever showed.
+    """
+    try:
+        artifact = AnalysisArtifact.model_validate_json(artifact_json or "")
+    except ValidationError:
+        artifact = None
+    if artifact is not None and artifact.report is not None and artifact.business_profile is not None:
+        return ReportDigest.from_report(
+            artifact.report, artifact.business_profile, artifact.marketing,
+            source_url=artifact.url, score=score, report_url=report_url,
+        )
+    return ReportDigest(
+        company_name=_company_name_from_artifact(artifact_json), score=score, report_url=report_url
+    )
 
 
 def _company_name_from_artifact(artifact_json: str | None) -> str:

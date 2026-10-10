@@ -1,507 +1,231 @@
 import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
+from urllib.parse import urlparse
+from urllib.request import url2pathname
 
 from docx import Document
 from docx.shared import Pt
-from jinja2 import Environment
+from jinja2 import Environment, FileSystemLoader
+from markupsafe import Markup
 
+from app.branding import PALETTE, brand, display_host, without_em_dashes
 from app.models.bi import BIReport, BusinessProfile, MarketingAnalysis, MarketResearchResult
 
 logger = logging.getLogger(__name__)
+
+TEMPLATES_DIR = Path(__file__).parent / "templates"
+ASSETS_DIR = Path(__file__).parent / "assets"
+SERIF_FONT = ASSETS_DIR / "fonts" / "source-serif-4-latin.woff2"
+
+MAX_TITLE_CHARS = 90
+
+
+def _house_style(value: Any) -> Any:
+    """Applied to every ``{{ }}`` before escaping. Macro output is already done."""
+    if isinstance(value, str) and not isinstance(value, Markup):
+        return without_em_dashes(value)
+    return value
+
 
 # Every value in these templates is model output, and the model read an
 # attacker-chosen web page. Autoescape keeps that text as text: without it, a
 # page that talks the model into emitting `<img src="file:///etc/passwd">`
 # gets markup into the PDF, and WeasyPrint dutifully fetches it.
-_JINJA = Environment(autoescape=True)
+_JINJA = Environment(
+    loader=FileSystemLoader(TEMPLATES_DIR),
+    autoescape=True,
+    finalize=_house_style,
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
 
-HTML_TEMPLATE = _JINJA.from_string("""
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    @page { margin: 2cm; }
-    body { font-family: 'Source Serif 4', Palatino, Georgia, serif; color: #1a1815;
-           line-height: 1.65; font-size: 11pt; background: #fbfaf7; }
-    h1 { font-family: 'Source Serif 4', Palatino, Georgia, serif; font-weight: 400;
-         color: #1a1815; font-size: 24pt; border-bottom: 1px solid #d2cabb; padding-bottom: 10px; }
-    h2 { font-weight: 400; color: #1a1815; font-size: 15pt; margin-top: 26px;
-         border-bottom: 1px solid #e4dfd5; padding-bottom: 5px; }
-    h3 { font-weight: 600; color: #6b655c; font-size: 10pt; margin-top: 18px;
-         text-transform: uppercase; letter-spacing: 0.09em;
-         font-family: Helvetica, Arial, sans-serif; }
-    .exec-summary { background: #ffffff; border: 1px solid #e4dfd5; border-left: 2px solid #9a3f1f;
-                    padding: 16px; border-radius: 6px; margin: 16px 0; }
-    .exec-summary p { margin: 4px 0; }
-    ul { padding-left: 20px; }
-    li { margin: 4px 0; }
-    .section { margin: 20px 0; }
-    .label { font-weight: 600; color: #6b655c; font-family: Helvetica, Arial, sans-serif;
-             font-size: 9pt; text-transform: uppercase; letter-spacing: 0.08em; }
-    .footer {
-      margin-top: 40px; padding-top: 16px; border-top: 1px solid #e4dfd5;
-      font-size: 9pt; color: #8b8478; text-align: center;
+HTML_TEMPLATE = _JINJA.get_template("bi.html")
+MR_HTML_TEMPLATE = _JINJA.get_template("research.html")
+
+
+@dataclass(frozen=True, slots=True)
+class SizeTier:
+    """One ring of the TAM/SAM/SOM diagram, with its geometry."""
+
+    label: str
+    long: str
+    value: str
+    note: str
+    r: int
+    cy: int
+    label_y: int
+    fill: str
+    stroke: str
+    text: str
+
+
+_TIER_NAMES = {
+    "TAM": "Total addressable market",
+    "SAM": "Serviceable available market",
+    "SOM": "Serviceable obtainable market",
+}
+_TIER = re.compile(r"\b(TAM|SAM|SOM)\b\s*[:=]?\s*")
+_TRAILING = re.compile(r"[\s;,|·.]+$")
+_NOTE = re.compile(r"^(.*?)\s*\(([^()]*)\)$", re.S)
+# Outer to inner: radius, fill, stroke, text. Circles share a bottom tangent.
+_RINGS = (
+    (58, "sunk", "rule_strong", "ink_muted"),
+    (39, "accent_soft", "rule", "accent"),
+    (20, "accent", "accent", "paper"),
+)
+
+
+def market_tiers(text: str) -> list[SizeTier]:
+    """TAM/SAM/SOM parsed out of the market-size sentence, outermost first.
+
+    The model writes them as one string ("TAM: 45,000 employers (registry
+    data); SAM: ..."). Fewer than two tiers is not a diagram, so it returns []
+    and the template shows the sentence as written.
+    """
+    found: dict[str, tuple[str, str]] = {}
+    matches = list(_TIER.finditer(text or ""))
+    for i, match in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        chunk = _TRAILING.sub("", text[match.end() : end]).strip()
+        if not chunk or match[1] in found:
+            continue
+        note_match = _NOTE.match(chunk)
+        value, note = (note_match[1], note_match[2]) if note_match else (chunk, "")
+        found[match[1]] = (value.strip()[:80], note.strip()[:160])
+
+    present = [label for label in ("TAM", "SAM", "SOM") if label in found]
+    if len(present) < 2:
+        return []
+    rings = _RINGS if len(present) == 3 else (_RINGS[0], _RINGS[2])
+    tiers = []
+    for label, (r, fill, stroke, colour) in zip(present, rings, strict=True):
+        cy = 118 - r
+        label_y = cy + 2 if r == rings[-1][0] else cy - r + 10
+        value, note = found[label]
+        tiers.append(SizeTier(
+            label=label, long=_TIER_NAMES[label], value=value, note=note, r=r, cy=cy,
+            label_y=label_y, fill=PALETTE[fill], stroke=PALETTE[stroke], text=PALETTE[colour],
+        ))
+    return tiers
+
+
+def paragraphs(text: str) -> list[str]:
+    """Paragraphs as the model wrote them; one block if it wrote one."""
+    parts = [p.strip() for p in re.split(r"\n\s*\n", text or "") if p.strip()]
+    if len(parts) == 1 and "\n" in parts[0]:
+        parts = [p.strip() for p in parts[0].splitlines() if p.strip()]
+    return parts
+
+
+def _competitors(report: BIReport) -> list[tuple[str, str, str]]:
+    """(name, Direct/Indirect, offering) rows, from whichever keys the model used."""
+    rows = []
+    for kind, items in (
+        ("Direct", report.competitive_analysis.direct_competitors),
+        ("Indirect", report.competitive_analysis.indirect_competitors),
+    ):
+        for c in items:
+            if isinstance(c, dict):
+                name = c.get("name") or "Unnamed competitor"
+                rows.append((name, kind, c.get("offering") or c.get("description") or ""))
+            else:
+                rows.append((str(c), kind, ""))
+    return rows
+
+
+def _pretty_date(when: datetime) -> str:
+    return f"{when.day} {when:%B %Y}"
+
+
+def _cover(
+    *, title: str, subtitle: str, kind: str, eyebrow: str, source_url: str,
+    score: float | None, generated: datetime | None,
+) -> dict[str, Any]:
+    clipped = title if len(title) <= MAX_TITLE_CHARS else title[: MAX_TITLE_CHARS - 1].rstrip() + "…"
+    return {
+        "brand": brand(),
+        "c": PALETTE,
+        "serif_font_url": SERIF_FONT.as_uri(),
+        "title": clipped,
+        "subtitle": subtitle,
+        "kind": kind,
+        "cover_eyebrow": eyebrow,
+        "date": _pretty_date(generated or datetime.now()),
+        "source_host": display_host(source_url),
+        "score": None if score is None else round(score),
     }
-    table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-    th, td { border: 1px solid #e4dfd5; padding: 8px; text-align: left; }
-    th { background: #f5f2ec; font-weight: 600; }
-  </style>
-</head>
-<body>
-  <h1>Business Intelligence Report</h1>
-  <p style="color: #6b655c; font-size: 10pt;">{{ company }} &mdash; Generated {{ date }}</p>
-
-  <div class="exec-summary">
-    <h2>Executive Summary</h2>
-    <p>{{ executive_summary }}</p>
-  </div>
-
-  <div class="section">
-    <h2>1. Business Profile</h2>
-    <p><span class="label">Company:</span> {{ profile.company_name }}</p>
-    <p><span class="label">Tagline:</span> {{ profile.tagline }}</p>
-    <p><span class="label">Industry:</span> {{ profile.industry }}</p>
-    <p><span class="label">Value Proposition:</span> {{ profile.value_proposition }}</p>
-    <h3>Offerings</h3>
-    <ul>
-    {% for o in profile.offerings %}
-      <li>{{ o }}</li>
-    {% endfor %}
-    </ul>
-    <h3>Target Audience</h3>
-    <ul>
-    {% for a in profile.target_audience %}
-      <li>{{ a }}</li>
-    {% endfor %}
-    </ul>
-  </div>
-
-  <div class="section">
-    <h2>2. Market Analysis</h2>
-    <p><span class="label">Target Market:</span> {{ market.target_market }}</p>
-    <p><span class="label">Market Size:</span> {{ market.market_size }}</p>
-    <p><span class="label">Pricing Strategy:</span> {{ market.pricing_strategy }}</p>
-    <p><span class="label">Market Positioning:</span> {{ market.market_positioning }}</p>
-    <h3>Market Trends</h3>
-    <ul>
-    {% for t in market.market_trends %}
-      <li>{{ t }}</li>
-    {% endfor %}
-    </ul>
-    {% if market.customer_segments %}
-    <h3>Customer Segments</h3>
-    <ul>
-    {% for s in market.customer_segments %}
-      <li>{{ s }}</li>
-    {% endfor %}
-    </ul>
-    {% endif %}
-  </div>
-
-  <div class="section">
-    <h2>3. Competitive Analysis</h2>
-    <h3>Direct Competitors</h3>
-    <ul>
-    {% for c in competitive.direct_competitors %}
-      <li><strong>{{ c.get('name') or 'Unnamed competitor' }}</strong>:
-        {{ c.get('offering') or c.get('description') or '' }}</li>
-    {% endfor %}
-    </ul>
-    {% if competitive.indirect_competitors %}
-    <h3>Indirect Competitors</h3>
-    <ul>
-    {% for c in competitive.indirect_competitors %}
-      <li><strong>{{ c.get('name') or 'Unnamed competitor' }}</strong>:
-        {{ c.get('offering') or c.get('description') or '' }}</li>
-    {% endfor %}
-    </ul>
-    {% endif %}
-    <h3>Competitive Advantages</h3>
-    <ul>
-    {% for a in competitive.competitive_advantages %}
-      <li>{{ a }}</li>
-    {% endfor %}
-    </ul>
-    {% if competitive.market_gaps %}
-    <h3>Market Gaps</h3>
-    <ul>
-    {% for g in competitive.market_gaps %}
-      <li>{{ g }}</li>
-    {% endfor %}
-    </ul>
-    {% endif %}
-    <p><span class="label">Threat Assessment:</span> {{ competitive.threat_assessment }}</p>
-  </div>
-
-  <div class="section">
-    <h2>4. SWOT Analysis</h2>
-    <table>
-      <tr><th style="width:50%">Strengths</th><th style="width:50%">Weaknesses</th></tr>
-      <tr>
-        <td><ul>{% for s in swot.strengths %}<li>{{ s }}</li>{% endfor %}</ul></td>
-        <td><ul>{% for w in swot.weaknesses %}<li>{{ w }}</li>{% endfor %}</ul></td>
-      </tr>
-      <tr><th>Opportunities</th><th>Threats</th></tr>
-      <tr>
-        <td><ul>{% for o in swot.opportunities %}<li>{{ o }}</li>{% endfor %}</ul></td>
-        <td><ul>{% for t in swot.threats %}<li>{{ t }}</li>{% endfor %}</ul></td>
-      </tr>
-    </table>
-  </div>
-
-  <div class="section">
-    <h2>5. Recommendations</h2>
-    <ul>
-    {% for r in recommendations %}
-      <li>{{ r }}</li>
-    {% endfor %}
-    </ul>
-  </div>
-
-  <div class="section">
-    <h2>6. Risk Factors</h2>
-    <ul>
-    {% for r in risk_factors %}
-      <li>{{ r }}</li>
-    {% endfor %}
-    </ul>
-  </div>
-
-  {% if marketing %}
-  <div class="section">
-    <h2>7. Target Audience & Personas</h2>
-    {% for p in marketing.personas %}
-    <h3>{{ p.name or 'Persona' }}</h3>
-    <p>{{ p.description }}</p>
-    {% if p.pain_points %}
-    <p><span class="label">Pain Points:</span></p>
-    <ul>{% for pp in p.pain_points %}<li>{{ pp }}</li>{% endfor %}</ul>
-    {% endif %}
-    {% if p.goals %}
-    <p><span class="label">Goals:</span></p>
-    <ul>{% for g in p.goals %}<li>{{ g }}</li>{% endfor %}</ul>
-    {% endif %}
-    {% if p.channels %}
-    <p><span class="label">Channels:</span></p>
-    <ul>{% for c in p.channels %}<li>{{ c }}</li>{% endfor %}</ul>
-    {% endif %}
-    {% endfor %}
-  </div>
-
-  <div class="section">
-    <h2>8. Brand Personality</h2>
-    {% if marketing.brand_personality %}
-    <p><span class="label">Archetype:</span> {{ marketing.brand_personality.archetype }}</p>
-    <p><span class="label">Voice:</span> {{ marketing.brand_personality.voice_characteristics }}</p>
-    <h3>Traits</h3>
-    <ul>{% for t in marketing.brand_personality.traits %}<li>{{ t }}</li>{% endfor %}</ul>
-    {% endif %}
-  </div>
-
-  <div class="section">
-    <h2>9. People Also Ask</h2>
-    {% for item in marketing.faq %}
-    <p><strong>{{ item.question }}</strong></p>
-    <p>{{ item.answer }}</p>
-    {% endfor %}
-  </div>
-
-  <div class="section">
-    <h2>10. Customer Journey</h2>
-    {% for stage in marketing.customer_journey %}
-    <h3>{{ stage.stage }}</h3>
-    <p>{{ stage.description }}</p>
-    {% if stage.touchpoints %}
-    <p><span class="label">Touchpoints:</span></p>
-    <ul>{% for t in stage.touchpoints %}<li>{{ t }}</li>{% endfor %}</ul>
-    {% endif %}
-    {% endfor %}
-  </div>
-
-  <div class="section">
-    <h2>11. E-E-A-T &amp; GEO Optimization</h2>
-    {% if marketing.eeat %}
-    <h3>E-E-A-T Signals</h3>
-    {% if marketing.eeat.experience %}
-    <p><span class="label">Experience:</span></p>
-    <ul>{% for s in marketing.eeat.experience %}<li>{{ s }}</li>{% endfor %}</ul>
-    {% endif %}
-    {% if marketing.eeat.expertise %}
-    <p><span class="label">Expertise:</span></p>
-    <ul>{% for s in marketing.eeat.expertise %}<li>{{ s }}</li>{% endfor %}</ul>
-    {% endif %}
-    {% if marketing.eeat.authoritativeness %}
-    <p><span class="label">Authoritativeness:</span></p>
-    <ul>{% for s in marketing.eeat.authoritativeness %}<li>{{ s }}</li>{% endfor %}</ul>
-    {% endif %}
-    {% if marketing.eeat.trustworthiness %}
-    <p><span class="label">Trustworthiness:</span></p>
-    <ul>{% for s in marketing.eeat.trustworthiness %}<li>{{ s }}</li>{% endfor %}</ul>
-    {% endif %}
-    {% endif %}
-    {% if marketing.geo_tactics %}
-    <h3>GEO Tactics</h3>
-    <ul>
-    {% for g in marketing.geo_tactics %}
-    <li><strong>{{ g.tactic }}:</strong> {{ g.description }}</li>
-    {% endfor %}
-    </ul>
-    {% endif %}
-  </div>
-
-  <div class="section">
-    <h2>12. Call to Action</h2>
-    <p>{{ marketing.call_to_action }}</p>
-  </div>
-  {% endif %}
-
-  <div class="footer">
-    <p>Business Intelligence System - Automated Analysis Report</p>
-    <p>Source: {{ profile.website or 'N/A' }}</p>
-  </div>
-</body>
-</html>
-""")
 
 
-MR_HTML_TEMPLATE = _JINJA.from_string("""
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    @page { margin: 2cm; }
-    body { font-family: 'Source Serif 4', Palatino, Georgia, serif; color: #1a1815;
-           line-height: 1.65; font-size: 11pt; background: #fbfaf7; }
-    h1 { font-family: 'Source Serif 4', Palatino, Georgia, serif; font-weight: 400;
-         color: #1a1815; font-size: 24pt; border-bottom: 1px solid #d2cabb; padding-bottom: 10px; }
-    h2 { font-weight: 400; color: #1a1815; font-size: 15pt; margin-top: 26px;
-         border-bottom: 1px solid #e4dfd5; padding-bottom: 5px; }
-    h3 { font-weight: 600; color: #6b655c; font-size: 10pt; margin-top: 18px;
-         text-transform: uppercase; letter-spacing: 0.09em;
-         font-family: Helvetica, Arial, sans-serif; }
-    .exec-summary { background: #ffffff; border: 1px solid #e4dfd5; border-left: 2px solid #9a3f1f;
-                    padding: 16px; border-radius: 6px; margin: 16px 0; }
-    .kpi-row { display: flex; gap: 16px; margin: 16px 0; }
-    .kpi-card { flex: 1; border: 1px solid #e4dfd5; border-radius: 6px; padding: 12px;
-                background: #ffffff; text-align: center; }
-    .kpi-card .label { font-size: 8pt; color: #6b655c; text-transform: uppercase;
-                       letter-spacing: 0.09em; font-family: Helvetica, Arial, sans-serif; }
-    .kpi-card .value { font-size: 17pt; font-weight: 400; color: #9a3f1f; margin-top: 4px; }
-    .insight-box { background: #ffffff; padding: 12px 16px; border-left: 2px solid #6b655c;
-                   border-top: 1px solid #e4dfd5; border-right: 1px solid #e4dfd5;
-                   border-bottom: 1px solid #e4dfd5; margin: 8px 0; }
-    .rec-box { background: #ffffff; padding: 12px 16px; border-left: 2px solid #3e6b4a;
-               border-top: 1px solid #e4dfd5; border-right: 1px solid #e4dfd5;
-               border-bottom: 1px solid #e4dfd5; margin: 8px 0; }
-    .risk-box { background: #ffffff; padding: 12px 16px; border-left: 2px solid #7d5f19;
-                border-top: 1px solid #e4dfd5; border-right: 1px solid #e4dfd5;
-                border-bottom: 1px solid #e4dfd5; margin: 8px 0; }
-    ul { padding-left: 20px; }
-    li { margin: 4px 0; }
-    .section { margin: 20px 0; }
-    .label { font-weight: 600; color: #6b655c; font-family: Helvetica, Arial, sans-serif;
-             font-size: 9pt; text-transform: uppercase; letter-spacing: 0.08em; }
-    .footer {
-      margin-top: 40px; padding-top: 16px; border-top: 1px solid #e4dfd5;
-      font-size: 9pt; color: #8b8478; text-align: center;
-    }
-    .resource-item { border-left: 1px solid #d2cabb; padding: 8px 12px; margin: 8px 0; }
-    .resource-item .name { font-weight: 600; color: #9a3f1f; }
-    .resource-item .url { font-size: 8.5pt; color: #8b8478;
-                          font-family: 'SF Mono', Menlo, monospace; }
-    .resource-item .desc { margin-top: 4px; }
-    table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-    th, td { border: 1px solid #e4dfd5; padding: 8px; text-align: left; vertical-align: top; }
-    th { background: #f5f2ec; font-weight: 600; }
-  </style>
-</head>
-<body>
-  <h1>Market Research Report</h1>
-  <p style="color: #6b655c; font-size: 10pt;">{{ query }} &mdash; Generated {{ date }}</p>
+def render_bi_html(
+    report: BIReport,
+    profile: BusinessProfile,
+    marketing: MarketingAnalysis | None = None,
+    *,
+    company: str = "",
+    score: float | None = None,
+    source_url: str = "",
+    generated: datetime | None = None,
+) -> str:
+    return HTML_TEMPLATE.render(
+        **_cover(
+            title=company or profile.company_name, subtitle=profile.tagline,
+            kind="Business intelligence", eyebrow="Strategic report",
+            source_url=source_url or profile.website, score=score, generated=generated,
+        ),
+        summary_paragraphs=paragraphs(report.executive_summary),
+        profile=profile,
+        market=report.market_analysis,
+        sizing=market_tiers(report.market_analysis.market_size),
+        competitive=report.competitive_analysis,
+        competitors=_competitors(report),
+        swot=report.swot_analysis,
+        recommendations=report.recommendations,
+        risk_factors=report.risk_factors,
+        marketing=marketing,
+    )
 
-  <div class="exec-summary">
-    <h2>Executive Summary</h2>
-    <p>{{ executive_summary }}</p>
-  </div>
 
-  {% if market_size or growth_rate %}
-  <div class="kpi-row">
-    {% if market_size %}
-    <div class="kpi-card">
-      <div class="label">Estimated Market Size</div>
-      <div class="value">{{ market_size }}</div>
-    </div>
-    {% endif %}
-    {% if growth_rate %}
-    <div class="kpi-card">
-      <div class="label">Growth Rate</div>
-      <div class="value">{{ growth_rate }}</div>
-    </div>
-    {% endif %}
-  </div>
-  {% endif %}
+def render_research_html(result: MarketResearchResult, *, generated: datetime | None = None) -> str:
+    return MR_HTML_TEMPLATE.render(
+        **_cover(
+            title=result.market_query, subtitle="", kind="Market research",
+            eyebrow="Market research report", source_url="", score=None, generated=generated,
+        ),
+        summary_paragraphs=paragraphs(result.executive_summary),
+        landscape_paragraphs=paragraphs(result.summary),
+        key_insights=result.key_insights,
+        recommendations=result.recommendations,
+        risks_and_assumptions=result.risks_and_assumptions,
+        market_size=result.market_size,
+        sizing=market_tiers(result.market_size),
+        growth_rate=result.growth_rate,
+        swot=result.swot,
+        pestel_rows=[(label, items) for label, items in _pestel_rows(result) if items],
+        five_forces_rows=[(label, text) for label, text in _five_forces_rows(result) if text],
+        resource_groups=[
+            (heading, items)
+            for heading, items in (
+                ("Key players", result.key_players),
+                ("Competitor sites", result.competitor_sites),
+                ("Industry websites and resources", result.industry_websites),
+                ("News and publications", result.news_sources),
+                ("Research papers and reports", result.research_papers),
+                ("Communities and forums", result.relevant_communities),
+            )
+            if items
+        ],
+    )
 
-  {% if key_insights %}
-  <div class="section">
-    <h2>Key Insights</h2>
-    {% for insight in key_insights %}
-    <div class="insight-box">{{ insight }}</div>
-    {% endfor %}
-  </div>
-  {% endif %}
 
-  {% if recommendations %}
-  <div class="section">
-    <h2>Recommendations</h2>
-    {% for rec in recommendations %}
-    <div class="rec-box">{{ rec }}</div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% if risks_and_assumptions %}
-  <div class="section">
-    <h2>Risks &amp; Assumptions</h2>
-    {% for risk in risks_and_assumptions %}
-    <div class="risk-box">{{ risk }}</div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  <div class="section">
-    <h2>Market Landscape</h2>
-    <p>{{ summary }}</p>
-  </div>
-
-  {% if swot %}
-  <div class="section">
-    <h2>Market SWOT</h2>
-    <table>
-      <tr><th style="width:50%">Strengths</th><th style="width:50%">Weaknesses</th></tr>
-      <tr>
-        <td><ul>{% for s in swot.strengths %}<li>{{ s }}</li>{% endfor %}</ul></td>
-        <td><ul>{% for w in swot.weaknesses %}<li>{{ w }}</li>{% endfor %}</ul></td>
-      </tr>
-      <tr><th>Opportunities</th><th>Threats</th></tr>
-      <tr>
-        <td><ul>{% for o in swot.opportunities %}<li>{{ o }}</li>{% endfor %}</ul></td>
-        <td><ul>{% for t in swot.threats %}<li>{{ t }}</li>{% endfor %}</ul></td>
-      </tr>
-    </table>
-  </div>
-  {% endif %}
-
-  {% if pestel %}
-  <div class="section">
-    <h2>PESTEL Analysis</h2>
-    {% for label, items in pestel_rows %}
-    {% if items %}
-    <h3>{{ label }}</h3>
-    <ul>{% for item in items %}<li>{{ item }}</li>{% endfor %}</ul>
-    {% endif %}
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% if five_forces %}
-  <div class="section">
-    <h2>Porter's Five Forces</h2>
-    {% for label, text in five_forces_rows %}
-    {% if text %}<p><span class="label">{{ label }}:</span> {{ text }}</p>{% endif %}
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% if key_players %}
-  <div class="section">
-    <h2>Key Players</h2>
-    {% for r in key_players %}
-    <div class="resource-item">
-      <div class="name">{{ r.name }}</div>
-      <div class="url">{{ r.url }}</div>
-      <div class="desc">{{ r.description }}</div>
-      {% if r.relevance %}<p style="font-size: 9pt; color: #6b655c; margin-top: 2px;">{{ r.relevance }}</p>{% endif %}
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% if competitor_sites %}
-  <div class="section">
-    <h2>Competitor Sites</h2>
-    {% for r in competitor_sites %}
-    <div class="resource-item">
-      <div class="name">{{ r.name }}</div>
-      <div class="url">{{ r.url }}</div>
-      <div class="desc">{{ r.description }}</div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% if industry_websites %}
-  <div class="section">
-    <h2>Industry Websites &amp; Resources</h2>
-    {% for r in industry_websites %}
-    <div class="resource-item">
-      <div class="name">{{ r.name }}</div>
-      <div class="url">{{ r.url }}</div>
-      <div class="desc">{{ r.description }}</div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% if news_sources %}
-  <div class="section">
-    <h2>News &amp; Publications</h2>
-    {% for r in news_sources %}
-    <div class="resource-item">
-      <div class="name">{{ r.name }}</div>
-      <div class="url">{{ r.url }}</div>
-      <div class="desc">{{ r.description }}</div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% if research_papers %}
-  <div class="section">
-    <h2>Research Papers &amp; Reports</h2>
-    {% for r in research_papers %}
-    <div class="resource-item">
-      <div class="name">{{ r.name }}</div>
-      <div class="url">{{ r.url }}</div>
-      <div class="desc">{{ r.description }}</div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% if relevant_communities %}
-  <div class="section">
-    <h2>Communities &amp; Forums</h2>
-    {% for r in relevant_communities %}
-    <div class="resource-item">
-      <div class="name">{{ r.name }}</div>
-      <div class="url">{{ r.url }}</div>
-      <div class="desc">{{ r.description }}</div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  <div class="footer">
-    <p>Business Intelligence System - Automated Market Research Report</p>
-    <p>Query: {{ query }}</p>
-  </div>
-</body>
-</html>
-""")
+def _apply_house_style(doc: Any) -> None:
+    for paragraph in doc.paragraphs:
+        for run in paragraph.runs:
+            if "—" in run.text:
+                run.text = without_em_dashes(run.text)
 
 
 def _sanitize_filename(name: str) -> str:
@@ -546,14 +270,32 @@ def _competitor_line(c: object) -> str:
     return f"{name}: {offering}" if offering else str(name)
 
 
-def write_pdf(html: str, filepath: Path) -> None:
-    """Render HTML to a PDF file with every outbound fetch refused.
+def bundled_asset(url: str) -> Path | None:
+    """The file a URL names if it is one of the report's bundled assets, else None.
 
-    The templates reference no external resources, so any fetch can only come
-    from injected markup. WeasyPrint's default fetcher follows http(s) and
-    file:// URLs, which would make the renderer a server-side request forgery
-    and local-file read reachable from the scraped page. Autoescaping stops the
-    markup; this stops the fetch even if markup ever gets through.
+    Resolved before the check, so `..` and symlinks cannot step outside.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme != "file" or parsed.netloc not in ("", "localhost"):
+        return None
+    try:
+        path = Path(url2pathname(parsed.path)).resolve()
+    except (OSError, ValueError):
+        return None
+    if not path.is_relative_to(ASSETS_DIR.resolve()) or not path.is_file():
+        return None
+    return path
+
+
+def write_pdf(html: str, filepath: Path) -> None:
+    """Render HTML to a PDF file, loading nothing but the bundled fonts.
+
+    WeasyPrint's default fetcher follows http(s) and file:// URLs, which would
+    make the renderer a server-side request forgery and local-file read
+    reachable from the scraped page. The templates need one thing from outside
+    the document, the serif font, so the fetcher serves files under
+    ``assets/`` and refuses every other URL. Autoescaping stops injected markup;
+    this stops the fetch even if markup ever gets through.
 
     Imported lazily: WeasyPrint loads Pango when imported, and importing it at
     module load made the whole API unimportable on a machine without it.
@@ -561,11 +303,14 @@ def write_pdf(html: str, filepath: Path) -> None:
     from weasyprint import HTML
     from weasyprint.urls import URLFetcher
 
-    class _RefuseAll(URLFetcher):
+    class _BundledAssetsOnly(URLFetcher):
         def fetch(self, url, headers=None):
-            raise ValueError(f"external resources are disabled in reports: {url[:80]}")
+            asset = bundled_asset(url)
+            if asset is None:
+                raise ValueError(f"only bundled assets load in reports: {url[:80]}")
+            return super().fetch(asset.as_uri(), headers)
 
-    HTML(string=html, url_fetcher=_RefuseAll()).write_pdf(str(filepath))
+    HTML(string=html, url_fetcher=_BundledAssetsOnly()).write_pdf(str(filepath))
 
 
 class ReportGenerator:
@@ -579,21 +324,13 @@ class ReportGenerator:
         profile: BusinessProfile,
         company: str = "",
         marketing: MarketingAnalysis | None = None,
+        *,
+        score: float | None = None,
+        source_url: str = "",
     ) -> Path:
-        date_str = datetime.now().strftime("%B %d, %Y")
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-        html = HTML_TEMPLATE.render(
-            company=company or profile.company_name,
-            date=date_str,
-            executive_summary=report.executive_summary,
-            profile=profile,
-            market=report.market_analysis,
-            competitive=report.competitive_analysis,
-            swot=report.swot_analysis,
-            recommendations=report.recommendations,
-            risk_factors=report.risk_factors,
-            marketing=marketing,
+        html = render_bi_html(
+            report, profile, marketing, company=company, score=score, source_url=source_url
         )
 
         safe_name = _sanitize_filename(company or profile.company_name)
@@ -783,6 +520,7 @@ class ReportGenerator:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{safe_name}_{ts}.docx"
         filepath = self._output_dir / filename
+        _apply_house_style(doc)
         doc.save(str(filepath))
         logger.info("DOCX generated: %s", filepath)
         return filepath
@@ -811,31 +549,8 @@ class MarketResearchReportGenerator:
 
     def generate_pdf(self, result: MarketResearchResult) -> Path:
         self._ensure_dir()
-        date_str = datetime.now().strftime("%B %d, %Y")
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-        html = MR_HTML_TEMPLATE.render(
-            query=result.market_query,
-            date=date_str,
-            executive_summary=result.executive_summary,
-            key_insights=result.key_insights,
-            recommendations=result.recommendations,
-            risks_and_assumptions=result.risks_and_assumptions,
-            market_size=result.market_size,
-            growth_rate=result.growth_rate,
-            summary=result.summary,
-            key_players=result.key_players,
-            news_sources=result.news_sources,
-            industry_websites=result.industry_websites,
-            competitor_sites=result.competitor_sites,
-            research_papers=result.research_papers,
-            relevant_communities=result.relevant_communities,
-            swot=result.swot,
-            pestel=result.pestel,
-            pestel_rows=_pestel_rows(result),
-            five_forces=result.five_forces,
-            five_forces_rows=_five_forces_rows(result),
-        )
+        html = render_research_html(result)
 
         safe_name = _sanitize_filename(result.market_query)
         filename = f"market_research_{safe_name}_{ts}.pdf"
@@ -924,6 +639,7 @@ class MarketResearchReportGenerator:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"market_research_{safe_name}_{ts}.docx"
         filepath = self._output_dir / filename
+        _apply_house_style(doc)
         doc.save(str(filepath))
         logger.info("Market research DOCX generated: %s", filepath)
         return filepath

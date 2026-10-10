@@ -12,6 +12,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from app.branding import sender
 from app.config import settings
 from app.email import templates
 from app.email.message import DeliveryResult, EmailAttachment, EmailMessage
@@ -35,7 +36,6 @@ def _attachment(path: Path) -> EmailAttachment:
 
 class EmailService:
     def __init__(self, provider: EmailProvider | None = None) -> None:
-        self._from_email = settings.from_email
         self._provider = provider or build_provider()
 
     @property
@@ -43,16 +43,20 @@ class EmailService:
         return self._provider.name
 
     def build_report_message(
-        self, to_email: str, company_name: str, pdf_path: Path, docx_path: Path | None = None
+        self,
+        to_email: str,
+        digest: templates.ReportDigest,
+        pdf_path: Path,
+        docx_path: Path | None = None,
     ) -> EmailMessage:
         attachments = [_attachment(pdf_path)]
         if docx_path is not None and docx_path.exists():
             attachments.append(_attachment(docx_path))
         return EmailMessage(
             to=[to_email],
-            subject=templates.report_subject(company_name),
-            html=templates.report_html(company_name),
-            text=templates.report_text(company_name),
+            subject=templates.report_subject(digest.company_name),
+            html=templates.report_html(digest),
+            text=templates.report_text(digest),
             attachments=attachments,
         )
 
@@ -67,7 +71,7 @@ class EmailService:
 
         for attempt in range(1, attempts + 1):
             try:
-                result = await self._provider.send(msg, self._from_email)
+                result = await self._provider.send(msg, sender())
             except Exception as e:  # noqa: BLE001 - a provider bug is still a delivery failure
                 logger.exception("Provider %s raised", self._provider.name)
                 result = DeliveryResult.failure(self._provider.name, str(e), retryable=True)
@@ -87,13 +91,11 @@ class EmailService:
     async def send_report(
         self,
         to_email: str,
-        company_name: str,
+        digest: templates.ReportDigest,
         pdf_path: Path,
         docx_path: Path | None = None,
     ) -> DeliveryResult:
-        return await self.send(
-            self.build_report_message(to_email, company_name, pdf_path, docx_path)
-        )
+        return await self.send(self.build_report_message(to_email, digest, pdf_path, docx_path))
 
     async def send_selftest(self, to_email: str) -> DeliveryResult:
         """One test message, so a provider switch can be verified in a minute."""

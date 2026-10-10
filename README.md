@@ -65,6 +65,10 @@ cd frontend && npm install && npm run dev
 | `MAX_DELIVERIES_PER_JOB` | - | `3` | Sends allowed for one report, resends included |
 | `RETENTION_DAYS` | - | `0` | Delete finished jobs and report files after this many days; `0` keeps all |
 | `FROM_EMAIL` | - | `reports@bisystem.com` | Sender email |
+| `FROM_NAME` | - | brand name | Display name on the From line |
+| `BRAND_NAME` / `BRAND_TAGLINE` | - | `Rubric` / `Business intelligence, read closely.` | Name and line on the email and PDF |
+| `BRAND_AUTHOR` / `BRAND_AUTHOR_EMAIL` / `BRAND_AUTHOR_URL` | - | Nicholas Smith | Byline and links on the email and PDF; empty leaves them out |
+| `PUBLIC_BASE_URL` | - | empty | Where the web app is reachable (e.g. `https://host/reports`); gives the email a link to the job page |
 | `REPORT_OUTPUT_DIR` | - | `reports` | Report output directory |
 | `JOBS_DB` | - | `jobs.db` | SQLite database path (ignored when `DATABASE_URL` is set) |
 | `DATABASE_URL` | - | - | PostgreSQL URL; empty falls back to SQLite |
@@ -80,15 +84,19 @@ cd frontend && npm install && npm run dev
 Nothing authenticates a submitter, and the submitter chooses the recipient. The
 recipient is validated as an address, can be restricted with
 `RECIPIENT_ALLOWLIST`, and is capped per day across all jobs; resend is capped
-per job and rate limited. The company name - model output derived from the
-scraped page - is stripped of control characters and links before it reaches a
-subject line, and escaped in the HTML body.
+per job and rate limited. The company name, summary and recommendations quoted
+in the message - model output derived from the scraped page - are stripped of
+control characters and links and length-capped before they reach a subject line
+or a body, and escaped in the HTML part.
 
 ### Report rendering
 
-Report templates autoescape every value, and WeasyPrint renders with a URL
-fetcher that refuses all fetches, so text injected through a scraped page can
-neither add markup to the PDF nor make the renderer fetch a URL or local file.
+Report templates (`app/report/templates/`) autoescape every value, and
+WeasyPrint renders with a URL fetcher that serves only the bundled font under
+`app/report/assets/` and refuses every other URL, so text injected through a
+scraped page can neither add markup to the PDF nor make the renderer fetch a URL
+or local file. The sans face (Inter) comes from the `fonts-inter` package in the
+image; without it the PDF falls back to DejaVu Sans.
 
 ### Outbound fetch policy
 

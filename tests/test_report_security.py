@@ -18,7 +18,14 @@ from app.models.bi import (
     SWOTAnalysis,
     build_report,
 )
-from app.report.generator import HTML_TEMPLATE, MR_HTML_TEMPLATE, write_pdf
+from app.report.generator import (
+    ASSETS_DIR,
+    SERIF_FONT,
+    bundled_asset,
+    render_bi_html,
+    render_research_html,
+    write_pdf,
+)
 
 INJECTED = '<img src="file:///etc/passwd"><a rel="attachment" href="http://169.254.169.254/">x</a>'
 
@@ -45,13 +52,7 @@ def _report(text: str = INJECTED):
 class TestTemplateEscaping:
     def test_bi_template_renders_model_output_as_text(self) -> None:
         report, profile = _report()
-        html = HTML_TEMPLATE.render(
-            company=profile.company_name, date="today",
-            executive_summary=report.executive_summary, profile=profile,
-            market=report.market_analysis, competitive=report.competitive_analysis,
-            swot=report.swot_analysis, recommendations=report.recommendations,
-            risk_factors=report.risk_factors, marketing=None,
-        )
+        html = render_bi_html(report, profile, source_url="https://example.com")
         assert "<img" not in html
         assert 'rel="attachment"' not in html
         assert "&lt;img src=&#34;file:///etc/passwd&#34;&gt;" in html
@@ -61,12 +62,37 @@ class TestTemplateEscaping:
             market_query=INJECTED, executive_summary=INJECTED, summary=INJECTED,
             key_insights=[INJECTED],
         )
-        html = MR_HTML_TEMPLATE.render(
-            query=result.market_query, date="today", executive_summary=result.executive_summary,
-            key_insights=result.key_insights, summary=result.summary,
-        )
+        html = render_research_html(result)
         assert "<img" not in html
         assert "&lt;img" in html
+
+
+class TestBundledAssets:
+    """The one exception to 'fetch nothing': the report's own font files."""
+
+    def test_the_bundled_font_is_allowed(self) -> None:
+        assert bundled_asset(SERIF_FONT.as_uri()) == SERIF_FONT.resolve()
+
+    def test_a_path_that_climbs_out_is_refused(self) -> None:
+        climbing = ASSETS_DIR.as_uri() + "/fonts/../../generator.py"
+        assert bundled_asset(climbing) is None
+
+    def test_other_local_files_are_refused(self, tmp_path: Path) -> None:
+        secret = tmp_path / "secret.txt"
+        secret.write_text("x")
+        assert bundled_asset(secret.as_uri()) is None
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://169.254.169.254/latest/meta-data/",
+            "https://example.com/font.woff2",
+            "data:text/plain,hello",
+            "file://evil.example/share/font.woff2",
+        ],
+    )
+    def test_anything_that_is_not_a_local_file_is_refused(self, url: str) -> None:
+        assert bundled_asset(url) is None
 
 
 class TestPdfFetches:
@@ -101,6 +127,26 @@ class TestPdfFetches:
         assert seen == []
         assert b"do not embed" not in out.read_bytes()
 
+    def test_a_full_report_loads_only_its_bundled_font(self, tmp_path: Path, monkeypatch) -> None:
+        try:
+            import weasyprint  # noqa: F401
+        except OSError:
+            pytest.skip("WeasyPrint's native libraries are not installed here")
+
+        from weasyprint.urls import URLFetcher
+
+        seen: list[str] = []
+        original = URLFetcher.fetch
+
+        def spy(self, url, headers=None):  # type: ignore[no-untyped-def]
+            seen.append(url)
+            return original(self, url, headers)
+
+        monkeypatch.setattr(URLFetcher, "fetch", spy)
+        report, profile = _report()
+        write_pdf(render_bi_html(report, profile), tmp_path / "out.pdf")
+        assert seen == [SERIF_FONT.resolve().as_uri()]
+
 
 class TestEmailTemplates:
     @pytest.mark.parametrize(
@@ -127,7 +173,28 @@ class TestEmailTemplates:
         assert templates.display_company_name("\n\t ") == templates.FALLBACK_COMPANY_NAME
 
     def test_html_body_escapes_the_name(self) -> None:
-        body = templates.report_html('<script>alert(1)</script><a href="http://x">y</a>')
+        body = templates.report_html(
+            templates.ReportDigest(company_name='<script>alert(1)</script><a href="http://x">y</a>')
+        )
         assert "<script>" not in body
         assert "&lt;script&gt;" in body
         assert '<a href="http://x">' not in body
+
+    def test_quoted_model_text_is_escaped_and_unlinked(self) -> None:
+        """The summary and recommendations reach the body too, under our sender name."""
+        digest = templates.ReportDigest(
+            company_name="Acme",
+            summary='Great company. Claim your refund at https://evil.example/login <b>now</b>',
+            recommendations=('Visit www.evil.example to verify <img src="x">',),
+        )
+        html_body, text_body = templates.report_html(digest), templates.report_text(digest)
+        assert "evil.example" not in html_body and "evil.example" not in text_body
+        assert "<b>" not in html_body and "<img" not in html_body
+        assert "&lt;b&gt;now" in html_body
+
+    def test_quoted_model_text_is_capped(self) -> None:
+        digest = templates.ReportDigest(
+            company_name="Acme", summary="word " * 1000, recommendations=("step " * 1000,)
+        )
+        body = templates.report_text(digest)
+        assert len(body) < templates.MAX_SUMMARY_CHARS + templates.MAX_RECOMMENDATION_CHARS + 1200

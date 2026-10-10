@@ -112,10 +112,23 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
+    # Branding, shared by the email, the PDF cover and the sender name. The
+    # author lines are left out of both when empty.
+    brand_name: str = "Rubric"
+    brand_tagline: str = "Business intelligence, read closely."
+    brand_author: str = "Nicholas Smith"
+    brand_author_email: str = "nicosmith.smith3@gmail.com"
+    brand_author_url: str = "https://nicksmith.is-a.dev/"
+    # Where the web app is reachable, e.g. https://host/reports. Gives the email
+    # a link to the job page; empty leaves the link out.
+    public_base_url: str = ""
+
     # Email. SMTP is the default because it works with any mail vendor, so
     # switching provider is a config change rather than a code change.
     email_provider: str = "smtp"
     from_email: str = "reports@bisystem.com"
+    # Display name on the From line. Empty uses brand_name.
+    from_name: str = ""
     email_max_attempts: int = 3
     email_max_attachment_mb: int = 20
 

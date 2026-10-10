@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+{#- Shared page furniture for every PDF: fonts, the page grid, running heads,
+    the cover and the back cover. Every value below that is not a palette
+    token or brand setting is model output and is autoescaped. -#}
+{% from "_macros.html" import page_mark %}
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ title }} | {{ brand.name }}</title>
+<meta name="author" content="{{ brand.author or brand.name }}">
+<style>
+  @font-face {
+    font-family: "Source Serif 4";
+    src: url("{{ serif_font_url }}") format("woff2");
+    font-weight: 200 900;
+    font-style: normal;
+  }
+
+  :root {
+    --serif: "Source Serif 4", "DejaVu Serif", Georgia, serif;
+    --sans: "Inter", "DejaVu Sans", Helvetica, Arial, sans-serif;
+  }
+
+  @page {
+    size: A4;
+    margin: 26mm 20mm 24mm 20mm;
+    background: {{ c.paper }};
+
+    @top-left {
+      content: string(company) "   \00B7   " string(chapter);
+      font-family: var(--sans); font-size: 7pt; letter-spacing: 0.12em;
+      text-transform: uppercase; color: {{ c.ink_faint }};
+      vertical-align: bottom; padding-bottom: 6mm;
+    }
+    @top-right {
+      content: string(brand);
+      font-family: var(--serif); font-size: 10pt; color: {{ c.ink }};
+      vertical-align: bottom; padding-bottom: 5.4mm;
+    }
+    @bottom-left {
+      content: string(tagline);
+      font-family: var(--sans); font-size: 7pt; color: {{ c.ink_faint }};
+      vertical-align: top; padding-top: 7mm;
+    }
+    @bottom-right {
+      content: counter(page) " / " counter(pages);
+      font-family: var(--sans); font-size: 7pt; color: {{ c.ink_muted }};
+      font-variant-numeric: tabular-nums;
+      vertical-align: top; padding-top: 7mm;
+    }
+  }
+
+  @page dark {
+    margin: 0;
+    background: {{ c.ink }};
+    @top-left { content: none; }
+    @top-right { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
+  }
+
+  @page contents {
+    @top-left { content: none; }
+  }
+
+  html { font-family: var(--serif); font-size: 10.5pt; line-height: 1.6; color: {{ c.ink }}; }
+  body { margin: 0; }
+  p { margin: 0 0 3mm 0; orphans: 3; widows: 3; }
+  a { color: inherit; text-decoration: none; }
+  ul, ol { margin: 0; padding: 0; list-style: none; }
+
+  h1, h2, h3, h4 { font-weight: 400; margin: 0; break-after: avoid; }
+
+  /* --- Apparatus: small sans caps, the machine's voice ------------------ */
+  .eyebrow {
+    font-family: var(--sans); font-size: 7pt; font-weight: 600;
+    letter-spacing: 0.16em; text-transform: uppercase; color: {{ c.ink_muted }};
+    margin: 0 0 2.5mm 0;
+  }
+  .eyebrow.accent { color: {{ c.accent }}; }
+  .label {
+    font-family: var(--sans); font-size: 6.8pt; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; color: {{ c.ink_muted }};
+  }
+  .muted { color: {{ c.ink_muted }}; }
+  .small { font-size: 9pt; }
+
+  .rubric { display: block; width: 14mm; height: 0; border-top: 1.6pt solid {{ c.accent }}; margin: 4mm 0 6mm 0; }
+
+  /* --- Chapters ----------------------------------------------------------- */
+  .chapter { break-before: page; }
+  .chapter-head { margin: 0 0 7mm 0; }
+  .chapter-head .num {
+    font-family: var(--sans); font-size: 7pt; font-weight: 600; letter-spacing: 0.16em;
+    text-transform: uppercase; color: {{ c.accent }}; margin-bottom: 2mm;
+  }
+  .chapter-head h2 {
+    font-size: 25pt; line-height: 1.12; letter-spacing: -0.01em;
+    string-set: chapter content();
+  }
+  .chapter-head .standfirst { font-size: 12pt; color: {{ c.ink_muted }}; margin-top: 3mm; max-width: 150mm; }
+
+  h3 {
+    font-family: var(--sans); font-size: 7.2pt; font-weight: 600; letter-spacing: 0.16em;
+    text-transform: uppercase; color: {{ c.ink_muted }};
+    margin: 8mm 0 3mm 0; padding-bottom: 1.8mm; border-bottom: 0.6pt solid {{ c.rule }};
+  }
+  h3:first-child { margin-top: 0; }
+  .block { break-inside: avoid; }
+
+  /* --- Text furniture ----------------------------------------------------- */
+  .lead { font-size: 13.5pt; line-height: 1.5; color: {{ c.ink }}; margin-bottom: 5mm; }
+  .pull {
+    margin: 7mm 0; padding: 1mm 0 1mm 7mm; border-left: 1.6pt solid {{ c.accent }};
+    font-size: 15pt; line-height: 1.4; color: {{ c.ink }}; break-inside: avoid;
+  }
+  .pull .label { display: block; margin-top: 2.5mm; }
+
+  .dash-list li { position: relative; padding-left: 6mm; margin: 0 0 2mm 0; break-inside: avoid; }
+  .dash-list li::before {
+    content: ""; position: absolute; left: 0; top: 2.9mm; width: 3mm;
+    border-top: 0.9pt solid {{ c.accent }};
+  }
+
+  .num-list li { position: relative; padding-left: 11mm; margin: 0 0 3.2mm 0; break-inside: avoid; }
+  .num-list li .n {
+    position: absolute; left: 0; top: 0.4mm;
+    font-family: var(--sans); font-size: 7.5pt; font-weight: 600; letter-spacing: 0.06em;
+    color: {{ c.accent }}; font-variant-numeric: tabular-nums;
+  }
+
+  .chips { margin: 0 0 2mm 0; }
+  .chip {
+    display: inline-block; margin: 0 1.6mm 1.8mm 0; padding: 0.9mm 2.6mm;
+    border: 0.6pt solid {{ c.rule_strong }}; border-radius: 10pt;
+    font-family: var(--sans); font-size: 7.6pt; color: {{ c.ink }}; background: {{ c.surface }};
+  }
+
+  .callout {
+    background: {{ c.surface }}; border: 0.6pt solid {{ c.rule }}; border-left: 1.6pt solid {{ c.accent }};
+    border-radius: 0 4pt 4pt 0; padding: 4.5mm 5.5mm; margin: 5mm 0; break-inside: avoid;
+  }
+  .callout .label { display: block; margin-bottom: 1.5mm; color: {{ c.accent }}; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .card {
+    background: {{ c.surface }}; border: 0.6pt solid {{ c.rule }}; border-radius: 4pt;
+    padding: 5mm 5.5mm; margin: 0 0 4mm 0; break-inside: avoid;
+  }
+
+  .kv { width: 100%; border-collapse: collapse; margin: 0 0 2mm 0; }
+  .kv td { vertical-align: top; padding: 2.6mm 0; border-bottom: 0.6pt solid {{ c.rule }}; }
+  .kv tr:first-child td { border-top: 0.6pt solid {{ c.rule }}; }
+  .kv td.k { width: 38mm; padding-right: 5mm; padding-top: 3.4mm; }
+
+  /* Figures strip: four measured values under a hairline. */
+  .figures { width: 100%; border-collapse: collapse; margin: 2mm 0 7mm 0; break-inside: avoid; }
+  .figures td {
+    width: 25%; vertical-align: top; padding: 3.5mm 4mm 3.5mm 0;
+    border-top: 1.2pt solid {{ c.ink }}; border-bottom: 0.6pt solid {{ c.rule }};
+  }
+  .figures td + td { padding-left: 4mm; border-left: 0.6pt solid {{ c.rule }}; }
+  .figures .v { font-size: 22pt; line-height: 1.1; margin-top: 1.5mm; color: {{ c.ink }}; }
+  .figures .v small { font-family: var(--sans); font-size: 7.5pt; color: {{ c.ink_faint }}; }
+  .figures .v.accent { color: {{ c.accent }}; }
+
+  /* Data tables */
+  .data { width: 100%; border-collapse: collapse; margin: 0 0 5mm 0; font-size: 9.6pt; }
+  .data th {
+    text-align: left; font-family: var(--sans); font-size: 6.8pt; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; color: {{ c.ink_muted }};
+    padding: 0 3mm 2mm 0; border-bottom: 1.2pt solid {{ c.ink }};
+  }
+  .data td { vertical-align: top; padding: 2.8mm 3mm 2.8mm 0; border-bottom: 0.6pt solid {{ c.rule }}; }
+  .data tr { break-inside: avoid; }
+  .data .name { font-size: 11pt; }
+  .tag {
+    display: inline-block; padding: 0.4mm 2mm; border-radius: 8pt;
+    font-family: var(--sans); font-size: 6.4pt; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .tag.direct { background: {{ c.accent_soft }}; color: {{ c.accent }}; }
+  .tag.indirect { background: {{ c.sunk }}; color: {{ c.ink_muted }}; }
+
+  /* Two columns as a table: reliable across page breaks. */
+  .cols { width: 100%; border-collapse: separate; border-spacing: 0; margin: 0 0 3mm 0; }
+  .cols > tbody > tr > td, .cols > tr > td { width: 50%; vertical-align: top; }
+  .cols > tbody > tr > td:first-child, .cols > tr > td:first-child { padding-right: 5mm; }
+  .cols > tbody > tr > td + td, .cols > tr > td + td { padding-left: 5mm; }
+
+  /* Quadrants: SWOT, E-E-A-T, PESTEL pairs. */
+  .quad { width: 100%; border-collapse: separate; border-spacing: 3mm; margin: -3mm -3mm 2mm -3mm; width: calc(100% + 6mm); }
+  .quad td { width: 50%; vertical-align: top; padding: 0; border-radius: 4pt; break-inside: avoid; }
+  .quad .q-head { padding: 3.5mm 5mm 3mm 5mm; border-radius: 4pt 4pt 0 0; }
+  .quad .q-head .letter { font-size: 24pt; line-height: 1; float: right; opacity: 0.9; }
+  .quad .q-head .label { color: inherit; }
+  .quad .q-body { padding: 1mm 5mm 4.5mm 5mm; font-size: 9.6pt; line-height: 1.5; }
+  .quad .q-body li { margin-bottom: 2mm; padding-left: 4.5mm; position: relative; }
+  .quad .q-body li::before { content: ""; position: absolute; left: 0; top: 2.4mm; width: 2.2mm; border-top: 0.9pt solid currentColor; }
+  .q-positive { background: {{ c.positive_soft }}; color: {{ c.positive }}; }
+  .q-warning { background: {{ c.warning_soft }}; color: {{ c.warning }}; }
+  .q-slate { background: {{ c.slate_soft }}; color: {{ c.slate }}; }
+  .q-negative { background: {{ c.negative_soft }}; color: {{ c.negative }}; }
+  .q-neutral { background: {{ c.surface }}; color: {{ c.accent }}; border: 0.6pt solid {{ c.rule }}; }
+  .quad .q-body { color: {{ c.ink }}; }
+  .quad .q-body li::before { border-top-color: {{ c.ink_faint }}; }
+
+  /* --- Dark pages: cover, part openers, back cover ---------------------- */
+  .dark-page { page: dark; break-before: page; position: relative; height: 297mm; color: {{ c.on_ink }}; }
+  .dark-page:first-child { break-before: auto; }
+  .dark-page .frame { position: absolute; top: 20mm; left: 20mm; right: 20mm; bottom: 20mm; }
+  .dark-page a { color: {{ c.on_ink }}; }
+  .dark-page .eyebrow { color: {{ c.on_ink_muted }}; }
+  .dark-page .eyebrow.accent { color: {{ c.on_ink_accent }}; }
+  .dark-page .label { color: {{ c.on_ink_muted }}; }
+
+  .masthead { width: 100%; border-collapse: collapse; }
+  .masthead td { vertical-align: middle; padding: 0; }
+  .wordmark {
+    font-family: var(--serif); font-size: 17pt; letter-spacing: -0.01em; color: {{ c.on_ink }};
+    border-left: 2.4pt solid {{ c.accent_bright }}; padding-left: 3mm; line-height: 1.1;
+  }
+  .masthead .kind { text-align: right; }
+  /* Running heads read these. The cover's own text is absolutely positioned,
+     and out-of-flow boxes do not set strings, so they are repeated in flow. */
+  .running { height: 0; overflow: hidden; visibility: hidden; }
+  .running .rs-company { string-set: company content(); }
+  .running .rs-brand { string-set: brand content(); }
+  .running .rs-tagline { string-set: tagline content(); }
+  .masthead .kind .eyebrow { margin: 0; }
+
+  .cover-mark { position: absolute; right: 0; top: 34mm; width: 46mm; }
+
+  .cover-body { position: absolute; left: 0; right: 0; top: 104mm; }
+  .cover-title {
+    font-size: 46pt; line-height: 1.04; letter-spacing: -0.02em; color: {{ c.on_ink }};
+    bookmark-level: none; max-width: 150mm;
+  }
+  .cover-sub { font-size: 14pt; line-height: 1.4; color: {{ c.on_ink_muted }}; margin-top: 5mm; max-width: 140mm; }
+  .cover-rule { width: 22mm; border-top: 2pt solid {{ c.accent_bright }}; margin: 9mm 0 8mm 0; }
+
+  .meta { border-collapse: collapse; }
+  .meta td { vertical-align: top; padding: 0 12mm 0 0; }
+  .meta .v { font-size: 11.5pt; color: {{ c.on_ink }}; margin-top: 1.4mm; }
+
+  .cover-foot { position: absolute; left: 0; right: 0; bottom: 0; border-top: 0.6pt solid {{ c.on_ink_rule }}; padding-top: 5mm; }
+  .cover-foot table { width: 100%; border-collapse: collapse; }
+  .cover-foot td { vertical-align: bottom; padding: 0; font-family: var(--sans); font-size: 7.5pt; color: {{ c.on_ink_muted }}; }
+  .cover-foot .by { font-family: var(--serif); font-size: 11pt; color: {{ c.on_ink }}; }
+  .cover-foot .links { text-align: right; line-height: 1.7; }
+  .cover-foot .links a { color: {{ c.on_ink_accent }}; }
+
+  .opener-body { position: absolute; left: 0; right: 0; top: 112mm; }
+  .opener-title { font-size: 40pt; line-height: 1.06; letter-spacing: -0.02em; color: {{ c.on_ink }}; }
+  .opener-title.bookmarked { bookmark-level: 1; }
+  .opener-sub { font-size: 13pt; line-height: 1.5; color: {{ c.on_ink_muted }}; margin-top: 6mm; max-width: 130mm; }
+
+  .method li { margin: 0 0 4mm 0; padding-left: 10mm; position: relative; font-size: 10pt; color: {{ c.on_ink }}; }
+  .method li .n { position: absolute; left: 0; top: 0.3mm; font-family: var(--sans); font-size: 7.5pt; font-weight: 600; color: {{ c.on_ink_accent }}; }
+  .method li .muted { color: {{ c.on_ink_muted }}; }
+  .fine { font-family: var(--sans); font-size: 7.5pt; line-height: 1.6; color: {{ c.on_ink_muted }}; }
+
+  /* --- Contents --------------------------------------------------------- */
+  .contents { page: contents; break-before: page; }
+  .contents h2 { font-size: 25pt; margin-bottom: 9mm; string-set: chapter "Contents"; }
+  .toc .part {
+    font-family: var(--sans); font-size: 7pt; font-weight: 600; letter-spacing: 0.16em;
+    text-transform: uppercase; color: {{ c.accent }}; margin: 7mm 0 2mm 0;
+  }
+  .toc .part:first-child { margin-top: 0; }
+  .toc li { border-bottom: 0.6pt solid {{ c.rule }}; }
+  .toc li a { display: block; padding: 2.6mm 0; font-size: 12pt; }
+  .toc li a .n {
+    display: inline-block; width: 11mm; font-family: var(--sans); font-size: 7.5pt; font-weight: 600;
+    color: {{ c.accent }}; letter-spacing: 0.06em;
+  }
+  .toc li a::after {
+    content: leader(". ") target-counter(attr(href), page);
+    font-family: var(--sans); font-size: 8.5pt; color: {{ c.ink_faint }};
+  }
+  .reading { margin-top: 12mm; }
+  {% block styles %}{% endblock %}
+</style>
+</head>
+<body>
+
+<section class="dark-page cover">
+  <div class="running">
+    <span class="rs-company">{{ title }}</span><span class="rs-brand">{{ brand.name }}</span>
+    {%- if brand.tagline %}<span class="rs-tagline">{{ brand.tagline }}</span>{% endif %}
+  </div>
+  <div class="frame">
+    <table class="masthead"><tr>
+      <td><span class="wordmark">{{ brand.name }}</span></td>
+      <td class="kind"><p class="eyebrow">{{ kind }}</p></td>
+    </tr></table>
+
+    {{ page_mark(c) }}
+
+    <div class="cover-body">
+      <p class="eyebrow accent">{{ cover_eyebrow }}</p>
+      <h1 class="cover-title">{{ title }}</h1>
+      {% if subtitle %}<p class="cover-sub">{{ subtitle }}</p>{% endif %}
+      <div class="cover-rule"></div>
+      <table class="meta"><tr>
+        <td><div class="label">Prepared</div><div class="v">{{ date }}</div></td>
+        {% if source_host %}<td><div class="label">Source</div><div class="v">{{ source_host }}</div></td>{% endif %}
+        {% if score is not none %}<td><div class="label">Quality score</div><div class="v">{{ score }} / 100</div></td>{% endif %}
+      </tr></table>
+    </div>
+
+    <div class="cover-foot">
+      <table><tr>
+        <td>
+          {% if brand.author %}<div class="by">By {{ brand.author }}</div>{% endif %}
+          {% if brand.tagline %}<div>{{ brand.tagline }}</div>{% endif %}
+        </td>
+        <td class="links">
+          {% if brand.author_email %}<a href="mailto:{{ brand.author_email }}">{{ brand.author_email }}</a><br>{% endif %}
+          {% if brand.author_url %}<a href="{{ brand.author_url }}">{{ brand.author_url_label }}</a>{% endif %}
+        </td>
+      </tr></table>
+    </div>
+  </div>
+</section>
+
+{% block content %}{% endblock %}
+
+<section class="dark-page back">
+  <div class="frame">
+    <table class="masthead"><tr>
+      <td><span class="wordmark">{{ brand.name }}</span></td>
+      <td class="kind"><p class="eyebrow">About this report</p></td>
+    </tr></table>
+
+    <div class="opener-body" style="top: 62mm;">
+      <h2 class="opener-title" style="font-size: 28pt; bookmark-level: 1;">How this report was made</h2>
+      <div class="cover-rule"></div>
+      {% block method %}{% endblock %}
+    </div>
+
+    <div class="cover-foot">
+      <table><tr>
+        <td>
+          {% if brand.author %}<div class="by">{{ brand.name }} is made by {{ brand.author }}</div>{% endif %}
+          {% if brand.tagline %}<div>{{ brand.tagline }}</div>{% endif %}
+        </td>
+        <td class="links">
+          {% if brand.author_email %}<a href="mailto:{{ brand.author_email }}">{{ brand.author_email }}</a><br>{% endif %}
+          {% if brand.author_url %}<a href="{{ brand.author_url }}">{{ brand.author_url_label }}</a>{% endif %}
+        </td>
+      </tr></table>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

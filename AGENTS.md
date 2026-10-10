@@ -27,7 +27,8 @@
 | `app/api/routes.py`, `app/api/progress.py` | HTTP API and the SSE stream. |
 | `app/pipeline/events.py` | In-process change notifier that wakes SSE streams. |
 | `app/email/policy.py` | Recipient allowlist and send caps. |
-| `app/report/generator.py` | PDF (WeasyPrint) and DOCX rendering. |
+| `app/report/generator.py` | PDF (WeasyPrint) and DOCX rendering; templates in `app/report/templates/`. |
+| `app/branding.py` | Brand name, byline, palette and house style, shared by the email, the PDF and the From line. |
 | `evals/` | Offline eval harness: saved fixtures, real agents, baseline comparison. |
 
 ## Invariants - keep these true
@@ -36,8 +37,11 @@
   (executive summary, recommendations, risks). `build_report()` combines it with the profile,
   market, competitive and SWOT stage outputs. Never let a stage re-generate another stage's section.
 - **Model output is untrusted.** It comes from a page the submitter chose. Report templates
-  autoescape (`Environment(autoescape=True)`), WeasyPrint renders through a fetcher that refuses
-  every URL (`write_pdf`), and email text goes through `display_company_name` and `html.escape`.
+  autoescape (`Environment(autoescape=True)`), WeasyPrint renders through a fetcher that serves only
+  files under `app/report/assets/` (`write_pdf`), and email text goes through `display_company_name`
+  or `display_text` and `html.escape`.
+- **No em dashes in anything a reader sees.** House style for the brand: template copy uses none, and
+  model text passes through `without_em_dashes` (the Jinja `finalize` hook and the email helpers).
 - **Every send passes the recipient policy** (`app/email/policy.py`): allowlist, per-recipient daily
   cap, per-job delivery cap. Submit, resend and retry are rate limited (`is_rate_limited` in `app/main.py`).
 - **A job's terminal status is written last.** Stage writes are flushed first, so a client that stops

@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chapter_head, dash_list, num_list, quad %}
+
+{% block styles %}
+  .toc li.part { border-bottom: 0; }
+
+  .sizing { width: 100%; border-collapse: collapse; margin: 0 0 6mm 0; break-inside: avoid; }
+  .sizing .row { padding: 3mm 0; border-bottom: 0.6pt solid {{ c.rule }}; }
+  .sizing .row:first-child { border-top: 1.2pt solid {{ c.ink }}; }
+  .sizing .row .v { font-size: 15pt; line-height: 1.25; margin-top: 1mm; }
+  .sizing .row .note { font-size: 8.6pt; color: {{ c.ink_muted }}; margin-top: 0.8mm; }
+  .sizing .row .label .long { font-weight: 400; letter-spacing: 0.04em; text-transform: none; color: {{ c.ink_faint }}; }
+
+  .insight { padding: 3.5mm 0 3.5mm 0; border-bottom: 0.6pt solid {{ c.rule }}; break-inside: avoid; font-size: 11pt; }
+  .insight:first-child { border-top: 1.2pt solid {{ c.ink }}; }
+
+  .recs li { position: relative; padding: 4mm 0 4mm 17mm; border-bottom: 0.6pt solid {{ c.rule }}; break-inside: avoid; font-size: 11pt; line-height: 1.55; }
+  .recs li:first-child { border-top: 1.2pt solid {{ c.ink }}; }
+  .recs li .n { position: absolute; left: 0; top: 3.2mm; font-size: 21pt; line-height: 1; color: {{ c.accent }}; }
+  .risks li { background: {{ c.warning_soft }}; border-left: 1.6pt solid {{ c.warning }}; border-radius: 0 4pt 4pt 0; padding: 3.5mm 5mm; margin: 0 0 3mm 0; break-inside: avoid; }
+
+  .pestel { width: 100%; border-collapse: separate; border-spacing: 3mm; margin: -3mm -3mm 2mm -3mm; width: calc(100% + 6mm); }
+  .pestel td { width: 50%; vertical-align: top; background: {{ c.surface }}; border: 0.6pt solid {{ c.rule }}; border-radius: 4pt; padding: 4mm 5mm; font-size: 9.6pt; line-height: 1.5; break-inside: avoid; }
+  .pestel .letter { float: right; font-size: 20pt; line-height: 1; color: {{ c.accent }}; }
+  .pestel .label { display: block; margin-bottom: 2.5mm; }
+
+  .force { width: 100%; border-collapse: collapse; }
+  .force td { vertical-align: top; padding: 3.2mm 0; border-bottom: 0.6pt solid {{ c.rule }}; }
+  .force tr:first-child td { border-top: 1.2pt solid {{ c.ink }}; }
+  .force td.k { width: 46mm; padding-right: 5mm; font-size: 12pt; line-height: 1.3; }
+  .force td.k .n { display: block; font-family: var(--sans); font-size: 7pt; font-weight: 600; letter-spacing: 0.14em; color: {{ c.accent }}; margin-bottom: 1mm; }
+
+  .resource { padding: 3mm 0; border-bottom: 0.6pt solid {{ c.rule }}; break-inside: avoid; }
+  .resource .name { font-size: 11.5pt; }
+  .resource .url { font-family: var(--sans); font-size: 7.6pt; color: {{ c.accent }}; margin: 0.6mm 0 1.2mm 0; word-break: break-all; }
+  .resource p { margin: 0; font-size: 9.6pt; }
+  .resource .rel { color: {{ c.ink_muted }}; font-size: 8.8pt; margin-top: 1mm; }
+{% endblock %}
+
+{% block content %}
+
+<section class="contents">
+  <p class="eyebrow accent">{{ title }}</p>
+  <h2>Contents</h2>
+  <ol class="toc">
+    <li><a href="#glance"><span class="n">01</span>At a glance</a></li>
+    <li><a href="#recommendations"><span class="n">02</span>Recommendations and risks</a></li>
+    <li><a href="#landscape"><span class="n">03</span>Market landscape</a></li>
+    {% if pestel_rows or five_forces_rows %}<li><a href="#forces"><span class="n">04</span>Forces shaping the market</a></li>{% endif %}
+    {% if resource_groups %}<li><a href="#sources"><span class="n">05</span>Who to watch and where to read</a></li>{% endif %}
+  </ol>
+  <div class="callout reading">
+    <span class="label">How to read this report</span>
+    <p>Three analyst models researched this market in turn: its macro forces, its size and shape,
+    and the people and sources worth following. Each part was scored against a rubric of completeness
+    checks and reviewed by a second model. Figures are estimates and links were not visited: check
+    anything you intend to act on.</p>
+  </div>
+</section>
+
+<section class="chapter" id="glance">
+  {{ chapter_head("01", "At a glance") }}
+  {% if sizing %}
+  <table class="sizing"><tr><td>
+    {% for row in sizing %}
+    <div class="row">
+      <div class="label">{{ row.label }} <span class="long">{{ row.long }}</span></div>
+      <div class="v">{{ row.value }}</div>
+      {% if row.note %}<div class="note">{{ row.note }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </td></tr></table>
+  {% endif %}
+  {% if not sizing and market_size or growth_rate %}
+  <table class="figures"><tr>
+    {% if market_size and not sizing %}<td style="width: 60%"><div class="label">Estimated market size</div><div class="v accent" style="font-size: 15pt">{{ market_size }}</div></td>{% endif %}
+    {% if growth_rate %}<td><div class="label">Growth rate</div><div class="v" style="font-size: 15pt">{{ growth_rate }}</div></td>{% endif %}
+  </tr></table>
+  {% endif %}
+
+  {% for paragraph in summary_paragraphs %}
+  <p{% if loop.first %} class="lead"{% endif %}>{{ paragraph }}</p>
+  {% endfor %}
+
+  {% if key_insights %}
+  <h3>Key insights</h3>
+  {% for insight in key_insights %}<div class="insight">{{ insight }}</div>{% endfor %}
+  {% endif %}
+</section>
+
+<section class="chapter" id="recommendations">
+  {{ chapter_head("02", "Recommendations and risks") }}
+  {% if recommendations %}
+  <ol class="recs">{% for r in recommendations %}<li><span class="n">{{ "%02d" % loop.index }}</span>{{ r }}</li>{% endfor %}</ol>
+  {% endif %}
+  {% if risks_and_assumptions %}
+  <h3>Risks and assumptions</h3>
+  <ul class="risks">{% for r in risks_and_assumptions %}<li>{{ r }}</li>{% endfor %}</ul>
+  {% endif %}
+</section>
+
+<section class="chapter" id="landscape">
+  {{ chapter_head("03", "Market landscape") }}
+  {% for paragraph in landscape_paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+  {% if swot %}
+  <h3>Market SWOT</h3>
+  {{ quad([
+    ["Strengths", "S", "positive", swot.strengths],
+    ["Weaknesses", "W", "warning", swot.weaknesses],
+    ["Opportunities", "O", "slate", swot.opportunities],
+    ["Threats", "T", "negative", swot.threats],
+  ]) }}
+  {% endif %}
+</section>
+
+{% if pestel_rows or five_forces_rows %}
+<section class="chapter" id="forces">
+  {{ chapter_head("04", "Forces shaping the market", "The macro environment (PESTEL) and the industry's structure (Porter's five forces).") }}
+  {% if pestel_rows %}
+  <h3>PESTEL</h3>
+  <table class="pestel">
+    {% for row in pestel_rows|batch(2) %}
+    <tr>
+      {% for label, items in row %}
+      <td><span class="letter">{{ label[:1] }}</span><span class="label">{{ label }}</span>{{ dash_list(items) }}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% if five_forces_rows %}
+  <div class="block">
+  <h3>Five forces</h3>
+  <table class="force">
+    {% for label, text in five_forces_rows %}
+    <tr><td class="k"><span class="n">{{ "%02d" % loop.index }}</span>{{ label }}</td><td>{{ text }}</td></tr>
+    {% endfor %}
+  </table>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if resource_groups %}
+<section class="chapter" id="sources">
+  {{ chapter_head("05", "Who to watch and where to read", "Suggested starting points. They were not visited: check each before relying on it.") }}
+  {% for heading, resources in resource_groups %}
+  <h3>{{ heading }}</h3>
+  {% for r in resources %}
+  <div class="resource">
+    <div class="name">{{ r.name }}</div>
+    {% if r.url %}<div class="url">{{ r.url }}</div>{% endif %}
+    {% if r.description %}<p>{{ r.description }}</p>{% endif %}
+    {% if r.relevance %}<p class="rel">{{ r.relevance }}</p>{% endif %}
+  </div>
+  {% endfor %}
+  {% endfor %}
+</section>
+{% endif %}
+
+{% endblock %}
+
+{% block method %}
+<ol class="method">
+  <li><span class="n">01</span>Macro. A model mapped the political, economic, social, technological,
+    environmental and legal forces on the market, and its competitive structure.</li>
+  <li><span class="n">02</span>Size. A second model, reading the first, estimated the market's size and growth,
+    drew up a SWOT and wrote the summary and recommendations.</li>
+  <li><span class="n">03</span>Sources. A third listed the players, publications and communities worth following.</li>
+  <li><span class="n">04</span>Score. Each part was checked against a rubric of completeness rules and reviewed by
+    a separate critic model before this report was assembled from them.</li>
+</ol>
+<p class="fine">AI-generated analysis can be wrong. Figures are estimates, and the links listed were
+suggested, not visited. Check anything you intend to act on.</p>
+{% endblock %}

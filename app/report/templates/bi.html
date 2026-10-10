@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chapter_head, dash_list, num_list, chips, quad %}
+
+{% block styles %}
+  .toc li.part { border-bottom: 0; }
+
+  .sizing { width: 100%; border-collapse: collapse; margin: 0 0 6mm 0; break-inside: avoid; }
+  .sizing td { vertical-align: middle; padding: 0; }
+  .sizing td.diagram { width: 58mm; padding-right: 8mm; }
+  .sizing .row { padding: 3mm 0; border-bottom: 0.6pt solid {{ c.rule }}; }
+  .sizing .row:first-child { border-top: 1.2pt solid {{ c.ink }}; }
+  .sizing .row .v { font-size: 15pt; line-height: 1.25; margin-top: 1mm; }
+  .sizing .row .note { font-size: 8.6pt; color: {{ c.ink_muted }}; margin-top: 0.8mm; }
+  .sizing .row .label .long { font-weight: 400; letter-spacing: 0.04em; text-transform: none; color: {{ c.ink_faint }}; }
+
+  .recs li { position: relative; padding: 4mm 0 4mm 17mm; border-bottom: 0.6pt solid {{ c.rule }}; break-inside: avoid; font-size: 11pt; line-height: 1.55; }
+  .recs li:first-child { border-top: 1.2pt solid {{ c.ink }}; }
+  .recs li .n { position: absolute; left: 0; top: 3.2mm; font-size: 21pt; line-height: 1; color: {{ c.accent }}; font-variant-numeric: lining-nums tabular-nums; }
+
+  .risks li { background: {{ c.warning_soft }}; border-left: 1.6pt solid {{ c.warning }}; border-radius: 0 4pt 4pt 0; padding: 3.5mm 5mm; margin: 0 0 3mm 0; break-inside: avoid; }
+
+  .persona .p-head { width: 100%; border-collapse: collapse; margin-bottom: 3mm; }
+  .persona .p-head td { vertical-align: top; padding: 0; }
+  .persona .p-head td.avatar { width: 15mm; }
+  .persona .avatar span {
+    display: block; width: 11mm; height: 11mm; border-radius: 6mm; background: {{ c.accent }};
+    color: {{ c.paper }}; text-align: center; font-size: 15pt; line-height: 11mm;
+  }
+  .persona .p-name { font-size: 14pt; line-height: 1.2; }
+  .persona .p-role { margin: 0.6mm 0 1.6mm 0; }
+  .persona .p-desc { color: {{ c.ink_muted }}; font-size: 10pt; margin: 0; }
+  .persona .p-cols { width: 100%; border-collapse: collapse; border-top: 0.6pt solid {{ c.rule }}; }
+  .persona .p-cols td { width: 33.3%; vertical-align: top; padding: 3mm 3mm 0 0; font-size: 9.2pt; line-height: 1.45; }
+  .persona .p-cols td + td { padding-left: 3mm; border-left: 0.6pt solid {{ c.rule }}; }
+  .persona .p-cols .label { display: block; margin-bottom: 2mm; }
+
+  .archetype { margin: 0 0 6mm 0; }
+  .archetype .arch { font-size: 30pt; line-height: 1.1; color: {{ c.accent }}; margin-top: 1.5mm; }
+  .cta-panel {
+    background: {{ c.ink }}; color: {{ c.on_ink }}; border-radius: 4pt; padding: 7mm 8mm; margin: 8mm 0 0 0;
+    break-inside: avoid;
+  }
+  .cta-panel .label { color: {{ c.on_ink_accent }}; display: block; margin-bottom: 2.5mm; }
+  .cta-panel p { font-size: 15pt; line-height: 1.4; margin: 0; }
+
+  .journey li { position: relative; padding: 0 0 6mm 15mm; break-inside: avoid; }
+  .journey li::before {
+    content: ""; position: absolute; left: 4mm; top: 9mm; bottom: 0;
+    border-left: 0.9pt solid {{ c.rule_strong }};
+  }
+  .journey li:last-child::before { display: none; }
+  .journey .dot {
+    position: absolute; left: 0; top: 0; width: 8mm; height: 8mm; border-radius: 4mm;
+    background: {{ c.surface }}; border: 0.9pt solid {{ c.accent }}; color: {{ c.accent }};
+    text-align: center; line-height: 8mm; font-family: var(--sans); font-size: 7.5pt; font-weight: 600;
+  }
+  .journey .j-stage { font-size: 14pt; line-height: 1.2; margin: 0.8mm 0 1.6mm 0; }
+
+  .faq { margin: 0 0 5mm 0; padding: 0 0 4mm 9mm; position: relative; border-bottom: 0.6pt solid {{ c.rule }}; }
+  .faq::before {
+    content: "Q"; position: absolute; left: 0; top: 0.6mm;
+    font-family: var(--sans); font-size: 8pt; font-weight: 700; color: {{ c.accent }};
+  }
+  .faq .q { font-size: 12.5pt; line-height: 1.35; margin-bottom: 1.6mm; }
+  .faq p { color: {{ c.ink_muted }}; margin: 0; }
+
+  .tactic { font-weight: 600; }
+{% endblock %}
+
+{% block content %}
+
+<section class="contents">
+  <p class="eyebrow accent">{{ title }}</p>
+  <h2>Contents</h2>
+  <ol class="toc">
+    <li class="part">Part one &middot; The business</li>
+    <li><a href="#glance"><span class="n">01</span>At a glance</a></li>
+    <li><a href="#profile"><span class="n">02</span>Business profile</a></li>
+    <li><a href="#market"><span class="n">03</span>Market</a></li>
+    <li><a href="#competition"><span class="n">04</span>Competition</a></li>
+    <li><a href="#swot"><span class="n">05</span>SWOT analysis</a></li>
+    <li><a href="#recommendations"><span class="n">06</span>Recommendations and risks</a></li>
+    {% if marketing %}
+    <li class="part">Part two &middot; Marketing playbook</li>
+    <li><a href="#personas"><span class="n">07</span>Audience and personas</a></li>
+    <li><a href="#brand"><span class="n">08</span>Brand and voice</a></li>
+    <li><a href="#journey"><span class="n">09</span>Customer journey</a></li>
+    <li><a href="#faq"><span class="n">10</span>Questions people ask</a></li>
+    <li><a href="#visibility"><span class="n">11</span>Search and AI visibility</a></li>
+    {% endif %}
+  </ol>
+
+  <div class="callout reading">
+    <span class="label">How to read this report</span>
+    <p>Each section was written by a separate analyst model from the public pages of
+    {{ source_host or "the website" }}, scored against a rubric of completeness checks and
+    reviewed by a second model.{% if score is not none %} Together they score {{ score }} out of 100.{% endif %}
+    Market figures are estimates. Check anything you intend to act on.</p>
+  </div>
+</section>
+
+{# ---------------------------------------------------------------- 01 #}
+<section class="chapter" id="glance">
+  {{ chapter_head("01", "At a glance") }}
+
+  <table class="figures"><tr>
+    {% if score is not none %}<td><div class="label">Quality score</div><div class="v accent">{{ score }}<small> / 100</small></div></td>{% endif %}
+    <td><div class="label">Competitors</div><div class="v">{{ competitors|length }}</div></td>
+    <td><div class="label">Recommendations</div><div class="v">{{ recommendations|length }}</div></td>
+    <td><div class="label">Risks flagged</div><div class="v">{{ risk_factors|length }}</div></td>
+  </tr></table>
+
+  {% for paragraph in summary_paragraphs %}
+  <p{% if loop.first %} class="lead"{% endif %}>{{ paragraph }}</p>
+  {% endfor %}
+
+  {% if profile.value_proposition %}
+  <blockquote class="pull">&ldquo;{{ profile.value_proposition }}&rdquo;<span class="label">Value proposition</span></blockquote>
+  {% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 02 #}
+<section class="chapter" id="profile">
+  {{ chapter_head("02", "Business profile", profile.tagline) }}
+
+  <table class="kv">
+    <tr><td class="k label">Company</td><td>{{ profile.company_name }}</td></tr>
+    <tr><td class="k label">Industry</td><td>{{ profile.industry }}</td></tr>
+    {% if profile.website %}<tr><td class="k label">Website</td><td>{{ profile.website }}</td></tr>{% endif %}
+  </table>
+
+  {% if profile.description %}<p>{{ profile.description }}</p>{% endif %}
+
+  <table class="cols"><tr>
+    <td><h3>What they offer</h3>{{ num_list(profile.offerings) }}</td>
+    <td><h3>Who they serve</h3>{{ dash_list(profile.target_audience) }}</td>
+  </tr></table>
+</section>
+
+{# ---------------------------------------------------------------- 03 #}
+<section class="chapter" id="market">
+  {{ chapter_head("03", "Market", market.target_market) }}
+
+  {% if sizing %}
+  <table class="sizing"><tr>
+    <td class="diagram">
+      <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+        {% for circle in sizing %}
+        <circle cx="60" cy="{{ circle.cy }}" r="{{ circle.r }}" fill="{{ circle.fill }}" stroke="{{ circle.stroke }}" stroke-width="0.5"/>
+        <text x="60" y="{{ circle.label_y }}" text-anchor="middle" font-family="Inter, DejaVu Sans, sans-serif"
+              font-size="6" font-weight="600" letter-spacing="0.8" fill="{{ circle.text }}">{{ circle.label }}</text>
+        {% endfor %}
+      </svg>
+    </td>
+    <td>
+      {% for circle in sizing %}
+      <div class="row">
+        <div class="label">{{ circle.label }} <span class="long">{{ circle.long }}</span></div>
+        <div class="v">{{ circle.value }}</div>
+        {% if circle.note %}<div class="note">{{ circle.note }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </td>
+  </tr></table>
+  {% elif market.market_size %}
+  <div class="callout"><span class="label">Market size</span><p>{{ market.market_size }}</p></div>
+  {% endif %}
+
+  <table class="kv">
+    <tr><td class="k label">Pricing</td><td>{{ market.pricing_strategy }}</td></tr>
+    <tr><td class="k label">Positioning</td><td>{{ market.market_positioning }}</td></tr>
+  </table>
+
+  {% if market.market_trends %}<h3>Trends shaping the market</h3>{{ num_list(market.market_trends) }}{% endif %}
+
+  {% if market.customer_segments %}
+  <div><h3>Customer segments</h3>
+  {% if market.customer_segments|map("length")|max <= 48 %}{{ chips(market.customer_segments) }}
+  {% else %}{{ dash_list(market.customer_segments) }}{% endif %}
+  </div>
+  {% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 04 #}
+<section class="chapter" id="competition">
+  {{ chapter_head("04", "Competition") }}
+
+  {% if competitors %}
+  <table class="data">
+    <thead><tr><th style="width: 32%">Competitor</th><th style="width: 15%">Type</th><th>What they offer</th></tr></thead>
+    <tbody>
+    {% for name, kind, offering in competitors %}
+    <tr><td class="name">{{ name }}</td><td><span class="tag {{ kind|lower }}">{{ kind }}</span></td><td>{{ offering }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No competitors could be identified from the site.</p>
+  {% endif %}
+
+  <table class="cols"><tr>
+    <td><h3>Competitive advantages</h3>{{ dash_list(competitive.competitive_advantages) }}</td>
+    <td><h3>Gaps in the market</h3>{{ dash_list(competitive.market_gaps) }}</td>
+  </tr></table>
+
+  {% if competitive.threat_assessment %}
+  <div class="callout"><span class="label">Threat assessment</span><p>{{ competitive.threat_assessment }}</p></div>
+  {% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 05 #}
+<section class="chapter" id="swot">
+  {{ chapter_head("05", "SWOT analysis", "Strengths and weaknesses inside the business; opportunities and threats outside it.") }}
+  {{ quad([
+    ["Strengths", "S", "positive", swot.strengths],
+    ["Weaknesses", "W", "warning", swot.weaknesses],
+    ["Opportunities", "O", "slate", swot.opportunities],
+    ["Threats", "T", "negative", swot.threats],
+  ]) }}
+</section>
+
+{# ---------------------------------------------------------------- 06 #}
+<section class="chapter" id="recommendations">
+  {{ chapter_head("06", "Recommendations and risks", "The moves worth making, and what could get in the way.") }}
+  <ol class="recs">
+    {% for r in recommendations %}<li><span class="n">{{ "%02d" % loop.index }}</span>{{ r }}</li>{% endfor %}
+  </ol>
+  {% if risk_factors %}
+  <h3>Risk factors</h3>
+  <ul class="risks">{% for r in risk_factors %}<li>{{ r }}</li>{% endfor %}</ul>
+  {% endif %}
+</section>
+
+{% if marketing %}
+{# ---------------------------------------------------------- Part two #}
+<section class="dark-page opener">
+  <div class="frame">
+    <table class="masthead"><tr>
+      <td><span class="wordmark">{{ brand.name }}</span></td>
+      <td class="kind"><p class="eyebrow">{{ title }}</p></td>
+    </tr></table>
+    <div class="opener-body">
+      <p class="eyebrow accent">Part two</p>
+      <h2 class="opener-title bookmarked">Marketing playbook</h2>
+      <div class="cover-rule"></div>
+      <p class="opener-sub">Who to reach, how to sound, the path from first visit to advocate, and how to
+      become the answer search engines and AI assistants give.</p>
+    </div>
+  </div>
+</section>
+
+{# ---------------------------------------------------------------- 07 #}
+<section class="chapter" id="personas" style="break-before: auto;">
+  {{ chapter_head("07", "Audience and personas") }}
+  {% for p in marketing.personas %}
+  {% set parts = (p.name or "Persona").split(",", 1) %}
+  <div class="card persona">
+    <table class="p-head"><tr>
+      <td class="avatar"><span>{{ parts[0].strip()[:1]|upper }}</span></td>
+      <td>
+        <div class="p-name">{{ parts[0].strip() }}</div>
+        {% if parts|length > 1 %}<div class="label p-role">{{ parts[1].strip() }}</div>{% endif %}
+        {% if p.description %}<p class="p-desc">{{ p.description }}</p>{% endif %}
+      </td>
+    </tr></table>
+    {% if p.pain_points or p.goals or p.channels %}
+    <table class="p-cols"><tr>
+      <td><span class="label">Pain points</span>{{ dash_list(p.pain_points) }}</td>
+      <td><span class="label">Goals</span>{{ dash_list(p.goals) }}</td>
+      <td><span class="label">Channels</span>{{ dash_list(p.channels) }}</td>
+    </tr></table>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+{# ---------------------------------------------------------------- 08 #}
+<section class="chapter" id="brand">
+  {{ chapter_head("08", "Brand and voice") }}
+  {% set bp = marketing.brand_personality %}
+  {% if bp %}
+  {% if bp.archetype %}<div class="archetype"><div class="label">Archetype</div><div class="arch">{{ bp.archetype }}</div></div>{% endif %}
+  {% if bp.traits %}<h3>Traits</h3>{{ chips(bp.traits) }}{% endif %}
+  {% if bp.voice_characteristics %}<h3>Voice</h3><p>{{ bp.voice_characteristics }}</p>{% endif %}
+  {% endif %}
+  {% if marketing.call_to_action %}
+  <div class="cta-panel"><span class="label">Recommended call to action</span><p>{{ marketing.call_to_action }}</p></div>
+  {% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 09 #}
+<section class="chapter" id="journey">
+  {{ chapter_head("09", "Customer journey", "From first hearing about them to recommending them.") }}
+  <ol class="journey">
+    {% for s in marketing.customer_journey %}
+    <li>
+      <div class="dot">{{ loop.index }}</div>
+      <div class="j-stage">{{ s.stage }}</div>
+      {% if s.description %}<p>{{ s.description }}</p>{% endif %}
+      {% if s.touchpoints %}{{ chips(s.touchpoints) }}{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+{# ---------------------------------------------------------------- 10 #}
+<section class="chapter" id="faq">
+  {{ chapter_head("10", "Questions people ask", "What prospects search for, answered the way the site should answer them.") }}
+  {% for item in marketing.faq %}
+  <div class="faq block"><div class="q">{{ item.question }}</div><p>{{ item.answer }}</p></div>
+  {% endfor %}
+</section>
+
+{# ---------------------------------------------------------------- 11 #}
+<section class="chapter" id="visibility">
+  {{ chapter_head("11", "Search and AI visibility", "E-E-A-T signals show search engines the site can be trusted. GEO tactics make it the source AI assistants quote.") }}
+  {% if marketing.eeat %}
+  {% set e = marketing.eeat %}
+  {{ quad([
+    ["Experience", "E", "neutral", e.experience],
+    ["Expertise", "E", "neutral", e.expertise],
+    ["Authoritativeness", "A", "neutral", e.authoritativeness],
+    ["Trustworthiness", "T", "neutral", e.trustworthiness],
+  ]) }}
+  {% endif %}
+  {% if marketing.geo_tactics %}
+  <div class="block">
+  <h3>Generative engine optimisation</h3>
+  <ol class="num-list">
+    {% for g in marketing.geo_tactics %}<li><span class="n">{{ "%02d" % loop.index }}</span><span class="tactic">{{ g.tactic }}.</span> {{ g.description }}</li>{% endfor %}
+  </ol>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% endblock %}
+
+{% block method %}
+<ol class="method">
+  <li><span class="n">01</span>Read. The public pages of {{ source_host or "the website" }} were fetched and cleaned.
+    <span class="muted">Nothing private, nothing behind a login.</span></li>
+  <li><span class="n">02</span>Analyse. Six specialist models each wrote one part: the profile, the market, the
+    competition, the SWOT, the marketing playbook and the synthesis.</li>
+  <li><span class="n">03</span>Score. Every part was checked against a rubric of completeness rules and reviewed
+    by a separate critic model. Parts that fell short were run again.</li>
+  <li><span class="n">04</span>Assemble. The report was built only from the parts that were scored, so no section
+    was rewritten after it was checked.{% if score is not none %} Overall quality score: {{ score }} / 100.{% endif %}</li>
+</ol>
+<p class="fine">AI-generated analysis can be wrong. Market figures are estimates from public information,
+not audited data. Check anything you intend to act on.</p>
+{% endblock %}

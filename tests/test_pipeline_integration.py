@@ -154,8 +154,10 @@ class StubEmail:
         self.ok = ok
         self.raises = raises
         self.sent: list[str] = []
+        self.digests: list[Any] = []
 
     async def send_report(self, to_email: str, **kwargs: Any) -> DeliveryResult:
+        self.digests.append(kwargs.get("digest"))
         if self.raises:
             # EmailService converts a provider exception into a failed result;
             # mirror that rather than letting it escape into the pipeline.
@@ -267,6 +269,25 @@ class TestHappyPath:
         p = pipeline(email=email)
         await _run(p)
         assert email.sent == ["user@example.com"]
+
+    async def test_email_digest_carries_the_report(self, pipeline, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "public_base_url", "https://reports.example/app/")
+        email = StubEmail()
+        p = pipeline(email=email)
+        await _run(p)
+        digest = email.digests[0]
+        assert digest.company_name == "Acme Analytics"
+        assert digest.summary
+        assert digest.recommendations
+        assert digest.score is not None
+        assert digest.host == "acme.example.com"
+        assert digest.report_url == "https://reports.example/app/jobs/job1"
+
+    async def test_no_report_link_without_a_public_url(self, pipeline, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "public_base_url", "")
+        email = StubEmail()
+        await _run(pipeline(email=email))
+        assert email.digests[0].report_url is None
 
 
 class TestDeliveryFailure:
@@ -655,11 +676,16 @@ class TestResendGuards:
         p = pipeline(email=StubEmail(ok=False))
         await _run(p)
         assert (await p.get_job("job1"))["status"] == JobStatus.PARTIAL
-        p._email_service = StubEmail()  # type: ignore[assignment]
+        retry_email = StubEmail()
+        p._email_service = retry_email  # type: ignore[assignment]
         ok, _ = await p.resend("job1")
         assert ok is True
         assert (await p.get_job("job1"))["status"] == JobStatus.COMPLETED
         assert _by_slug(await p.get_stages("job1"))["deliver"]["status"] == StageStatus.SUCCEEDED
+        # The re-sent message is the full one, rebuilt from the stored report.
+        digest = retry_email.digests[0]
+        assert digest.company_name == "Acme Analytics"
+        assert digest.recommendations and digest.score is not None
 
     async def test_resend_is_capped_per_job(self, pipeline, monkeypatch) -> None:
         from app.email.policy import DeliveryRefusedError

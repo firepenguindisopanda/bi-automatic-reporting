@@ -20,6 +20,9 @@ from app.email.providers.local import ConsoleProvider, FileProvider
 from app.email.providers.smtp import SMTPProvider
 from app.email.registry import PROVIDERS, build_provider
 from app.email.service import EmailService
+from app.email.templates import ReportDigest
+
+ACME = ReportDigest(company_name="Acme")
 
 
 @pytest.fixture
@@ -82,7 +85,7 @@ class TestFileProvider:
     async def test_writes_a_readable_eml(self, tmp_path: Path, report_files) -> None:
         pdf, docx = report_files
         service = EmailService(provider=FileProvider(outbox=tmp_path / "outbox"))
-        result = await service.send_report("user@example.com", "Acme", pdf, docx)
+        result = await service.send_report("user@example.com", ACME, pdf, docx)
 
         assert result.ok
         written = list((tmp_path / "outbox").glob("*.eml"))
@@ -95,7 +98,7 @@ class TestFileProvider:
     async def test_attaches_both_documents(self, tmp_path: Path, report_files) -> None:
         pdf, docx = report_files
         service = EmailService(provider=FileProvider(outbox=tmp_path / "outbox"))
-        await service.send_report("user@example.com", "Acme", pdf, docx)
+        await service.send_report("user@example.com", ACME, pdf, docx)
 
         parsed = email.message_from_bytes(next((tmp_path / "outbox").glob("*.eml")).read_bytes())
         names = {p.get_filename() for p in parsed.walk() if p.get_filename()}
@@ -104,14 +107,14 @@ class TestFileProvider:
     async def test_missing_docx_is_not_fatal(self, tmp_path: Path, report_files) -> None:
         pdf, _ = report_files
         service = EmailService(provider=FileProvider(outbox=tmp_path / "outbox"))
-        result = await service.send_report("user@example.com", "Acme", pdf, tmp_path / "nope.docx")
+        result = await service.send_report("user@example.com", ACME, pdf, tmp_path / "nope.docx")
         assert result.ok
 
     async def test_carries_plain_text_alternative(self, tmp_path: Path, report_files) -> None:
         """A missing text/plain part hurts deliverability."""
         pdf, _ = report_files
         service = EmailService(provider=FileProvider(outbox=tmp_path / "outbox"))
-        await service.send_report("user@example.com", "Acme", pdf)
+        await service.send_report("user@example.com", ACME, pdf)
 
         parsed = email.message_from_bytes(next((tmp_path / "outbox").glob("*.eml")).read_bytes())
         types = {p.get_content_type() for p in parsed.walk()}
@@ -125,7 +128,7 @@ class TestFileProvider:
         as spam and cannot be traced through a mail log."""
         pdf, _ = report_files
         service = EmailService(provider=FileProvider(outbox=tmp_path / "outbox"))
-        await service.send_report("user@example.com", "Acme", pdf)
+        await service.send_report("user@example.com", ACME, pdf)
 
         parsed = email.message_from_bytes(
             next((tmp_path / "outbox").glob("*.eml")).read_bytes()
@@ -141,12 +144,25 @@ class TestFileProvider:
         pdf, _ = report_files
         monkeypatch.setattr(settings, "from_email", "reports@bisystem.com")
         service = EmailService(provider=FileProvider(outbox=tmp_path / "outbox"))
-        await service.send_report("user@example.com", "Acme", pdf)
+        await service.send_report("user@example.com", ACME, pdf)
 
         parsed = email.message_from_bytes(
             next((tmp_path / "outbox").glob("*.eml")).read_bytes()
         )
         assert parsed["Message-ID"].endswith("@bisystem.com>")
+
+    async def test_the_from_line_carries_the_brand(
+        self, tmp_path: Path, report_files, monkeypatch
+    ) -> None:
+        pdf, _ = report_files
+        monkeypatch.setattr(settings, "from_email", "reports@bisystem.com")
+        monkeypatch.setattr(settings, "from_name", "")
+        monkeypatch.setattr(settings, "brand_name", "Rubric")
+        service = EmailService(provider=FileProvider(outbox=tmp_path / "outbox"))
+        await service.send_report("user@example.com", ACME, pdf)
+
+        parsed = email.message_from_bytes(next((tmp_path / "outbox").glob("*.eml")).read_bytes())
+        assert parsed["From"] == "Rubric <reports@bisystem.com>"
 
     async def test_every_message_gets_a_distinct_id(
         self, tmp_path: Path, report_files
@@ -169,7 +185,7 @@ class TestFileProvider:
 class TestConsoleProvider:
     async def test_send_succeeds_without_credentials(self, report_files) -> None:
         pdf, _ = report_files
-        result = await EmailService(provider=ConsoleProvider()).send_report("u@e.com", "Acme", pdf)
+        result = await EmailService(provider=ConsoleProvider()).send_report("u@e.com", ACME, pdf)
         assert result.ok
         assert result.provider == "console"
 
@@ -275,6 +291,17 @@ class TestHTTPProviders:
             "from@e.com",
         )
         assert seen["attachments"][0]["content"] == "JVBERi0xLjQ="
+
+    @pytest.mark.parametrize(
+        ("sender", "expected"),
+        [
+            ("Rubric <from@e.com>", {"email": "from@e.com", "name": "Rubric"}),
+            ("from@e.com", {"email": "from@e.com"}),
+        ],
+    )
+    def test_sendgrid_takes_the_display_name_separately(self, sender: str, expected: dict) -> None:
+        msg = EmailMessage(to=["u@e.com"], subject="s", html="h", text="t")
+        assert SendGridProvider(api_key="k")._payload(msg, sender)["from"] == expected
 
 
 class FlakyProvider:

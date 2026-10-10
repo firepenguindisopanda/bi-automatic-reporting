@@ -1,0 +1,52 @@
+{#- The app's page mark (frontend/public/favicon.svg) drawn large, in outline,
+    for the dark pages: a page whose marked line is the rubric. -#}
+{% macro page_mark(c) -%}
+<svg class="cover-mark" viewBox="0 0 32 40" xmlns="http://www.w3.org/2000/svg">
+  <rect x="1" y="1" width="30" height="38" rx="1.6" fill="none" stroke="{{ c.on_ink_rule }}" stroke-width="0.35"/>
+  <rect x="6" y="7" width="20" height="2.6" rx="0.5" fill="{{ c.accent_bright }}"/>
+  <rect x="6" y="14" width="20" height="1.1" rx="0.5" fill="{{ c.on_ink_rule }}"/>
+  <rect x="6" y="18.5" width="20" height="1.1" rx="0.5" fill="{{ c.on_ink_rule }}"/>
+  <rect x="6" y="23" width="20" height="1.1" rx="0.5" fill="{{ c.on_ink_rule }}"/>
+  <rect x="6" y="27.5" width="12" height="1.1" rx="0.5" fill="{{ c.on_ink_rule }}"/>
+</svg>
+{%- endmacro %}
+
+{% macro chapter_head(num, title, standfirst="") -%}
+<div class="chapter-head">
+  <div class="num">{{ num }}</div>
+  <h2>{{ title }}</h2>
+  {% if standfirst %}<p class="standfirst">{{ standfirst }}</p>{% endif %}
+  <span class="rubric"></span>
+</div>
+{%- endmacro %}
+
+{% macro dash_list(items) -%}
+<ul class="dash-list">{% for item in items %}<li>{{ item }}</li>{% endfor %}</ul>
+{%- endmacro %}
+
+{% macro num_list(items) -%}
+<ol class="num-list">{% for item in items %}<li><span class="n">{{ "%02d" % loop.index }}</span>{{ item }}</li>{% endfor %}</ol>
+{%- endmacro %}
+
+{% macro chips(items) -%}
+<div class="chips">{% for item in items %}<span class="chip">{{ item }}</span>{% endfor %}</div>
+{%- endmacro %}
+
+{#- A 2x2 grid. `cells` is four (label, letter, tone, items) tuples. -#}
+{% macro quad(cells) -%}
+<table class="quad">
+  {% for row in cells|batch(2) %}
+  <tr>
+    {% for label, letter, tone, items in row %}
+    <td class="q-{{ tone }}">
+      <div class="q-head"><span class="letter">{{ letter }}</span><span class="label">{{ label }}</span></div>
+      <div class="q-body">
+        {% if items %}<ul>{% for item in items %}<li>{{ item }}</li>{% endfor %}</ul>
+        {% else %}<p class="muted small">Nothing noted.</p>{% endif %}
+      </div>
+    </td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</table>
+{%- endmacro %}

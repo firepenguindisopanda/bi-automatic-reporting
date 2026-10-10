@@ -32,12 +32,15 @@ COPY requirements.txt .
 RUN pip install --user --no-cache-dir -r requirements.txt
 
 FROM python:3.13-slim
+# fonts-inter is the reports' sans (labels, figures). The serif ships with the
+# app in app/report/assets and is loaded by the PDF itself.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpango-1.0-0 \
     libpangocairo-1.0-0 \
     libcairo2 \
     libgdk-pixbuf-2.0-0 \
     libjpeg62-turbo \
+    fonts-inter \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -r app && useradd -r -g app -d /app -s /sbin/nologin app

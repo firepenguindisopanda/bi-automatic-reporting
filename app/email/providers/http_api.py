@@ -7,6 +7,7 @@ trial lasts; Resend is here as a drop-in alternative.
 
 import base64
 import logging
+from email.utils import parseaddr
 from typing import Any
 
 import httpx
@@ -27,6 +28,12 @@ def _b64(data: bytes) -> str:
     return base64.b64encode(data).decode()
 
 
+def _sendgrid_address(from_email: str) -> dict[str, str]:
+    """SendGrid takes the display name as its own field, not as `Name <addr>`."""
+    name, address = parseaddr(from_email)
+    return {"email": address or from_email, **({"name": name} if name else {})}
+
+
 class SendGridProvider(EmailProvider):
     name = "sendgrid"
     endpoint = "https://api.sendgrid.com/v3/mail/send"
@@ -37,7 +44,7 @@ class SendGridProvider(EmailProvider):
     def _payload(self, msg: EmailMessage, from_email: str) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "personalizations": [{"to": [{"email": addr} for addr in msg.to]}],
-            "from": {"email": from_email},
+            "from": _sendgrid_address(from_email),
             "subject": msg.subject,
             "content": [
                 {"type": "text/plain", "value": msg.text},

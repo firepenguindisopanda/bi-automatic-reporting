@@ -7,15 +7,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
-      - run: pip install -r requirements.txt
-      - run: ruff check .
-      - run: mypy app
-      - run: pytest --cov=app --cov-report=term-missing tests/
+          enable-cache: true
+      # --locked fails if uv.lock no longer matches pyproject.toml.
+      - run: uv sync --locked
+      # requirements.txt is exported from the lock for the Docker build; a
+      # hand edit there, or a lock change without re-exporting, fails here.
+      - run: uv export --locked --no-dev --no-hashes --format requirements-txt --no-header | diff -u requirements.txt -
+      - run: uv run ruff check .
+      - run: uv run mypy app
+      - run: uv run pytest --cov=app --cov-report=term-missing tests/
         env:
-          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY || '' }}
+          # Tests never call the model API; an empty key proves it.
+          NVIDIA_API_KEY: ""
 
   frontend:
     runs-on: ubuntu-latest

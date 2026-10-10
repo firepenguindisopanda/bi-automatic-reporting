@@ -215,7 +215,7 @@ def matches(path: str, pattern: str, explanation: str, label: str | None = None)
 # A market size the prompt would accept: a range ("$2-5B", "1.2 to 3 billion")
 # or a TAM/SAM/SOM breakdown. A single precise figure is what it forbids.
 RANGE_PATTERN = (
-    r"\d[\d.,]*\s*(?:[kmbt]|bn|mn|million|billion|trillion)?\s*(?:-|–|—|to)\s*"
+    r"\d[\d.,]*\s*(?:[kmbt]|bn|mn|million|billion|trillion)?\s*(?:-|–|\u2014|to)\s*"
     r"[$€£]?\s*\d"
     r"|\b(?:tam|sam|som)\b"
 )

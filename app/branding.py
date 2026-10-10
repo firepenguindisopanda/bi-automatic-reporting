@@ -42,7 +42,7 @@ PALETTE = {
     "negative_soft": "#F7E8E5",
 }
 
-_EM_DASH = re.compile(r"\s*—\s*")
+_EM_DASH = re.compile(r"\s*\u2014\s*")
 
 
 def without_em_dashes(text: str) -> str:

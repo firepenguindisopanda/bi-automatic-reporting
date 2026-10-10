@@ -28,7 +28,7 @@ def cells(path: Path) -> tuple[dict, dict]:
 def report(name: str, a: dict, b: dict) -> None:
     shared = sorted(set(a) & set(b))
     deltas = [abs(a[k] - b[k]) for k in shared]
-    print(f"\n=== {name} — {len(shared)} cells in both runs ===")
+    print(f"\n=== {name}: {len(shared)} cells in both runs ===")
     if not shared:
         return
     moved = [(k, a[k], b[k]) for k in shared if abs(a[k] - b[k]) > TOL]

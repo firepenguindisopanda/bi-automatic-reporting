@@ -229,7 +229,7 @@ def render_research_html(result: MarketResearchResult, *, generated: datetime | 
 def _apply_house_style(doc: Any) -> None:
     for paragraph in doc.paragraphs:
         for run in paragraph.runs:
-            if "—" in run.text:
+            if "\u2014" in run.text:
                 run.text = without_em_dashes(run.text)
 
 

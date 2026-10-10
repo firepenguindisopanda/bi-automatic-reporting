@@ -10,8 +10,8 @@ same thing will happen again, so this records how to find replacements fast.
 
 `langchain_nvidia_ai_endpoints.available_models` is compiled into the package and
 still listed both retired models. That is where the misleading "141 models, 131
-dead" reading came from, and it hid `openai/gpt-oss-20b` — the model eventually
-chosen — because it is not in that list at all.
+dead" reading came from, and it hid `openai/gpt-oss-20b` (the model eventually
+chosen) because it is not in that list at all.
 
 ```bash
 curl -H "Authorization: Bearer $NVIDIA_API_KEY" \
@@ -49,7 +49,7 @@ above first. Costs 8 completion tokens per model.
 ## Answering "ok" is not evidence
 
 Every candidate was then driven through the app's own JSON path on the real
-profile stage. All eight fast ones parsed — **and completeness read 100.0 for
+profile stage. All eight fast ones parsed, **and completeness read 100.0 for
 every one of them**, which is exactly the pinned metric M1 exists to expose, met
 in a decision that depended on it. Confidence was the only metric that could
 rank them:
@@ -59,7 +59,7 @@ rank them:
 | `openai/gpt-oss-20b` | 95 · 95 · 95 | **95.0** | **7.4** |
 | `openai/gpt-oss-120b` | 82 · 86 · 94 | 87.3 | 115.3 |
 | `nvidia/nemotron-3-nano-30b-a3b` | 60 · 95 · 95 | 83.3 | 7.4 |
-| `meta/llama-3.2-11b-vision-instruct` | 78 · 85 · — | 81.5 | 8.7 |
+| `meta/llama-3.2-11b-vision-instruct` | 78 · 85 · - | 81.5 | 8.7 |
 
 Dropped on latency before quality mattered: `kimi-k3` 55.6s,
 `step-3.7-flash` 86.9s, `nemotron-3.5-lightning-30b-a3b` 188.2s per stage.
@@ -75,7 +75,8 @@ the others on the same inputs, so it is discriminating rather than stuck.
 hours while 13 other models answered normally in the same second. No
 `Retry-After`, no `X-RateLimit-*` headers; NVIDIA publishes no per-model limits
 and reportedly does not grant increases. The documented remedy is client-side
-failover, which **this app does not have** — `WORKHORSE_MODEL` backs five of six
+failover, which **this app did not have then** (it has since 2026-10-10:
+`AGENT_FALLBACK_MODEL`). `WORKHORSE_MODEL` backed five of six
 BI stages, so one throttled model stops every job while `DEEP_MODEL` sits idle.
 
 ---

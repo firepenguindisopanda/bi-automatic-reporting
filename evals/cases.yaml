@@ -70,7 +70,7 @@ cases:
       # which is an estimate, not a price. "$0" is skipped too: free is correct.
       - stages: [profile, marketing, report]
         forbid_regex:
-          - '[$€£]\s?(?:[1-9]|0[.,]0*[1-9])[\d,.]*(?![\d,.])(?!\s?(?:[-–—‑]|to)\s?[$€£]?\s?\d)(?!\s?(?:m|mn|mm|b|bn|million|billion|trillion)\b)'
+          - '[$€£]\s?(?:[1-9]|0[.,]0*[1-9])[\d,.]*(?![\d,.])(?!\s?(?:[-–\u2014‑]|to)\s?[$€£]?\s?\d)(?!\s?(?:m|mn|mm|b|bn|million|billion|trillion)\b)'
       # The pricing strategy has to say how a free, open-source project is
       # actually funded. A tiered or value-based SaaS story is the invention
       # this case exists to catch. "\bfree" also accepts "freemium" on purpose:

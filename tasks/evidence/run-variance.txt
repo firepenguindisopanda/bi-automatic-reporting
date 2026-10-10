@@ -19,7 +19,7 @@ overall: 90.3 -> 92.6  (+2.3)
 
 run1 = rebaseline-2026-08-26.json   run2 = rebaseline-run2.json
 
-=== completeness — 40 cells in both runs ===
+=== completeness: 40 cells in both runs ===
   mean |delta|   6.4   max |delta|  75.0   cells moving >5: 5/40 (12%)
     linear     swot          25.0 -> 100.0  (+75.0)
     eleventy   report       100.0 ->  33.3  (-66.7)
@@ -27,7 +27,7 @@ run1 = rebaseline-2026-08-26.json   run2 = rebaseline-run2.json
     linear     report        33.3 ->  66.7  (+33.4)
     linear     competitive  100.0 ->  87.5  (-12.5)
 
-=== confidence — 26 cells in both runs ===
+=== confidence: 26 cells in both runs ===
   mean |delta|  15.0   max |delta|  63.0   cells moving >5: 17/26 (65%)
     eleventy   profile       93.0 ->  30.0  (-63.0)
     flyio      market        45.0 ->  95.0  (+50.0)

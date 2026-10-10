@@ -105,8 +105,8 @@ image; without it the PDF falls back to DejaVu Sans.
 
 The scraper fetches user-supplied URLs from inside the deployment network. With
 `SCRAPER_BLOCK_PRIVATE_NETWORKS=true` (the default) it refuses loopback,
-private, link-local, multicast, reserved and carrier-grade-NAT addresses —
-including the `100.64.0.0/10` range Tailscale uses — and re-checks after every
+private, link-local, multicast, reserved and carrier-grade-NAT addresses
+(including the `100.64.0.0/10` range Tailscale uses), and re-checks after every
 redirect. Turn it off only on a host that runs nothing else.
 
 ## Evals
@@ -125,7 +125,7 @@ both fail on a regression larger than run-to-run noise.
 
 ## Deployment
 
-Target is an IBM LinuxONE VM — **s390x**, big-endian. Two steps, in this order:
+Target is an IBM LinuxONE VM: **s390x**, big-endian. Two steps, in this order:
 
 ```bash
 cd frontend && npm ci && npm run build   # x86_64: produces frontend/dist
@@ -136,7 +136,7 @@ The frontend is deliberately **not** built inside the image. Vite 8 bundles with
 rolldown, whose s390x native binding segfaults, and no Node base image builds it
 on that architecture. `frontend/dist` is static assets with no architecture in
 them, so it is built on x86_64 and copied in. If you skip step one, the `COPY`
-fails and the build stops — that is the intended failure.
+fails and the build stops. That is the intended failure.
 
 CI runs on x86_64 and never builds for s390x, so a green CI run is not evidence
 the image builds. See `SPEC.md` §4 for the wheel and native-binding findings.

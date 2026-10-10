@@ -34,7 +34,7 @@ def _brand(monkeypatch) -> None:
     monkeypatch.setattr(settings, "from_name", "")
 
 
-def _report(summary: str = "Acme sells widgets — fast.\n\nSecond paragraph.", size: str = VALCREST_SIZE):
+def _report(summary: str = "Acme sells widgets \u2014 fast.\n\nSecond paragraph.", size: str = VALCREST_SIZE):
     profile = BusinessProfile(
         company_name="Acme", tagline="Widgets", description="d", industry="Widget supply",
         offerings=["Widgets"], target_audience=["Factories"], value_proposition="Fast",
@@ -52,7 +52,7 @@ def _report(summary: str = "Acme sells widgets — fast.\n\nSecond paragraph.", 
     swot = SWOTAnalysis(strengths=["s"], weaknesses=["w"], opportunities=["o"], threats=["t"])
     synthesis = ReportSynthesis(
         executive_summary=summary,
-        recommendations=["Raise prices — carefully", "Hire", "Expand", "Automate"],
+        recommendations=["Raise prices \u2014 carefully", "Hire", "Expand", "Automate"],
         risk_factors=["Churn"],
     )
     return build_report(synthesis, profile, market, competitive, swot), profile
@@ -76,7 +76,7 @@ class TestSender:
 class TestHouseStyle:
     @pytest.mark.parametrize(
         ("text", "expected"),
-        [("a—b", "a - b"), ("a — b", "a - b"), ("10–20", "10–20"), ("plain", "plain")],
+        [("a\u2014b", "a - b"), ("a \u2014 b", "a - b"), ("10–20", "10–20"), ("plain", "plain")],
     )
     def test_em_dashes_become_spaced_hyphens(self, text: str, expected: str) -> None:
         assert without_em_dashes(text) == expected
@@ -109,7 +109,7 @@ class TestEmail:
         assert digest.competitors == 3
         assert digest.risks == 1
         assert len(digest.recommendations) == 4
-        assert digest.summary == "Acme sells widgets — fast."
+        assert digest.summary == "Acme sells widgets \u2014 fast."
         assert digest.host == "acme.example"
         assert digest.has_marketing
 
@@ -133,8 +133,8 @@ class TestEmail:
 
     def test_no_em_dashes_anywhere(self) -> None:
         digest = self._digest()
-        for part in (templates.report_html(digest), templates.report_text(digest), templates.report_subject("A—B")):
-            assert "—" not in part and "&mdash;" not in part
+        for part in (templates.report_html(digest), templates.report_text(digest), templates.report_subject("A\u2014B")):
+            assert "\u2014" not in part and "&mdash;" not in part
 
     def test_author_lines_are_left_out_when_unset(self, monkeypatch) -> None:
         monkeypatch.setattr(settings, "brand_author", "")
@@ -166,7 +166,7 @@ class TestPdfDesign:
     def test_no_em_dashes_in_the_document(self) -> None:
         report, profile = _report()
         html = render_bi_html(report, profile)
-        assert "—" not in html and "&mdash;" not in html
+        assert "\u2014" not in html and "&mdash;" not in html
         assert "Raise prices - carefully" in html
 
     def test_marketing_part_is_left_out_without_marketing(self) -> None:

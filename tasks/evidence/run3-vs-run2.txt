@@ -19,7 +19,7 @@ overall: 92.6 -> 94.7  (+2.1)
 
 run1 = rebaseline-run2.json   run2 = rebaseline-run3-post-repair.json
 
-=== completeness — 40 cells in both runs ===
+=== completeness: 40 cells in both runs ===
   mean |delta|   5.0   max |delta|  75.0   cells moving >5: 6/40 (15%)
     ghost      swot         100.0 ->  25.0  (-75.0)
     flyio      competitive  100.0 ->  50.0  (-50.0)
@@ -29,7 +29,7 @@ run1 = rebaseline-run2.json   run2 = rebaseline-run3-post-repair.json
     stripe     marketing    100.0 ->  87.5  (-12.5)
   present in run1 only: 0   run2 only: 2
 
-=== confidence — 30 cells in both runs ===
+=== confidence: 30 cells in both runs ===
   mean |delta|  14.8   max |delta|  62.0   cells moving >5: 20/30 (67%)
     eleventy   profile       30.0 ->  92.0  (+62.0)
     flyio      market        95.0 ->  45.0  (-50.0)

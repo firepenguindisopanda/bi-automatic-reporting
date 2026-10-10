@@ -17,7 +17,7 @@
 | `app/pipeline/stages.py` | The stage registry: slugs, order, labels, job/stage statuses. The only stage list. |
 | `app/analysis/specs.py` | One `AgentSpec` per LLM stage: model, prompt, output model, contract, critic source. |
 | `app/analysis/prompts.py` | System prompts, each with a `*_V` version recorded on every stage row. |
-| `app/analysis/runner.py` | `AgentRunner`: repair ladder, transport retries, truncation flag, critic re-run. |
+| `app/analysis/runner.py` | `AgentRunner`: repair ladder, transport retries, failover to `AGENT_FALLBACK_MODEL`, truncation flag, critic re-run. |
 | `app/analysis/critic.py` | The LLM critic (confidence score). |
 | `app/pipeline/contracts.py` | Deterministic completeness scoring. Scored, never enforced. |
 | `app/orchestrator/bi_pipeline.py` | BI job: scrape, analyse, assemble, render, deliver; retry/resume; resend. |
@@ -76,5 +76,9 @@ uv run python -m evals.run --stages profile --repeat 3   # real model calls - co
 - The sync `.invoke()` path was removed: ChatNVIDIA returned truncated bodies when called from
   worker threads. Everything is `ainvoke`, and structured output is parsed from raw JSON replies
   (`build_json_messages` / `parse_json_response`), not `with_structured_output`.
-- Models were swapped on 2026-08-26 when NVIDIA retired the originals; see the note in `app/config.py`.
-  Prompts were tuned on the retired model.
+- Models were swapped on 2026-08-26 when NVIDIA retired the originals, and re-chosen on 2026-10-10
+  by an eval sweep across 16 sites (`evals/results/models-2026-10-10.md`; reasoning in `app/config.py`).
+  To compare models again: `evals.run --model M` per candidate, then `evals.models`.
+- The critic used to see 4,000 characters of the page while analysts saw up to 15,000, so it scored
+  correct facts from further down as fabricated. Fixed in critic/2; older confidence numbers are lower
+  for that reason, not because the analysis was worse.

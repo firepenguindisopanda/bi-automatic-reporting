@@ -646,3 +646,76 @@ class TestTruncation:
         # The repair turn names the token limit, not just a JSON error.
         repair = runner._client_factory("m", 0.0, 1)._llm.calls[1]  # type: ignore[attr-defined]
         assert "token limit" in " ".join(str(m.content) for m in repair)
+
+
+class TestFailover:
+    """A stage whose model cannot answer gets one more run on the fallback model."""
+
+    def _runner(self, by_model: dict[str, list[Any]]) -> tuple[AgentRunner, dict[str, ScriptedLLM]]:
+        scripted = {model: ScriptedLLM(script) for model, script in by_model.items()}
+
+        def factory(model: str, temperature: float, max_tokens: int) -> LLMClient:
+            client = LLMClient(model=model)
+            client._llm = scripted[model]  # type: ignore[assignment]
+            return client
+
+        return AgentRunner(client_factory=factory), scripted
+
+    async def test_broken_json_on_every_attempt_fails_over(self) -> None:
+        runner, llms = self._runner({"primary": [GARBAGE], "backup": [VALID]})
+        result = await runner.run(spec(model="primary", fallback_model="backup"), StageContext())
+        assert result.value.company_name == "Acme"
+        assert result.metrics.model == "backup"
+        assert len(llms["primary"].calls) == 3
+        # Every request the stage sent is counted, on either model.
+        assert result.metrics.attempts == 4
+        assert any("primary failed" in w for w in result.metrics.warnings)
+
+    async def test_a_throttled_model_fails_over_after_its_retries(self) -> None:
+        throttled = Exception("[429] Too Many Requests")
+        runner, llms = self._runner({"primary": [throttled], "backup": [VALID]})
+        result = await runner.run(spec(model="primary", fallback_model="backup"), StageContext())
+        assert result.metrics.model == "backup"
+        assert len(llms["primary"].calls) == 4  # first try plus three transport retries
+
+    async def test_a_retired_model_fails_over_at_once(self) -> None:
+        runner, llms = self._runner({"primary": [Exception("[404] Not Found")], "backup": [VALID]})
+        result = await runner.run(spec(model="primary", fallback_model="backup"), StageContext())
+        assert result.metrics.model == "backup"
+        assert len(llms["primary"].calls) == 1
+
+    async def test_both_failing_raises_with_the_whole_cost(self) -> None:
+        runner, _ = self._runner({"primary": [GARBAGE], "backup": [GARBAGE]})
+        with pytest.raises(StageError) as excinfo:
+            await runner.run(spec(model="primary", fallback_model="backup"), StageContext())
+        assert excinfo.value.error_kind == ErrorKind.PARSE_ERROR
+        assert excinfo.value.metrics is not None
+        assert excinfo.value.metrics.attempts == 6
+
+    async def test_no_fallback_configured_raises_as_before(self) -> None:
+        runner, llms = self._runner({"primary": [GARBAGE]})
+        with pytest.raises(StageError):
+            await runner.run(spec(model="primary"), StageContext())
+        assert len(llms["primary"].calls) == 3
+
+    async def test_a_fallback_equal_to_the_model_is_not_retried(self) -> None:
+        runner, llms = self._runner({"primary": [GARBAGE]})
+        with pytest.raises(StageError):
+            await runner.run(spec(model="primary", fallback_model="primary"), StageContext())
+        assert len(llms["primary"].calls) == 3
+
+    async def test_a_missing_input_does_not_fail_over(self) -> None:
+        """Not the model's fault: any model would fail the same way."""
+
+        def needs_profile(ctx: StageContext) -> str:
+            ctx.require_profile()
+            return "never reached"
+
+        runner, llms = self._runner({"primary": [VALID], "backup": [VALID]})
+        with pytest.raises(StageError) as excinfo:
+            await runner.run(
+                spec(model="primary", fallback_model="backup", build_user_prompt=needs_profile),
+                StageContext(),
+            )
+        assert excinfo.value.error_kind == ErrorKind.INTERNAL
+        assert llms["backup"].calls == []

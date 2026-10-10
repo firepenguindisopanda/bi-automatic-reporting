@@ -418,8 +418,10 @@ class TestFailedStageObservability:
         await _run(p)
         swot = _by_slug(await p.get_stages("job1"))["swot"]
         assert swot["status"] == StageStatus.FAILED
-        assert swot["model"] == SWOT_SPEC.model
-        assert swot["attempts"] == 3
+        # Failed on its own model, then on the fallback: the row names the last
+        # model tried and counts every request sent to either.
+        assert swot["model"] == SWOT_SPEC.fallback_model
+        assert swot["attempts"] == 6
         assert swot["duration_ms"] is not None
         assert swot["prompt_tokens"] and swot["completion_tokens"]
 

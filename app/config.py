@@ -5,6 +5,33 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+# Models, chosen 2026-10-10 by evals.models across all 16 BI eval cases
+# (evals/results/models-2026-10-10.md): every stage on one candidate, the critic
+# fixed on Nemotron 3 Super with its full page window (critic/2), re-runs off so
+# a weak first answer could not hide.
+#
+#   model                       ok     quality  median s/stage, incl. critic
+#   google/gemma-4-31b-it       96/96  85.5     63
+#   nvidia/nemotron-3-super     96/96  82.3     32
+#   moonshotai/kimi-k3          96/96  79.1     67
+#   nvidia/nemotron-3-ultra     95/96  77.3     87
+#   openai/gpt-oss-20b          84/96  68.3     44   <- the previous workhorse
+#
+# Gemma 4 31B led every stage but one, where it tied Nemotron 3 Super - which
+# is also the critic, so any self-preference favoured the runner-up. gpt-oss-20b
+# returned unparseable JSON on all three attempts for four marketing stages and
+# two competitive and SWOT stages, each a failed job in production, and gave
+# Riomed a SWOT with only strengths. Not shortlisted: DeepSeek V4.1 Flash
+# answered every call with a 504; GLM 5.3 took 50-215 s a stage and ran out of
+# tokens mid-JSON. Of the 80 models GET /v1/models listed, 11 general chat
+# models answered at all.
+#
+# The critic stays on Nemotron 3 Super: fast, 96/96 as an analyst itself, and
+# from a different family than the analysts, so no stage is graded by its own
+# model.
+#
+# Earlier history, kept because the lessons still hold:
+#
 # NVIDIA retired meta/llama-3.1-8b-instruct and the 49B behind competitive
 # analysis at 2026-08-26T09:00:00Z, so both models this app used stopped
 # answering mid-run.
@@ -36,7 +63,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Caveat worth keeping in view: prompts.py is tuned to the retired model, and
 # every eval score from before this date was measured on equipment that no
 # longer exists.
-WORKHORSE_MODEL = "openai/gpt-oss-20b"
+WORKHORSE_MODEL = "google/gemma-4-31b-it"
 DEEP_MODEL = "nvidia/nemotron-3-super-120b-a12b"
 
 
@@ -55,13 +82,17 @@ class Settings(BaseSettings):
 
     agent_model_business_profile: str = WORKHORSE_MODEL
     agent_model_market_analysis: str = WORKHORSE_MODEL
-    # The one stage kept on the deeper model - it was the sole 49B stage before
-    # the retirement, and that choice is preserved rather than quietly dropped.
-    agent_model_competitive_analysis: str = DEEP_MODEL
+    # Was the one stage on the deeper model. Gemma tied it here (75.9 against
+    # 76.4, judged by the deeper model itself), so it joins the rest.
+    agent_model_competitive_analysis: str = WORKHORSE_MODEL
     agent_model_swot: str = WORKHORSE_MODEL
     agent_model_marketing: str = WORKHORSE_MODEL
     agent_model_report_writer: str = WORKHORSE_MODEL
     agent_model_market_research: str = WORKHORSE_MODEL
+    # Where a stage goes when its own model cannot answer: broken JSON on every
+    # repair attempt, or a throttled, overloaded or retired model. The runner-up
+    # in the 2026-10-10 sweep, and the fastest. Empty turns failover off.
+    agent_fallback_model: str = DEEP_MODEL
 
     # Stage quality signal
     enable_stage_critic: bool = True

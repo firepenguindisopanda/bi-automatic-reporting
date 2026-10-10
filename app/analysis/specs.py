@@ -328,6 +328,7 @@ PROFILE_SPEC = AgentSpec(
     model=settings.agent_model_business_profile,
     prompt_version=prompts.BUSINESS_PROFILE_V,
     max_attempts=settings.agent_max_attempts,
+    fallback_model=settings.agent_fallback_model or None,
     contract=PROFILE_CONTRACT,
 )
 
@@ -339,6 +340,7 @@ MARKET_SPEC = AgentSpec(
     model=settings.agent_model_market_analysis,
     prompt_version=prompts.MARKET_ANALYSIS_V,
     max_attempts=settings.agent_max_attempts,
+    fallback_model=settings.agent_fallback_model or None,
     contract=MARKET_CONTRACT,
 )
 
@@ -350,6 +352,7 @@ COMPETITIVE_SPEC = AgentSpec(
     model=settings.agent_model_competitive_analysis,
     prompt_version=prompts.COMPETITIVE_ANALYSIS_V,
     max_attempts=settings.agent_max_attempts,
+    fallback_model=settings.agent_fallback_model or None,
     contract=COMPETITIVE_CONTRACT,
 )
 
@@ -361,6 +364,7 @@ SWOT_SPEC = AgentSpec(
     model=settings.agent_model_swot,
     prompt_version=prompts.SWOT_V,
     max_attempts=settings.agent_max_attempts,
+    fallback_model=settings.agent_fallback_model or None,
     contract=SWOT_CONTRACT,
 )
 
@@ -372,6 +376,7 @@ MARKETING_SPEC = AgentSpec(
     model=settings.agent_model_marketing,
     prompt_version=prompts.MARKETING_V,
     max_attempts=settings.agent_max_attempts,
+    fallback_model=settings.agent_fallback_model or None,
     contract=MARKETING_CONTRACT,
 )
 
@@ -383,6 +388,7 @@ REPORT_SPEC = AgentSpec(
     model=settings.agent_model_report_writer,
     prompt_version=prompts.REPORT_WRITER_V,
     max_attempts=settings.agent_max_attempts,
+    fallback_model=settings.agent_fallback_model or None,
     contract=REPORT_CONTRACT,
     # Reviewed like every other stage now that it writes only its own
     # synthesis rather than restating stages that were already reviewed - and
@@ -398,6 +404,7 @@ MACRO_SPEC = AgentSpec(
     model=settings.agent_model_market_research,
     prompt_version=prompts.MARKET_MACRO_V,
     max_attempts=settings.agent_max_attempts,
+    fallback_model=settings.agent_fallback_model or None,
     contract=MACRO_CONTRACT,
 )
 
@@ -409,6 +416,7 @@ SIZING_SPEC = AgentSpec(
     model=settings.agent_model_market_research,
     prompt_version=prompts.MARKET_SIZING_V,
     max_attempts=settings.agent_max_attempts,
+    fallback_model=settings.agent_fallback_model or None,
     contract=SIZING_CONTRACT,
 )
 
@@ -420,6 +428,7 @@ RESOURCES_SPEC = AgentSpec(
     model=settings.agent_model_market_research,
     prompt_version=prompts.MARKET_RESOURCES_V,
     max_attempts=settings.agent_max_attempts,
+    fallback_model=settings.agent_fallback_model or None,
     contract=RESOURCES_CONTRACT,
 )
 

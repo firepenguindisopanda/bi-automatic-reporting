@@ -24,7 +24,7 @@ import random
 import re
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Protocol
 
 import httpx
@@ -120,6 +120,17 @@ def classify(exc: BaseException) -> ErrorKind:
     return ErrorKind.INTERNAL
 
 
+# Failures a different model might not have. INTERNAL (a missing input, a bug)
+# and BLOCKED (policy) would fail the same way on any model.
+FAILOVER_KINDS = frozenset({
+    ErrorKind.PARSE_ERROR,
+    ErrorKind.VALIDATION_ERROR,
+    ErrorKind.TIMEOUT,
+    ErrorKind.HTTP_ERROR,
+    ErrorKind.UPSTREAM_ERROR,
+})
+
+
 def ms_since(started: float) -> int:
     """Milliseconds since a ``time.monotonic()`` reading; never 0 for work that ran.
 
@@ -209,6 +220,10 @@ class AgentSpec[T: BaseModel]:
     """Steps of the repair ladder: normal, repair turn, clean retry."""
     max_transport_retries: int = 3
     """Backoff retries for timeouts and 408/429/5xx, separate from the ladder."""
+    fallback_model: str | None = None
+    """Run once more on this model, from the top of the ladder, when the primary
+    cannot produce a result: unusable output on every attempt, or an upstream
+    error that outlasted its retries (a throttled, overloaded or retired model)."""
     contract: StageContract = EMPTY_CONTRACT
     critic: bool = True
     critic_source: Callable[[StageContext], str] | None = None
@@ -250,6 +265,22 @@ class StageMetrics:
 class StageResult[T: BaseModel]:
     value: T
     metrics: StageMetrics
+
+
+def _carry(primary: StageMetrics | None, final: StageMetrics | None, note: str) -> None:
+    """Fold what the failed primary model spent into the fallback's metrics.
+
+    The stage row then counts every request and second the stage really cost,
+    and its model column names the model whose answer was kept.
+    """
+    if final is None:
+        return
+    if primary is not None:
+        final.attempts += primary.attempts
+        final.duration_ms += primary.duration_ms
+        final.prompt_tokens += primary.prompt_tokens
+        final.completion_tokens += primary.completion_tokens
+    final.warnings.append(note)
 
 
 class Critic(Protocol):
@@ -321,7 +352,33 @@ class AgentRunner:
         return messages
 
     async def run[T: BaseModel](self, spec: AgentSpec[T], ctx: StageContext) -> StageResult[T]:
-        """Run one agent to a validated result, or raise StageError."""
+        """Run one agent to a validated result, failing over once, or raise StageError.
+
+        One model backs most stages, so without this a throttled or retired
+        model stopped every job - as minimax-m3 did on 2026-08-26 - and a model
+        that answers in broken JSON failed the job outright.
+        """
+        try:
+            return await self._run_on(spec, ctx)
+        except StageError as first:
+            fallback = spec.fallback_model
+            if not fallback or fallback == spec.model or first.error_kind not in FAILOVER_KINDS:
+                raise
+            logger.warning(
+                "Stage %s failed on %s (%s: %s); failing over to %s",
+                spec.key, spec.model, first.error_kind, first.message[:160], fallback,
+            )
+            note = f"{spec.model} failed ({first.error_kind}); answered by {fallback}"
+            try:
+                result = await self._run_on(replace(spec, model=fallback), ctx)
+            except StageError as second:
+                _carry(first.metrics, second.metrics, note)
+                raise
+            _carry(first.metrics, result.metrics, note)
+            return result
+
+    async def _run_on[T: BaseModel](self, spec: AgentSpec[T], ctx: StageContext) -> StageResult[T]:
+        """The repair ladder on ``spec.model`` alone."""
         client = self._client(spec)
         metrics = StageMetrics(model=spec.model, prompt_version=spec.prompt_version)
         started = time.monotonic()

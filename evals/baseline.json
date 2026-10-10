@@ -1,4 +1,5 @@
 {
+  "format": 2,
   "overall": 94.7,
   "per_stage": {
     "profile": 97.6,
@@ -37,5 +38,634 @@
       "mean": 68.0,
       "dead": false
     }
-  }
+  },
+  "cells": {
+    "stripe": {
+      "profile": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          95.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 95.0,
+        "confidence_stdev": null
+      },
+      "market": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          60.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 60.0,
+        "confidence_stdev": null
+      },
+      "competitive": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          72.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 72.0,
+        "confidence_stdev": null
+      },
+      "swot": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          45.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 45.0,
+        "confidence_stdev": null
+      },
+      "marketing": {
+        "scores": [
+          87.5
+        ],
+        "completeness": [
+          87.5
+        ],
+        "confidence": [
+          58.0
+        ],
+        "mean": 87.5,
+        "stdev": null,
+        "confidence_mean": 58.0,
+        "confidence_stdev": null
+      },
+      "report": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": null,
+        "confidence_stdev": null
+      }
+    },
+    "ghost": {
+      "profile": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          82.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 82.0,
+        "confidence_stdev": null
+      },
+      "market": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          58.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 58.0,
+        "confidence_stdev": null
+      },
+      "competitive": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          80.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 80.0,
+        "confidence_stdev": null
+      },
+      "swot": {
+        "scores": [
+          25.0
+        ],
+        "completeness": [
+          25.0
+        ],
+        "confidence": [
+          93.0
+        ],
+        "mean": 25.0,
+        "stdev": null,
+        "confidence_mean": 93.0,
+        "confidence_stdev": null
+      },
+      "marketing": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          88.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 88.0,
+        "confidence_stdev": null
+      },
+      "report": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": null,
+        "confidence_stdev": null
+      }
+    },
+    "eleventy": {
+      "profile": {
+        "scores": [
+          83.3
+        ],
+        "completeness": [
+          83.3
+        ],
+        "confidence": [
+          92.0
+        ],
+        "mean": 83.3,
+        "stdev": null,
+        "confidence_mean": 92.0,
+        "confidence_stdev": null
+      },
+      "market": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          45.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 45.0,
+        "confidence_stdev": null
+      },
+      "competitive": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          68.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 68.0,
+        "confidence_stdev": null
+      },
+      "swot": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          58.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 58.0,
+        "confidence_stdev": null
+      },
+      "marketing": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          42.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 42.0,
+        "confidence_stdev": null
+      },
+      "report": {
+        "scores": [
+          33.3
+        ],
+        "completeness": [
+          33.3
+        ],
+        "confidence": [],
+        "mean": 33.3,
+        "stdev": null,
+        "confidence_mean": null,
+        "confidence_stdev": null
+      }
+    },
+    "linear": {
+      "profile": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          95.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 95.0,
+        "confidence_stdev": null
+      },
+      "market": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": null,
+        "confidence_stdev": null
+      },
+      "competitive": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          58.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 58.0,
+        "confidence_stdev": null
+      },
+      "swot": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          45.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 45.0,
+        "confidence_stdev": null
+      },
+      "marketing": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          45.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 45.0,
+        "confidence_stdev": null
+      },
+      "report": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": null,
+        "confidence_stdev": null
+      }
+    },
+    "basecamp": {
+      "profile": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          95.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 95.0,
+        "confidence_stdev": null
+      },
+      "market": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          55.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 55.0,
+        "confidence_stdev": null
+      },
+      "competitive": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          78.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 78.0,
+        "confidence_stdev": null
+      },
+      "swot": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          55.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 55.0,
+        "confidence_stdev": null
+      },
+      "marketing": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          62.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 62.0,
+        "confidence_stdev": null
+      },
+      "report": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": null,
+        "confidence_stdev": null
+      }
+    },
+    "flyio": {
+      "profile": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          93.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 93.0,
+        "confidence_stdev": null
+      },
+      "market": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          45.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 45.0,
+        "confidence_stdev": null
+      },
+      "competitive": {
+        "scores": [
+          50.0
+        ],
+        "completeness": [
+          50.0
+        ],
+        "confidence": [
+          78.0
+        ],
+        "mean": 50.0,
+        "stdev": null,
+        "confidence_mean": 78.0,
+        "confidence_stdev": null
+      },
+      "swot": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": null,
+        "confidence_stdev": null
+      },
+      "marketing": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          78.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 78.0,
+        "confidence_stdev": null
+      },
+      "report": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": null,
+        "confidence_stdev": null
+      }
+    },
+    "govuk": {
+      "profile": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          95.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 95.0,
+        "confidence_stdev": null
+      },
+      "market": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          58.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 58.0,
+        "confidence_stdev": null
+      },
+      "competitive": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          35.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 35.0,
+        "confidence_stdev": null
+      },
+      "swot": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          45.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 45.0,
+        "confidence_stdev": null
+      },
+      "marketing": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [
+          92.0
+        ],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": 92.0,
+        "confidence_stdev": null
+      },
+      "report": {
+        "scores": [
+          100.0
+        ],
+        "completeness": [
+          100.0
+        ],
+        "confidence": [],
+        "mean": 100.0,
+        "stdev": null,
+        "confidence_mean": null,
+        "confidence_stdev": null
+      }
+    }
+  },
+  "suite": "bi"
 }

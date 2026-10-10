@@ -9,21 +9,45 @@
 #
 # Fields:
 #   market_query   the query the pipeline is asked to research
-#   must_include   entities a correct answer cannot omit (any one of a group
-#                  satisfies that group)
-#   must_exclude   entities disqualified by the query - a correctness failure,
-#                  not a style one
+#   assertions     checks on any stage's output - same schema as cases.yaml.
+#                  The must-include / must-exclude lists below are written as
+#                  require_any / forbid assertions:
+#                    must include  entities a correct answer cannot omit (any
+#                                  one name in a group satisfies that group)
+#                    must exclude  entities disqualified by the query - a
+#                                  correctness failure, not a style one
 #   notes          why this case is in the set
 #
-# must_include / must_exclude are NOT yet enforced - T6a wires the harness to
-# run these stages, T6b makes the assertions bite. They are recorded now so the
-# seed case is written down in one place.
+# The stored output in fixtures/known_bad/resources_self_hosted_cicd.json - the
+# run that started this - fails 5 of the 6 assertions below with 6 findings:
+# CircleCI and Travis CI as key players, and no Drone, Woodpecker, Concourse or
+# Gitea/Forgejo anywhere. Only Jenkins is there. tests/test_eval_assertions.py
+# holds it to that.
 
 cases:
   - name: self-hosted-cicd
     market_query: Self-hosted CI/CD tools for small engineering teams
-    must_include: [[Drone], [Woodpecker], [Concourse], [Jenkins], [Gitea, Forgejo]]
-    must_exclude: [CircleCI, Travis CI, GitHub Actions]
+    assertions:
+      # Must exclude. "Self-hosted" is a hard disqualifier and these are hosted
+      # SaaS; the shipped run listed CircleCI and Travis CI as self-hosted key
+      # players. Names only, and key_players only: competitor_sites is defined
+      # as "direct and indirect competitors", where a hosted service is a fair
+      # indirect entry, and a description may rightly compare a tool to one.
+      - stage: resources
+        path: key_players.name
+        forbid: [CircleCI, Travis CI, GitHub Actions]
+      # Must include, anywhere in the resource lists. One assertion per entity
+      # so the findings name exactly which were missing.
+      - stage: resources
+        require_any: [Drone]
+      - stage: resources
+        require_any: [Woodpecker]
+      - stage: resources
+        require_any: [Concourse]
+      - stage: resources
+        require_any: [Jenkins]
+      - stage: resources
+        require_any: [Gitea, Forgejo]
     notes: >
       The case that exposed the bug. The query carries a hard disqualifier -
       "self-hosted" - and the shipped run listed CircleCI and Travis CI, both

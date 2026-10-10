@@ -12,16 +12,22 @@ Usage:
     uv run python -m evals.run --case stripe      # one case
     uv run python -m evals.run --stages profile,market
     uv run python -m evals.run --suite market     # macro -> sizing -> resources
+    uv run python -m evals.run --repeat 3         # every case 3 times: mean and spread
     uv run python -m evals.run --check            # fail on a completeness or
                                                   # confidence regression
-    uv run python -m evals.run --update-baseline
+    uv run python -m evals.run --update-baseline  # a --case/--stages run merges
+
+Exit codes: 0 ok, 1 regression, 2 nothing could be compared or run (no
+baseline for the suite, no API key, a bad argument or case file).
 
 Needs NVIDIA_API_KEY: the agents are real. Only the network fetch is stubbed.
+The regression rule and baseline format are documented in evals/compare.py.
 """
 
 import argparse
 import asyncio
 import json
+import math
 import statistics
 import sys
 from collections.abc import Callable
@@ -37,38 +43,30 @@ from app.analysis.runner import AgentRunner, AgentSpec, StageContext, StageError
 from app.analysis.specs import BI_SPECS, MARKET_RESEARCH_SPECS
 from app.config import settings
 from app.models.bi import ScrapedContent
-from app.pipeline.contracts import _iter_strings
 from app.scraper.engine import ScraperEngine
+from evals.assertions import iter_strings, parse_assertions, plain
+from evals.compare import (
+    CONFIDENCE_TOLERANCE,
+    DEFAULT_K,
+    EXIT_NO_BASELINE,
+    EXIT_OK,
+    EXIT_REGRESSION,
+    REGRESSION_TOLERANCE,
+    Cells,
+    compare_summaries,
+    describe,
+    health,
+    load_baseline,
+    merge_baseline,
+    missing_baseline_message,
+    report_check,
+    summary_from_cells,
+)
 
 EVALS_DIR = Path(__file__).parent
 FIXTURES = EVALS_DIR / "fixtures"
 RESULTS = EVALS_DIR / "results"
 BASELINE = EVALS_DIR / "baseline.json"
-
-# A drop larger than this against the baseline fails --check. Loose enough to
-# absorb model nondeterminism, tight enough to catch a prompt regression.
-REGRESSION_TOLERANCE = 5.0
-
-# Confidence needs its own, wider band. The two metrics are not equally stable,
-# and holding them to one number makes the noisier of them useless as a gate.
-#
-# Measured 2026-08-26 by running the full BI suite twice with no code change
-# between the runs (both saved under tasks/evidence/):
-#
-#   completeness  per-stage mean moved  0.0 to 10.7   2 of 6 stages over 5.0
-#   confidence    per-stage mean moved  6.6 to 13.7   5 of 5 stages over 5.0
-#
-# At cell level confidence is worse still: mean absolute move 15.0, max 63.0,
-# with 65% of cells over 5.0. A gate at 5.0 therefore fires on every run
-# regardless of the change under test, which is no gate at all - the noisy
-# cousin of the dead metric this harness exists to expose.
-#
-# 20.0 sits above the largest per-stage move observed (13.7) with room for a
-# worse day, and still catches the kind of regression worth catching: a stage
-# losing its grounding drops much further than 20 points. Widen it only with a
-# fresh measurement attached, and narrow it if the harness ever averages several
-# runs, which would shrink the noise this number is paying for.
-CONFIDENCE_TOLERANCE = 20.0
 
 
 @dataclass
@@ -95,6 +93,8 @@ class StageOutcome:
 class CaseOutcome:
     case: str
     stages: list[StageOutcome] = field(default_factory=list)
+    run: int = 1
+    """1-based repeat number, for --repeat."""
 
     @property
     def mean_score(self) -> float:
@@ -165,8 +165,21 @@ MARKET_SUITE = Suite(
 SUITES = {s.name: s for s in (BI_SUITE, MARKET_SUITE)}
 
 
+def baseline_path(suite: Suite) -> Path:
+    return EVALS_DIR / suite.baseline_file
+
+
 def load_cases(suite: Suite = BI_SUITE) -> list[dict[str, Any]]:
-    return list(yaml.safe_load((EVALS_DIR / suite.cases_file).read_text())["cases"])
+    """The suite's cases, with every stage assertion validated up front.
+
+    A typo in a stage name or a regex fails here, for free, rather than after
+    the run has paid for the stage it was meant to check.
+    """
+    raw = yaml.safe_load((EVALS_DIR / suite.cases_file).read_text(encoding="utf-8"))
+    cases: list[dict[str, Any]] = list(raw["cases"])
+    for case in cases:
+        parse_assertions(case, suite.stage_keys)
+    return cases
 
 
 def scrape_fixture(case: dict[str, Any]) -> ScrapedContent:
@@ -200,17 +213,26 @@ def _value_text(value: Any) -> str:
     "competitor" would always match `direct_competitors` no matter what the
     model actually said - a false failure that says nothing about the output.
     """
-    return " ".join(_iter_strings(value.model_dump())).lower()
+    return " ".join(iter_strings(plain(value))).lower()
 
 
 def check_assertions(stage: str, value: Any, case: dict[str, Any]) -> list[str]:
-    """Per-case expectations. Only the profile stage has grounded facts to check."""
+    """Per-case expectations.
+
+    ``forbidden`` applies to every stage, and ``assertions`` (see
+    evals/assertions.py) to whichever stages each entry names. The remaining
+    fields check grounded facts that only the profile stage carries.
+    """
     failures: list[str] = []
     blob = _value_text(value)
 
     for forbidden in case.get("forbidden", []):
         if forbidden.lower() in blob:
             failures.append(f"contains forbidden text {forbidden!r}")
+
+    for assertion in parse_assertions(case):
+        if assertion.applies_to(stage):
+            failures.extend(assertion.evaluate(stage, value))
 
     if stage != "profile":
         return failures
@@ -286,20 +308,61 @@ async def run_case(
     return outcome
 
 
+# --- Summaries ----------------------------------------------------------------
+
+
+def build_cells(outcomes: list[CaseOutcome]) -> Cells:
+    """Every run's score per (case, stage). See evals/compare.py for the shape."""
+    cells: Cells = {}
+    for outcome in outcomes:
+        for s in outcome.stages:
+            cell = cells.setdefault(outcome.case, {}).setdefault(
+                s.stage, {"scores": [], "completeness": [], "confidence": []}
+            )
+            cell["scores"].append(s.score)
+            if s.completeness is not None:
+                cell["completeness"].append(s.completeness)
+            if s.confidence is not None:
+                cell["confidence"].append(s.confidence)
+    for stages in cells.values():
+        for cell in stages.values():
+            cell["mean"], cell["stdev"] = describe(cell["scores"])
+            cell["confidence_mean"], cell["confidence_stdev"] = describe(cell["confidence"])
+    return cells
+
+
+def summarise(outcomes: list[CaseOutcome]) -> dict[str, Any]:
+    return summary_from_cells(build_cells(outcomes))
+
+
+def _collect(outcomes: list[CaseOutcome], attr: str) -> dict[str, list[float]]:
+    """Per-stage values of one metric, skipping stages that never recorded it."""
+    out: dict[str, list[float]] = {}
+    for outcome in outcomes:
+        for s in outcome.stages:
+            value = getattr(s, attr)
+            if value is not None:
+                out.setdefault(s.stage, []).append(value)
+    return out
+
+
+# --- Rendering ----------------------------------------------------------------
+
+
 def _health_line(label: str, values: list[float]) -> str:
     """One line saying whether a metric can still tell two runs apart."""
     if not values:
         return f"- **{label}**: not recorded"
-    health = _health(values)
-    plural = "" if health["distinct"] == 1 else "s"
+    result = health(values)
+    plural = "" if result["distinct"] == 1 else "s"
     note = ""
-    if health["dead"]:
+    if result["dead"]:
         note = " - **DEAD**: one value everywhere, it cannot rank runs"
-    elif health["n"] >= 10 and health["distinct"] <= 2:
+    elif result["n"] >= 10 and result["distinct"] <= 2:
         note = " - **near-dead**: two values across many stages"
     return (
-        f"- **{label}**: {health['n']} stages, {health['distinct']} distinct value{plural}, "
-        f"mean {health['mean']}{note}"
+        f"- **{label}**: {result['n']} stages, {result['distinct']} distinct value{plural}, "
+        f"mean {result['mean']}{note}"
     )
 
 
@@ -307,41 +370,62 @@ def _row(case: str, cells: list[str], mean_cell: str) -> str:
     return f"| {case} | " + " | ".join(cells) + f" | {mean_cell} |"
 
 
+def _spread(values: list[float]) -> str:
+    """One value as itself; several as mean ± sample standard deviation."""
+    if len(values) == 1:
+        return f"{values[0]:.0f}"
+    return f"{statistics.mean(values):.0f}±{statistics.stdev(values):.0f}"
+
+
 def render_markdown(outcomes: list[CaseOutcome], stages: list[str]) -> str:
-    """One renderer for both suites - `stages` is already resolved by the caller."""
+    """One renderer for both suites - `stages` is already resolved by the caller.
+
+    With --repeat a case has several outcomes, and a cell shows the mean and
+    spread of its runs. A single run renders exactly as it always has.
+    """
     columns = stages or BI_SUITE.stage_keys
     header = ["| Case | " + " | ".join(columns) + " | mean |", "|" + "---|" * (len(columns) + 2)]
+    by_case: dict[str, list[CaseOutcome]] = {}
+    for outcome in outcomes:
+        by_case.setdefault(outcome.case, []).append(outcome)
+    repeats = max((len(runs) for runs in by_case.values()), default=1)
+    summary = summarise(outcomes)
 
-    def contract_cell(s: StageOutcome | None) -> str:
-        if s is None:
+    def runs_of(runs: list[CaseOutcome], stage: str) -> list[StageOutcome]:
+        return [s for run in runs for s in run.stages if s.stage == stage]
+
+    def contract_cell(cell: list[StageOutcome]) -> str:
+        if not cell:
             return "-"
-        if not s.ok:
+        if not any(s.ok for s in cell):
             return "**fail**"
-        return f"{s.score:.0f}" + ("!" if s.assertion_failures else "")
+        text = _spread([s.score for s in cell]) + ("!" if any(s.assertion_failures for s in cell) else "")
+        failed = sum(not s.ok for s in cell)
+        return text + (f" ({failed}/{len(cell)} failed)" if failed else "")
 
-    def confidence_cell(s: StageOutcome | None) -> str:
-        if s is None or not s.ok or s.confidence is None:
-            return "-"
-        return f"{s.confidence:.0f}"
+    def confidence_cell(cell: list[StageOutcome]) -> str:
+        values = [s.confidence for s in cell if s.ok and s.confidence is not None]
+        return _spread(values) if values else "-"
 
+    runs_note = f" · runs per case: {repeats}" if repeats > 1 else ""
+    spread_note = [f"Cells show mean±stdev over up to {repeats} runs.", ""] if repeats > 1 else []
     lines = [
         "# Eval results",
         "",
-        f"Cases: {len(outcomes)} · stages: {', '.join(columns)}",
+        f"Cases: {len(by_case)} · stages: {', '.join(columns)}{runs_note}",
         "",
         "## Contract score",
         "",
         "Deterministic: completeness, less 15 per failed case assertion.",
         "",
+        *spread_note,
         *header,
     ]
-    for outcome in outcomes:
-        by_stage = {s.stage: s for s in outcome.stages}
-        cells = [contract_cell(by_stage.get(stage)) for stage in columns]
-        lines.append(_row(outcome.case, cells, f"{outcome.mean_score:.1f}"))
+    for case_name, runs in by_case.items():
+        cells = [contract_cell(runs_of(runs, stage)) for stage in columns]
+        lines.append(_row(case_name, cells, f"{summary['per_case'].get(case_name, 0.0):.1f}"))
 
-    overall = statistics.mean([o.mean_score for o in outcomes]) if outcomes else 0.0
-    lines += ["", f"**Overall: {overall:.1f}**", "", "`!` marks a failed case assertion.", ""]
+    lines += ["", f"**Overall: {summary['overall']:.1f}**", "", "`!` marks a failed case assertion.", ""]
 
     # Deliberately a separate table. The contract score is deterministic and the
     # critic score is a noisy small-model judgement; averaging them into one
@@ -353,11 +437,10 @@ def render_markdown(outcomes: list[CaseOutcome], stages: list[str]) -> str:
         "",
         *header,
     ]
-    for outcome in outcomes:
-        by_stage = {s.stage: s for s in outcome.stages}
-        cells = [confidence_cell(by_stage.get(stage)) for stage in columns]
-        mean_conf = outcome.mean_confidence
-        lines.append(_row(outcome.case, cells, "-" if mean_conf is None else f"{mean_conf:.1f}"))
+    for case_name, runs in by_case.items():
+        cells = [confidence_cell(runs_of(runs, stage)) for stage in columns]
+        conf = [s.confidence for run in runs for s in run.stages if s.confidence is not None]
+        lines.append(_row(case_name, cells, f"{statistics.mean(conf):.1f}" if conf else "-"))
     lines.append("")
 
     # The point of this section: completeness sat at 100 for 42 straight stages
@@ -381,15 +464,16 @@ def render_markdown(outcomes: list[CaseOutcome], stages: list[str]) -> str:
         lines.append("")
 
     problems = [
-        (o.case, s)
+        (o, s)
         for o in outcomes
         for s in o.stages
         if s.assertion_failures or not s.ok or s.warnings
     ]
     if problems:
         lines += ["## Findings", ""]
-        for case_name, s in problems:
-            lines.append(f"**{case_name} · {s.stage}**")
+        for o, s in problems:
+            run_label = f" · run {o.run}" if repeats > 1 else ""
+            lines.append(f"**{o.case} · {s.stage}{run_label}**")
             if s.error:
                 lines.append(f"- failed: {s.error}")
             for failure in s.assertion_failures:
@@ -400,91 +484,42 @@ def render_markdown(outcomes: list[CaseOutcome], stages: list[str]) -> str:
     return "\n".join(lines)
 
 
-def _collect(outcomes: list[CaseOutcome], attr: str) -> dict[str, list[float]]:
-    """Per-stage values of one metric, skipping stages that never recorded it."""
-    out: dict[str, list[float]] = {}
-    for outcome in outcomes:
-        for s in outcome.stages:
-            value = getattr(s, attr)
-            if value is not None:
-                out.setdefault(s.stage, []).append(value)
-    return out
+# --- Baseline checks --------------------------------------------------------------
 
 
-def _health(values: list[float]) -> dict[str, Any]:
-    """How much signal a metric still carries.
+def compare_to_baseline(
+    summary: dict[str, Any],
+    path: Path | None = None,
+    *,
+    floor: float = REGRESSION_TOLERANCE,
+    k: float = DEFAULT_K,
+    confidence_floor: float = CONFIDENCE_TOLERANCE,
+    suite: str = "bi",
+    out: Callable[[str], None] = print,
+) -> int:
+    """Compare against a suite's baseline. Defaults to the BI one.
 
-    ``distinct`` is the number that matters. A metric with one distinct value
-    across every stage has stopped measuring, and nothing else in the report
-    makes that visible.
+    Returns EXIT_OK, EXIT_REGRESSION, or EXIT_NO_BASELINE when there is no
+    baseline to compare against.
     """
-    return {
-        "n": len(values),
-        "distinct": len(set(values)),
-        "mean": round(statistics.mean(values), 1) if values else None,
-        "dead": len(values) >= 5 and len(set(values)) <= 1,
-    }
-
-
-def summarise(outcomes: list[CaseOutcome]) -> dict[str, Any]:
-    per_stage: dict[str, list[float]] = {}
-    for outcome in outcomes:
-        for s in outcome.stages:
-            per_stage.setdefault(s.stage, []).append(s.score)
-    per_stage_confidence = _collect(outcomes, "confidence")
-
-    flat_completeness = [v for vals in _collect(outcomes, "completeness").values() for v in vals]
-    flat_confidence = [v for vals in per_stage_confidence.values() for v in vals]
-
-    return {
-        "overall": round(statistics.mean([o.mean_score for o in outcomes]), 1)
-        if outcomes
-        else 0.0,
-        "per_stage": {k: round(statistics.mean(v), 1) for k, v in per_stage.items()},
-        "per_stage_confidence": {
-            k: round(statistics.mean(v), 1) for k, v in per_stage_confidence.items()
-        },
-        "per_case": {o.case: o.mean_score for o in outcomes},
-        "metric_health": {
-            "completeness": _health(flat_completeness),
-            "confidence": _health(flat_confidence),
-        },
-    }
-
-
-def compare_to_baseline(summary: dict[str, Any], path: Path | None = None) -> int:
-    """Compare against a suite's baseline. Defaults to the BI one."""
     path = path or BASELINE
     if not path.exists():
-        print(f"\nNo baseline recorded at {path.name}. Write one with --update-baseline.")
-        return 1
+        out(missing_baseline_message(suite, path))
+        return EXIT_NO_BASELINE
 
-    baseline = json.loads(path.read_text())
-    failed = False
-    print("\nAgainst baseline:")
-
-    delta = summary["overall"] - baseline["overall"]
-    verdict = "ok" if delta >= -REGRESSION_TOLERANCE else "REGRESSION"
-    print(f"  overall {baseline['overall']:.1f} -> {summary['overall']:.1f} ({delta:+.1f}) {verdict}")
-    failed |= delta < -REGRESSION_TOLERANCE
-
-    for stage, score in summary["per_stage"].items():
-        before = baseline["per_stage"].get(stage)
-        if before is None:
-            print(f"  {stage:12} new stage, {score:.1f}")
-            continue
-        d = score - before
-        mark = "ok" if d >= -REGRESSION_TOLERANCE else "REGRESSION"
-        print(f"  {stage:12} {before:.1f} -> {score:.1f} ({d:+.1f}) {mark}")
-        failed |= d < -REGRESSION_TOLERANCE
-
-    regressed = check_confidence_drift(summary, baseline)
-    failed |= bool(regressed)
-    return 1 if failed else 0
+    result = compare_summaries(summary, load_baseline(path), floor=floor, k=k, confidence_floor=confidence_floor)
+    out("")
+    out(f"Against baseline ({path.name}):")
+    report_check(result, floor=floor, k=k, confidence_floor=confidence_floor, out=out)
+    return EXIT_REGRESSION if result.regressions else EXIT_OK
 
 
 def check_confidence_drift(
-    summary: dict[str, Any], baseline: dict[str, Any]
+    summary: dict[str, Any],
+    baseline: dict[str, Any],
+    *,
+    floor: float = CONFIDENCE_TOLERANCE,
+    k: float = DEFAULT_K,
 ) -> list[str]:
     """Per-stage confidence deltas. Returns the stages that regressed.
 
@@ -500,34 +535,20 @@ def check_confidence_drift(
     - a baseline with no confidence recorded at all, which needs one deliberate
       re-baseline first (SPEC.md section 9 lists that under "ask first")
 
-    A stage the critic never scored never reaches here: ``summarise`` builds
-    ``per_stage_confidence`` from ``_collect``, which skips ``None``. Absent is
-    not the same as zero - ``report`` carries ``critic=False`` and would
-    otherwise look like the worst stage in the run.
+    A stage the critic never scored never reaches here: the cells only record
+    confidence that exists. Absent is not the same as zero - ``report`` carries
+    ``critic=False`` and would otherwise look like the worst stage in the run.
     """
-    current = summary.get("per_stage_confidence") or {}
-    if not current:
+    if not summary.get("per_stage_confidence") and not summary.get("cells"):
         return []
-    recorded = baseline.get("per_stage_confidence") or {}
-    if not recorded:
-        print("\n  confidence: not in the baseline yet - re-baseline to start tracking")
-        return []
-
-    print("\n  confidence:")
-    regressed: list[str] = []
-    for stage, score in current.items():
-        before = recorded.get(stage)
-        if before is None:
-            print(f"    {stage:12} new, {score:.1f}")
-            continue
-        delta = score - before
-        mark = "ok" if delta >= -CONFIDENCE_TOLERANCE else "REGRESSION"
-        print(f"    {stage:12} {before:.1f} -> {score:.1f} ({delta:+.1f}) {mark}")
-        if delta < -CONFIDENCE_TOLERANCE:
-            regressed.append(stage)
-    if regressed:
-        print(f"    {len(regressed)} stage(s) regressed beyond {CONFIDENCE_TOLERANCE:.1f}")
-    return regressed
+    result = compare_summaries(summary, baseline, k=k, confidence_floor=floor)
+    if result.confidence or result.confidence_notes:
+        print("\n  confidence:")
+        for note in result.confidence_notes:
+            print(f"    {note}")
+        for c in result.confidence:
+            print(f"    {c.line()}")
+    return [c.label for c in result.confidence if c.regressed]
 
 
 def render_stored(path: Path) -> int:
@@ -543,7 +564,9 @@ def render_stored(path: Path) -> int:
     data = json.loads(path.read_text())
     outcomes = [
         CaseOutcome(
-            case=case["case"], stages=[StageOutcome(**stage) for stage in case["stages"]]
+            case=case["case"],
+            stages=[StageOutcome(**stage) for stage in case["stages"]],
+            run=case.get("run", 1),
         )
         for case in data["cases"]
     ]
@@ -558,21 +581,53 @@ def render_stored(path: Path) -> int:
     return 0
 
 
-async def main_async(args: argparse.Namespace) -> int:
-    if not settings.nvidia_api_key:
-        print("NVIDIA_API_KEY is not set - the agents are real, so this cannot run.")
-        return 2
+# --- Entry point ----------------------------------------------------------------
 
+
+def _preflight(args: argparse.Namespace, suite: Suite, *, full_run: bool) -> int | None:
+    """Refuse, before any model is paid for, a run whose ending is already known."""
+    path = baseline_path(suite)
+    if args.check and not args.update_baseline and not path.exists():
+        print(missing_baseline_message(suite.name, path))
+        return EXIT_NO_BASELINE
+    if args.update_baseline and not full_run and path.exists() and not load_baseline(path).get("cells"):
+        print(
+            f"{path.name} has no per-cell scores (format 1), so a --case/--stages run cannot be merged "
+            "into it. Record a full run with --update-baseline once."
+        )
+        return EXIT_NO_BASELINE
+    return None
+
+
+async def main_async(args: argparse.Namespace) -> int:
     suite = SUITES[args.suite]
-    cases = load_cases(suite)
+    try:
+        all_cases = load_cases(suite)
+    except ValueError as e:
+        print(f"Invalid {suite.cases_file}: {e}")
+        return 2
+    cases = all_cases
     if args.case:
         wanted = set(args.case.split(","))
-        cases = [c for c in cases if c["name"] in wanted]
+        cases = [c for c in all_cases if c["name"] in wanted]
         if not cases:
             print(f"No case matched {args.case!r}")
             return 2
 
     stages = [s.strip() for s in args.stages.split(",")] if args.stages else []
+    unknown = [s for s in stages if s not in suite.stage_keys]
+    if unknown:
+        print(f"Unknown stage(s) {unknown}; the {suite.name} suite has {suite.stage_keys}")
+        return 2
+    full_run = len(cases) == len(all_cases) and (not stages or set(stages) == set(suite.stage_keys))
+
+    refused = _preflight(args, suite, full_run=full_run)
+    if refused is not None:
+        return refused
+
+    if not settings.nvidia_api_key:
+        print("NVIDIA_API_KEY is not set - the agents are real, so this cannot run.")
+        return 2
 
     if args.no_critic:
         settings.enable_stage_critic = False
@@ -581,16 +636,22 @@ async def main_async(args: argparse.Namespace) -> int:
     )
 
     print(
-        f"Running {len(cases)} {suite.name} case(s), "
+        f"Running {len(cases)} {suite.name} case(s) x {args.repeat} run(s), "
         f"critic={'on' if settings.enable_stage_critic else 'off'}\n"
     )
-    outcomes = []
-    for case in cases:
-        print(f"  {case['name']}  ({case.get(suite.subject_key, '')})")
-        outcomes.append(await run_case(case, runner, stages, suite))
-        print()
+    outcomes: list[CaseOutcome] = []
+    for run in range(1, args.repeat + 1):
+        if args.repeat > 1:
+            print(f"Run {run}/{args.repeat}\n")
+        for case in cases:
+            print(f"  {case['name']}  ({case.get(suite.subject_key, '')})")
+            outcome = await run_case(case, runner, stages, suite)
+            outcome.run = run
+            outcomes.append(outcome)
+            print()
 
     summary = summarise(outcomes)
+    summary["suite"] = suite.name
     columns = stages or suite.stage_keys
     report = render_markdown(outcomes, columns)
     print(report)
@@ -600,27 +661,67 @@ async def main_async(args: argparse.Namespace) -> int:
     # BI run the M1 regression test reads.
     default_stamp = "latest" if suite is BI_SUITE else f"{suite.name}-latest"
     stamp = args.label or default_stamp
-    (RESULTS / f"{stamp}.md").write_text(report)
+    report_path = RESULTS / f"{stamp}.md"
+    report_path.write_text(report, encoding="utf-8")
     (RESULTS / f"{stamp}.json").write_text(
         json.dumps(
-            {"summary": summary, "cases": [asdict(o) for o in outcomes]}, indent=2
+            {"repeats": args.repeat, "summary": summary, "cases": [asdict(o) for o in outcomes]},
+            indent=2,
         )
     )
-    print(f"Wrote {RESULTS / f'{stamp}.md'}")
+    print(f"Wrote {report_path}")
 
-    baseline_path = EVALS_DIR / suite.baseline_file
+    path = baseline_path(suite)
     if args.update_baseline:
-        baseline_path.write_text(json.dumps(summary, indent=2))
-        print(f"Baseline updated ({baseline_path.name}): overall {summary['overall']:.1f}")
-        return 0
+        existing = load_baseline(path) if path.exists() else None
+        try:
+            updated = merge_baseline(existing, summary, full=full_run)
+        except ValueError as e:
+            print(f"Baseline not updated: {e}")
+            return EXIT_NO_BASELINE
+        updated["suite"] = suite.name
+        path.write_text(json.dumps(updated, indent=2) + "\n", encoding="utf-8")
+        if existing is None:
+            how = "created" + ("" if full_run else " from a partial run")
+        else:
+            how = "replaced" if full_run else "updated: this run's cells merged in"
+        print(f"Baseline {how} ({path.name}): overall {updated['overall']:.1f}")
+        return EXIT_OK
 
     if args.check:
-        return compare_to_baseline(summary, baseline_path)
-    return 0
+        lines: list[str] = []
+
+        def out(line: str) -> None:
+            print(line)
+            lines.append(line)
+
+        code = compare_to_baseline(
+            summary, path, floor=args.floor, k=args.k, confidence_floor=args.confidence_floor,
+            suite=suite.name, out=out,
+        )
+        # Into the report too, so the CI run summary says why the gate passed or failed.
+        verdict = "\n".join(lines).strip()
+        report_path.write_text(f"{report}\n## Against baseline\n\n```\n{verdict}\n```\n", encoding="utf-8")
+        return code
+    return EXIT_OK
+
+
+def _positive_int(text: str) -> int:
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError("must be 1 or more")
+    return value
+
+
+def _non_negative(text: str) -> float:
+    value = float(text)
+    if not value >= 0 or math.isinf(value):
+        raise argparse.ArgumentTypeError("must be a finite number, 0 or more")
+    return value
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         "--suite",
         default="bi",
@@ -629,8 +730,27 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--case", help="comma-separated case names")
     parser.add_argument("--stages", help="comma-separated stage slugs")
+    parser.add_argument(
+        "--repeat", type=_positive_int, default=1, metavar="N",
+        help="run every case N times; keeps each run's score plus the per-cell mean and stdev (default 1)",
+    )
     parser.add_argument("--check", action="store_true", help="fail on regression vs baseline")
-    parser.add_argument("--update-baseline", action="store_true")
+    parser.add_argument(
+        "--floor", type=_non_negative, default=REGRESSION_TOLERANCE,
+        help=f"smallest contract-score drop that can regress (default {REGRESSION_TOLERANCE:g})",
+    )
+    parser.add_argument(
+        "--k", type=_non_negative, default=DEFAULT_K,
+        help=f"standard errors a drop must exceed to regress (default {DEFAULT_K:g})",
+    )
+    parser.add_argument(
+        "--confidence-floor", type=_non_negative, default=CONFIDENCE_TOLERANCE,
+        help=f"smallest per-stage confidence drop that can regress (default {CONFIDENCE_TOLERANCE:g})",
+    )
+    parser.add_argument(
+        "--update-baseline", action="store_true",
+        help="record this run as the baseline; a --case/--stages run merges its cells into it",
+    )
     parser.add_argument("--no-critic", action="store_true", help="skip the LLM review pass")
     parser.add_argument("--label", help="name for the results files")
     parser.add_argument(

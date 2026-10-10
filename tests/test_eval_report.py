@@ -10,15 +10,16 @@ from pathlib import Path
 
 import pytest
 
+from evals.assertions import parse_assertions
+from evals.compare import health as _health
 from evals.run import (
     BI_SUITE,
-    MARKET_SUITE,
     CONFIDENCE_TOLERANCE,
+    MARKET_SUITE,
     REGRESSION_TOLERANCE,
     SUITES,
     CaseOutcome,
     StageOutcome,
-    _health,
     check_confidence_drift,
     load_cases,
     render_markdown,
@@ -293,7 +294,7 @@ def test_check_exits_zero_when_only_confidence_improves(tmp_path, monkeypatch):
 def test_check_still_exits_zero_against_the_current_confidence_free_baseline(
     tmp_path, monkeypatch
 ):
-    """`evals/baseline.json` has no confidence yet, so nothing can gate on it."""
+    """A format-1 baseline recorded before confidence existed cannot gate on it."""
     import evals.run as run
 
     path = tmp_path / "baseline.json"
@@ -345,7 +346,7 @@ class TestSuites:
         assert "resources" not in MARKET_SUITE.ctx_field
         assert set(MARKET_SUITE.ctx_field) == {"macro", "sizing"}
 
-    def test_every_mapped_context_field_exists_on_StageContext(self):
+    def test_every_mapped_context_field_exists_on_stage_context(self):
         """A typo here would only surface mid-run, after paying for a stage."""
         from app.analysis.runner import StageContext
 
@@ -360,10 +361,17 @@ class TestMarketCases:
         assert [c["name"] for c in cases] == ["self-hosted-cicd"]
 
     def test_the_seeded_case_carries_the_disqualifier_that_started_this(self):
+        """must_exclude is now an enforced `forbid` on the resources key players."""
         case = load_cases(MARKET_SUITE)[0]
         assert "self-hosted" in case["market_query"].lower()
-        assert "CircleCI" in case["must_exclude"]
-        assert "Travis CI" in case["must_exclude"]
+        excluded = [
+            term
+            for a in parse_assertions(case, MARKET_SUITE.stage_keys)
+            if a.applies_to("resources")
+            for term in a.forbid
+        ]
+        assert "CircleCI" in excluded
+        assert "Travis CI" in excluded
 
     def test_every_market_case_has_a_query(self):
         for case in load_cases(MARKET_SUITE):

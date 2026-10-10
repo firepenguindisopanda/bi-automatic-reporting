@@ -1,48 +1,135 @@
 name: Evals
 
-# Manual only. These run the real agents against real models, so they cost
-# quota and take minutes - not something to fire on every push.
+# These run the real agents against real models, so they cost quota and take
+# minutes. Each trigger is sized to what it is for:
+#
+#   pull_request       a cheap gate - profile stage only, 3 repeats - when code
+#                      that shapes analysis output changes
+#   schedule           the full BI suite nightly, 2 repeats
+#   workflow_dispatch  anything, by hand
+#
+# Repeats are what make --check trustworthy: one run against one run is mostly
+# noise (evals/README.md, "Baseline").
 on:
+  pull_request:
+    paths:
+      - "app/analysis/**"
+      - "app/pipeline/contracts.py"
+      - "app/llm/**"
+      - "evals/**"
+  schedule:
+    - cron: "23 3 * * *"
   workflow_dispatch:
     inputs:
+      suite:
+        description: "bi or market"
+        type: choice
+        options: [bi, market]
+        default: bi
       case:
         description: "Comma-separated case names (blank = all)"
         required: false
       stages:
         description: "Comma-separated stage slugs (blank = all)"
         required: false
+      repeat:
+        description: "Runs per case; 2 or more makes --check variance-aware"
+        required: false
+        default: "1"
       check:
         description: "Fail the run on a regression against the baseline"
         type: boolean
         default: true
 
-jobs:
-  eval:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - run: pip install -r requirements.txt
+permissions:
+  contents: read
 
-      - name: Run evals
+concurrency:
+  group: evals-${{ github.event_name }}-${{ github.ref }}
+  # A newer push to the same pull request makes the older gate run moot.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Secrets are not passed to pull requests from forks, and a repository may
+  # simply not have the key. Neither is a failure of the change under test, so
+  # the eval job is skipped with a notice instead.
+  key:
+    runs-on: ubuntu-latest
+    outputs:
+      present: ${{ steps.key.outputs.present }}
+    steps:
+      - name: Check for the API key
+        id: key
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
         run: |
-          args=""
-          [ -n "${{ inputs.case }}" ] && args="$args --case ${{ inputs.case }}"
-          [ -n "${{ inputs.stages }}" ] && args="$args --stages ${{ inputs.stages }}"
-          [ "${{ inputs.check }}" = "true" ] && args="$args --check"
-          python -m evals.run --label ci-${{ github.run_number }} $args
+          if [ -z "$NVIDIA_API_KEY" ]; then
+            echo "::notice title=Evals skipped::NVIDIA_API_KEY is not available to this run (fork pull requests never receive secrets), so the evals did not run."
+            echo "Evals skipped: NVIDIA_API_KEY is not available to this run." >> "$GITHUB_STEP_SUMMARY"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  eval:
+    needs: key
+    if: needs.key.outputs.present == 'true'
+    runs-on: ubuntu-latest
+    # The nightly runs the full suite twice; a single full run has taken up to ~45 min.
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - run: uv sync --locked --no-dev
+
+      # Inputs reach the script only as environment variables and go to Python
+      # as separate quoted arguments - never spliced into the script text - so
+      # no input can inject shell. argparse validates the values themselves.
+      - name: Run evals
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SUITE: ${{ inputs.suite }}
+          INPUT_CASE: ${{ inputs.case }}
+          INPUT_STAGES: ${{ inputs.stages }}
+          INPUT_REPEAT: ${{ inputs.repeat }}
+          INPUT_CHECK: ${{ inputs.check }}
+        run: |
+          args=(--label "ci-$GITHUB_RUN_NUMBER")
+          case "$EVENT_NAME" in
+            pull_request)
+              args+=(--stages profile --repeat 3 --check)
+              ;;
+            schedule)
+              args+=(--repeat 2 --check)
+              ;;
+            *)
+              args+=(--suite "${INPUT_SUITE:-bi}" --repeat "${INPUT_REPEAT:-1}")
+              if [ -n "$INPUT_CASE" ]; then args+=(--case "$INPUT_CASE"); fi
+              if [ -n "$INPUT_STAGES" ]; then args+=(--stages "$INPUT_STAGES"); fi
+              if [ "$INPUT_CHECK" = "true" ]; then args+=(--check); fi
+              ;;
+          esac
+          # Exit 1 is a regression. Exit 2 means nothing could be compared or
+          # run - no baseline for the suite, a bad input - and the log says which.
+          uv run --no-dev python -m evals.run "${args[@]}"
 
       - name: Publish the report to the run summary
         if: always()
-        run: cat evals/results/ci-${{ github.run_number }}.md >> $GITHUB_STEP_SUMMARY
+        run: |
+          report="evals/results/ci-$GITHUB_RUN_NUMBER.md"
+          if [ -f "$report" ]; then
+            cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No eval report was written - the run stopped before producing results. See the Run evals log." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: eval-results-${{ github.run_number }}
+          name: eval-results-${{ github.run_number }}-${{ github.run_attempt }}
           path: evals/results/
+          if-no-files-found: ignore

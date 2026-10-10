@@ -9,9 +9,28 @@
 #   must_mention   substrings expected somewhere in the profile (case-insensitive,
 #                  any one of a group satisfies that group)
 #   industry_terms at least one must appear in the extracted industry
-#   forbidden      strings that indicate a hallucination or a wrong subject
+#   forbidden      strings that indicate a hallucination or a wrong subject, in
+#                  any stage
 #   min_offerings  the site clearly lists at least this many products/services
+#   assertions     checks on any stage's output, see below
 #   notes          why this fixture is in the set
+#
+# An `assertions` entry targets one or more stages and, optionally, a dotted
+# field path (lists are walked element-wise: `key_players.name`). It reads every
+# string value under that path - never the field names - so it holds whatever
+# shape the stage's output model takes. Matching is case-insensitive.
+#
+#   - stage: market               # or `stages: [profile, marketing]`
+#     path: pricing_strategy      # optional
+#     forbid: [...]               # none of these literals may appear
+#     forbid_regex: [...]         # none of these patterns may match
+#     require_any: [...]          # at least one of these literals...
+#     require_any_regex: [...]    # ...or patterns must appear
+#
+# Each hit costs 15 points on that stage, like any failed assertion. Give every
+# entry a comment saying why it exists, and keep false positives low: an
+# assertion that fires on a correct answer teaches people to ignore it. Stage
+# and regex typos are rejected when the file loads, before anything is paid for.
 
 cases:
   - name: stripe
@@ -42,8 +61,36 @@ cases:
     industry_terms: [developer, software, web, tooling, open source, static]
     forbidden: [Acme Corp]
     min_offerings: 1
-    notes: A free open-source tool with no revenue model - the profile should not
-           invent pricing or a commercial offering.
+    assertions:
+      # No invented prices. The saved page quotes no amount anywhere - its only
+      # money talk is "Late Pricing Available" on the Build Awesome Kickstarter -
+      # so a currency figure in these stages was made up. Market-size figures
+      # (an amount followed by M/B/bn/million/billion, or opening a range such
+      # as "$10-12 B") are skipped: the report restates the market stage's TAM,
+      # which is an estimate, not a price. "$0" is skipped too: free is correct.
+      - stages: [profile, marketing, report]
+        forbid_regex:
+          - '[$€£]\s?(?:[1-9]|0[.,]0*[1-9])[\d,.]*(?![\d,.])(?!\s?(?:[-–—‑]|to)\s?[$€£]?\s?\d)(?!\s?(?:m|mn|mm|b|bn|million|billion|trillion)\b)'
+      # The pricing strategy has to say how a free, open-source project is
+      # actually funded. A tiered or value-based SaaS story is the invention
+      # this case exists to catch. "\bfree" also accepts "freemium" on purpose:
+      # the page does advertise a paid Build Awesome Pro.
+      - stage: market
+        path: pricing_strategy
+        require_any_regex:
+          - '\bfree'
+          - 'open[- ]?source'
+          - 'no[- ]cost'
+          - 'no charge'
+          - 'donat'
+          - 'sponsor'
+          - 'open collective'
+          - 'kickstarter'
+          - 'crowdfund'
+          - 'backer'
+    notes: A free open-source tool. The saved page (2026-07) mentions a Kickstarter
+           for Build Awesome Pro but quotes no prices, so no stage should invent a
+           price or a subscription business.
 
   - name: linear
     fixture: linear.html
@@ -87,5 +134,27 @@ cases:
     # commercial rivals that gov.uk could not plausibly have.
     forbidden: [Acme Corp, Salesforce, Shopify, Stripe Inc]
     min_offerings: 1
+    assertions:
+      # The canary proper: the industry must say what GOV.UK is. industry_terms
+      # above also accepts "information", which "Information Technology"
+      # satisfies, so it cannot tell a government portal from a software vendor;
+      # and must_mention accepts "uk", which the company name alone satisfies.
+      - stage: profile
+        path: industry
+        require_any_regex: ['government', 'public[- ]sector', 'public[- ]service', 'public administration', 'civic']
+      # Commercial inventions: the page sells nothing and has no plans, tiers or
+      # trials. Bare "per month" and "subscription" are deliberately not here:
+      # Universal Credit is paid monthly and GOV.UK offers email subscriptions,
+      # so both can appear in a correct answer. Not applied to `report`, which
+      # restates the market stage's pricing_strategy - a prompt that asks for
+      # "freemium, tiered, value-based" and so forces commercial words on it.
+      - stages: [profile, marketing]
+        forbid_regex:
+          - 'pricing (?:tier|plan)s?'
+          - 'premium (?:plan|tier|subscription|version|membership)s?'
+          - 'free trials?'
+          - '\bfreemium\b'
+          - '(?:paid|monthly|annual) (?:plan|tier|subscription)s?'
+          - 'subscription (?:plan|tier|fee|price|pricing)s?'
     notes: Not a business at all. Market sizing and competitors here should be
            hedged rather than confidently invented - the hallucination canary.

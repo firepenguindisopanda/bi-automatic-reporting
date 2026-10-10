@@ -71,6 +71,22 @@ class SWOTAnalysis(BaseModel):
     threats: list[str] = Field(default_factory=list)
 
 
+class ReportSynthesis(BaseModel):
+    """What the report writer produces: only the parts no other stage covers.
+
+    The writer used to return a whole BIReport, re-writing the market,
+    competitive and SWOT sections from scratch - and that re-written copy is
+    what the PDF rendered. So the stages that were scored and reviewed were
+    not the ones the reader saw, and the writer's reply ran long enough to be
+    cut off at the token limit. Now it writes the synthesis and the report is
+    assembled in code from the reviewed stage outputs (``build_report``).
+    """
+
+    executive_summary: str
+    recommendations: list[str] = Field(default_factory=list)
+    risk_factors: list[str] = Field(default_factory=list)
+
+
 class BIReport(BaseModel):
     executive_summary: str
     business_profile: BusinessProfile
@@ -140,6 +156,25 @@ class AnalysisArtifact(BaseModel):
     error: str | None = None
 
 
+def build_report(
+    synthesis: ReportSynthesis,
+    profile: BusinessProfile,
+    market: MarketAnalysis,
+    competitive: CompetitiveAnalysis,
+    swot: SWOTAnalysis,
+) -> BIReport:
+    """The report the reader gets, made of the stage outputs that were scored."""
+    return BIReport(
+        executive_summary=synthesis.executive_summary,
+        business_profile=profile,
+        market_analysis=market,
+        competitive_analysis=competitive,
+        swot_analysis=swot,
+        recommendations=synthesis.recommendations,
+        risk_factors=synthesis.risk_factors,
+    )
+
+
 class BISubmitRequest(BaseModel):
     url: str = Field(min_length=5, max_length=2000)
     email: str = Field(min_length=5, max_length=500)
@@ -174,13 +209,6 @@ class BriefResponse(BriefInput):
     job_id: str
     created_at: str
     updated_at: str
-
-
-class BIJobStatus(BaseModel):
-    job_id: str
-    status: str
-    progress: list[dict[str, str]] = Field(default_factory=list)
-    error: str | None = None
 
 
 class StageReport(BaseModel):
@@ -232,6 +260,11 @@ class ResendResponse(BaseModel):
     detail: str = ""
 
 
+class RetryResponse(BaseModel):
+    job_id: str
+    status: str
+
+
 class StageDescriptor(BaseModel):
     """One pipeline stage, as advertised to the frontend."""
 
@@ -265,6 +298,12 @@ class MarketResearchResult(BaseModel):
     competitor_sites: list[MarketResource] = Field(default_factory=list)
     research_papers: list[MarketResource] = Field(default_factory=list)
     relevant_communities: list[MarketResource] = Field(default_factory=list)
+    # The macro stage and the sizing SWOT were scored and reviewed and then
+    # dropped on assembly, so the reader never saw them. Optional because
+    # results stored before they were carried through have neither.
+    pestel: "PESTELAnalysis | None" = None
+    five_forces: "FiveForces | None" = None
+    swot: SWOTAnalysis | None = None
 
 
 class PESTELAnalysis(BaseModel):
@@ -317,6 +356,10 @@ class MarketResources(BaseModel):
     competitor_sites: list["MarketResource"] = Field(default_factory=list)
     research_papers: list["MarketResource"] = Field(default_factory=list)
     relevant_communities: list["MarketResource"] = Field(default_factory=list)
+
+
+# Resolves the forward references to the macro models declared after it.
+MarketResearchResult.model_rebuild()
 
 
 class MarketResearchSubmitRequest(BaseModel):

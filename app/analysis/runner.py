@@ -33,11 +33,11 @@ from pydantic import BaseModel
 
 from app.llm.client import LLMClient
 from app.models.bi import (
-    BIReport,
     BusinessProfile,
     CompetitiveAnalysis,
     MarketAnalysis,
     MarketingAnalysis,
+    ReportSynthesis,
     ScrapedContent,
     SWOTAnalysis,
 )
@@ -150,7 +150,7 @@ class StageContext:
     competitive: CompetitiveAnalysis | None = None
     swot: SWOTAnalysis | None = None
     marketing: MarketingAnalysis | None = None
-    report: BIReport | None = None
+    report: ReportSynthesis | None = None
     macro: BaseModel | None = None
     sizing: BaseModel | None = None
     # Populated by the critic so a re-run can address named issues.
@@ -179,7 +179,10 @@ class StageContext:
     def require_swot(self) -> SWOTAnalysis:
         return self._require("swot")  # type: ignore[no-any-return]
 
-    def report_or_raise(self) -> BIReport:
+    def require_marketing(self) -> MarketingAnalysis:
+        return self._require("marketing")  # type: ignore[no-any-return]
+
+    def require_report(self) -> ReportSynthesis:
         return self._require("report")  # type: ignore[no-any-return]
 
     def require_macro(self) -> BaseModel:

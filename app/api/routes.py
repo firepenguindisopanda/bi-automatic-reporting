@@ -6,10 +6,10 @@ from typing import Any, cast
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, Response, StreamingResponse
 
+from app.analysis.specs import BI_SPECS
 from app.api.progress import build_progress, stream_progress
 from app.config import settings
 from app.models.bi import (
-    BIJobStatus,
     BISubmitRequest,
     BISubmitResponse,
     BriefInput,
@@ -21,12 +21,14 @@ from app.models.bi import (
     MarketResearchSubmitRequest,
     MarketResearchSubmitResponse,
     ResendResponse,
+    RetryResponse,
     StageDescriptor,
 )
-from app.orchestrator.bi_pipeline import BIPipeline
+from app.orchestrator.bi_pipeline import BIPipeline, JobStateError
 from app.orchestrator.market_research import MarketResearchService
 from app.orchestrator.runner import QueueFullError
 from app.orchestrator.runner import stats as queue_stats
+from app.pipeline.events import job_events as change_events
 from app.pipeline.stages import JobStatus, stages_for
 
 logger = logging.getLogger(__name__)
@@ -47,6 +49,10 @@ def _queue_full(exc: QueueFullError) -> HTTPException:
         status_code=503, detail=str(exc), headers={"Retry-After": QUEUE_FULL_RETRY_AFTER}
     )
 
+def _refused(exc: JobStateError) -> HTTPException:
+    return HTTPException(status_code=exc.status_code, detail=exc.message)
+
+
 _bi_pipeline = BIPipeline()
 _market_research = MarketResearchService()
 
@@ -64,22 +70,14 @@ async def bi_submit(body: BISubmitRequest) -> BISubmitResponse:
     )
 
 
-@router.get("/bi/status/{job_id}", response_model=BIJobStatus)
-async def bi_status(job_id: str) -> BIJobStatus:
-    job = await _bi_pipeline.get_job(job_id)
-    if job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
-    events_raw = job.get("events", "[]")
-    try:
-        events = json.loads(events_raw) if isinstance(events_raw, str) else events_raw
-    except (json.JSONDecodeError, TypeError):
-        events = []
-    return BIJobStatus(
-        job_id=job["job_id"],
-        status=job["status"],
-        progress=events,
-        error=job.get("error"),
-    )
+@router.get("/bi/status/{job_id}", response_model=JobProgress)
+async def bi_status(job_id: str) -> JobProgress:
+    """The full stage array, including stages that have not started.
+
+    Kept as an alias of the progress endpoint for older clients. It used to
+    return the legacy events blob, which is no longer written.
+    """
+    return await bi_progress(job_id)
 
 
 @router.post("/bi/brief/{job_id}", response_model=BriefResponse)
@@ -112,8 +110,9 @@ async def bi_download(job_id: str, format: str = Query("pdf", pattern="^(pdf|doc
     if job["status"] not in (JobStatus.COMPLETED, JobStatus.PARTIAL):
         raise HTTPException(status_code=400, detail="Job not yet complete")
 
-    file_path = Path(job["pdf_path"] or "") if format == "pdf" else Path(job["docx_path"] or "")
-    if not file_path or not file_path.exists():
+    raw = job["pdf_path"] if format == "pdf" else job["docx_path"]
+    file_path = Path(raw) if raw else None
+    if file_path is None or not file_path.exists():
         raise HTTPException(status_code=404, detail="Report file not found")
 
     media_type = (
@@ -126,16 +125,13 @@ async def bi_download(job_id: str, format: str = Query("pdf", pattern="^(pdf|doc
 
 @router.get("/bi/models")
 async def bi_models() -> dict[str, str]:
-    return {
-        "Scraper": "N/A (no LLM)",
-        "Business Profile": settings.agent_model_business_profile,
-        "Market Analysis": settings.agent_model_market_analysis,
-        "Competitive Analysis": settings.agent_model_competitive_analysis,
-        "SWOT Analysis": settings.agent_model_swot,
-        "Marketing Analysis": settings.agent_model_marketing,
-        "Report Generation": settings.agent_model_report_writer,
-        "Email Delivery": "N/A (no LLM)",
-    }
+    """The model behind each stage, derived from the registry and the specs.
+
+    This was a second hand-written stage list, which is exactly the copy the
+    stage registry exists to remove.
+    """
+    models = {spec.key: spec.model for spec in BI_SPECS}
+    return {s.display: models.get(s.slug, "N/A (no LLM)") for s in stages_for("bi")}
 
 
 @router.get("/bi/progress/{job_id}", response_model=JobProgress)
@@ -167,6 +163,12 @@ async def job_events(
 ) -> StreamingResponse:
     """Server-sent progress stream. Clients fall back to polling on failure."""
 
+    seen = change_events.version(job_id)
+
+    async def wait_for_change(timeout: float) -> None:
+        nonlocal seen
+        seen = await change_events.wait(job_id, seen, timeout)
+
     async def load() -> JobProgress | None:
         if kind == "bi":
             job = await _bi_pipeline.get_job(job_id)
@@ -185,7 +187,7 @@ async def job_events(
         )
 
     return StreamingResponse(
-        stream_progress(load),
+        stream_progress(load, wait_for_change),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache, no-transform",
@@ -198,14 +200,36 @@ async def job_events(
 
 @router.post("/bi/{job_id}/resend", response_model=ResendResponse)
 async def bi_resend(job_id: str) -> ResendResponse:
-    """Retry delivery for a job whose report exists but never arrived."""
-    job = await _bi_pipeline.get_job(job_id)
-    if job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
-    if not job.get("pdf_path"):
-        raise HTTPException(status_code=400, detail="This job has no report to send")
-    ok, detail = await _bi_pipeline.resend(job_id)
+    """Send a finished report again. Limited per job and per recipient."""
+    try:
+        ok, detail = await _bi_pipeline.resend(job_id)
+    except JobStateError as e:
+        raise _refused(e) from None
     return ResendResponse(job_id=job_id, sent=ok, detail=detail)
+
+
+@router.post("/bi/{job_id}/retry", response_model=RetryResponse)
+async def bi_retry(job_id: str) -> RetryResponse:
+    """Resume a failed or interrupted job from its first unfinished stage."""
+    try:
+        job = await _bi_pipeline.retry(job_id)
+    except QueueFullError as e:
+        raise _queue_full(e) from None
+    except JobStateError as e:
+        raise _refused(e) from None
+    return RetryResponse(job_id=job["job_id"], status=job["status"])
+
+
+@router.post("/market-research/{job_id}/retry", response_model=RetryResponse)
+async def market_research_retry(job_id: str) -> RetryResponse:
+    """Resume a failed or interrupted research job from its first unfinished stage."""
+    try:
+        job = await _market_research.retry(job_id)
+    except QueueFullError as e:
+        raise _queue_full(e) from None
+    except JobStateError as e:
+        raise _refused(e) from None
+    return RetryResponse(job_id=job["job_id"], status=job["status"])
 
 
 @router.get("/pipelines/{kind}/stages", response_model=list[StageDescriptor])
@@ -321,11 +345,15 @@ async def market_research_download(
     row = await _market_research.get_status(job_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Job not found")
-    if row["status"] != JobStatus.COMPLETED:
+    if row["status"] not in (JobStatus.COMPLETED, JobStatus.PARTIAL):
         raise HTTPException(status_code=400, detail="Job not yet complete")
 
-    file_path = Path(row["pdf_path"] or "") if format == "pdf" else Path(row["docx_path"] or "")
-    if not file_path or not file_path.exists():
+    raw = row["pdf_path"] if format == "pdf" else row["docx_path"]
+    if not raw:
+        # `partial`: the analysis finished but the documents did not render.
+        raise HTTPException(status_code=404, detail="No document was produced for this job")
+    file_path = Path(raw)
+    if not file_path.exists():
         raise HTTPException(status_code=404, detail="Report file not found")
 
     media_type = (

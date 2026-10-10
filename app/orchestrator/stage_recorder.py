@@ -1,12 +1,17 @@
 """Records stage transitions for one job.
 
 Writes survive a flaky database: a failed write is buffered and replayed on the
-next transition rather than aborting the run. The Pi talks to a managed
+next transition rather than aborting the run. The app talks to a managed
 Postgres over the network, and a five-minute analysis must not be lost to a
 momentary blip.
 
-Also emits the legacy ``jobs.events`` entries that the current frontend reads.
-That dual write goes away once the frontend consumes stage rows directly.
+Buffered writes replay strictly in order. A stage's finishing UPDATE run ahead
+of its starting INSERT matches no row and silently does nothing - and the INSERT
+replayed afterwards then leaves the stage showing "running" for ever.
+
+The legacy ``jobs.events`` blob is no longer written. It was a read-modify-write
+of one JSON column per transition, racy under concurrency; stage rows replaced
+it and the frontend reads those.
 """
 
 import logging
@@ -28,22 +33,32 @@ class StageRecorder:
         self._job_id = job_id
         self._kind = kind
         self._seq = {s.slug: s.seq for s in stages_for(kind)}
-        self._display = {s.slug: s.display for s in stages_for(kind)}
         self._pending: list[Callable[[], Awaitable[None]]] = []
+        self._running: set[str] = set()
+
+    @property
+    def running(self) -> frozenset[str]:
+        """Stages started and not yet settled."""
+        return frozenset(self._running)
 
     async def _write(self, op: Callable[[], Awaitable[None]]) -> None:
-        """Run a write, replaying anything buffered from earlier failures."""
-        queued, self._pending = self._pending, []
-        for earlier in [*queued, op]:
+        """Run a write after replaying anything buffered from earlier failures.
+
+        The first failure stops the replay and re-buffers everything from that
+        write on, so later writes never overtake an earlier one.
+        """
+        ops, self._pending = [*self._pending, op], []
+        for i, current in enumerate(ops):
             try:
-                await earlier()
+                await current()
             except Exception:  # noqa: BLE001 - never let bookkeeping kill a job
-                if len(self._pending) < MAX_BUFFERED_WRITES:
-                    self._pending.append(earlier)
+                waiting = [o for o in ops[i:] if o is not _noop]
+                self._pending = (waiting + self._pending)[:MAX_BUFFERED_WRITES]
                 logger.warning(
                     "Stage write failed for job %s; buffered %d write(s) for retry",
                     self._job_id, len(self._pending), exc_info=True,
                 )
+                return
 
     async def flush(self) -> None:
         """Best-effort replay of buffered writes, e.g. at the end of a job."""
@@ -52,11 +67,10 @@ class StageRecorder:
 
     async def start(self, slug: str) -> None:
         seq = self._seq[slug]
-        display = self._display[slug]
+        self._running.add(slug)
 
         async def op() -> None:
             await self._store.start_stage(self._job_id, self._kind, slug, seq)
-            await self._store.add_event(self._job_id, "step_start", display)
 
         await self._write(op)
 
@@ -66,15 +80,15 @@ class StageRecorder:
         metrics: StageMetrics | None = None,
         artifact_json: str | None = None,
     ) -> None:
-        display = self._display[slug]
+        self._running.discard(slug)
 
         async def op() -> None:
             await self._store.finish_stage(
                 self._job_id,
                 slug,
                 StageStatus.SUCCEEDED,
-                model=metrics.model if metrics else None,
-                prompt_version=metrics.prompt_version if metrics else None,
+                model=(metrics.model or None) if metrics else None,
+                prompt_version=(metrics.prompt_version or None) if metrics else None,
                 attempts=metrics.attempts if metrics else 1,
                 duration_ms=metrics.duration_ms if metrics else None,
                 prompt_tokens=metrics.prompt_tokens if metrics else None,
@@ -87,7 +101,6 @@ class StageRecorder:
                 warnings=metrics.warnings if metrics else None,
                 artifact_json=artifact_json,
             )
-            await self._store.add_event(self._job_id, "step_complete", display)
 
         await self._write(op)
 
@@ -111,15 +124,15 @@ class StageRecorder:
         Mechanical stages have no ``StageMetrics``, so they pass their duration
         and attempt count directly; those win over ``metrics`` when both given.
         """
-        display = self._display[slug]
+        self._running.discard(slug)
 
         async def op() -> None:
             await self._store.finish_stage(
                 self._job_id,
                 slug,
                 StageStatus.FAILED,
-                model=metrics.model if metrics else None,
-                prompt_version=metrics.prompt_version if metrics else None,
+                model=(metrics.model or None) if metrics else None,
+                prompt_version=(metrics.prompt_version or None) if metrics else None,
                 attempts=(
                     attempts
                     if attempts is not None
@@ -135,30 +148,37 @@ class StageRecorder:
                 error=error,
                 error_kind=error_kind,
             )
-            # The frontend had no way to see which stage broke; now it does.
-            await self._store.add_event(self._job_id, "step_failed", display)
 
         await self._write(op)
 
+    async def fail_running(self, error: str, error_kind: str = ErrorKind.INTERNAL) -> None:
+        """Settle every stage still marked running as failed.
+
+        For the job boundary's catch-all: an exception that is not a StageError
+        names no stage, and without this the stage it escaped from kept
+        spinning in the UI after the job itself had been marked failed.
+        """
+        for slug in sorted(self._running, key=lambda s: self._seq.get(s, 0)):
+            await self.fail(slug, error, error_kind)
+
     async def skip(self, slug: str, reason: str = "") -> None:
-        display = self._display[slug]
+        self._running.discard(slug)
 
         async def op() -> None:
             await self._store.finish_stage(
                 self._job_id, slug, StageStatus.SKIPPED, error=reason or None
             )
-            await self._store.add_event(self._job_id, "step_skipped", display)
 
         await self._write(op)
 
     async def record_metrics_only(self, slug: str, **kwargs: Any) -> None:
         """Mark a non-agent stage succeeded with hand-supplied numbers."""
+        self._running.discard(slug)
 
         async def op() -> None:
             await self._store.finish_stage(
                 self._job_id, slug, StageStatus.SUCCEEDED, **kwargs
             )
-            await self._store.add_event(self._job_id, "step_complete", self._display[slug])
 
         await self._write(op)
 

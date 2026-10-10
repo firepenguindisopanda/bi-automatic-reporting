@@ -91,6 +91,14 @@ HTML_TEMPLATE = _JINJA.from_string("""
       <li>{{ t }}</li>
     {% endfor %}
     </ul>
+    {% if market.customer_segments %}
+    <h3>Customer Segments</h3>
+    <ul>
+    {% for s in market.customer_segments %}
+      <li>{{ s }}</li>
+    {% endfor %}
+    </ul>
+    {% endif %}
   </div>
 
   <div class="section">
@@ -98,15 +106,33 @@ HTML_TEMPLATE = _JINJA.from_string("""
     <h3>Direct Competitors</h3>
     <ul>
     {% for c in competitive.direct_competitors %}
-      <li><strong>{{ c.name if c.name else c }}</strong>: {{ c.description if c.description else '' }}</li>
+      <li><strong>{{ c.get('name') or 'Unnamed competitor' }}</strong>:
+        {{ c.get('offering') or c.get('description') or '' }}</li>
     {% endfor %}
     </ul>
+    {% if competitive.indirect_competitors %}
+    <h3>Indirect Competitors</h3>
+    <ul>
+    {% for c in competitive.indirect_competitors %}
+      <li><strong>{{ c.get('name') or 'Unnamed competitor' }}</strong>:
+        {{ c.get('offering') or c.get('description') or '' }}</li>
+    {% endfor %}
+    </ul>
+    {% endif %}
     <h3>Competitive Advantages</h3>
     <ul>
     {% for a in competitive.competitive_advantages %}
       <li>{{ a }}</li>
     {% endfor %}
     </ul>
+    {% if competitive.market_gaps %}
+    <h3>Market Gaps</h3>
+    <ul>
+    {% for g in competitive.market_gaps %}
+      <li>{{ g }}</li>
+    {% endfor %}
+    </ul>
+    {% endif %}
     <p><span class="label">Threat Assessment:</span> {{ competitive.threat_assessment }}</p>
   </div>
 
@@ -288,6 +314,9 @@ MR_HTML_TEMPLATE = _JINJA.from_string("""
     .resource-item .url { font-size: 8.5pt; color: #8b8478;
                           font-family: 'SF Mono', Menlo, monospace; }
     .resource-item .desc { margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    th, td { border: 1px solid #e4dfd5; padding: 8px; text-align: left; vertical-align: top; }
+    th { background: #f5f2ec; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -347,6 +376,45 @@ MR_HTML_TEMPLATE = _JINJA.from_string("""
     <h2>Market Landscape</h2>
     <p>{{ summary }}</p>
   </div>
+
+  {% if swot %}
+  <div class="section">
+    <h2>Market SWOT</h2>
+    <table>
+      <tr><th style="width:50%">Strengths</th><th style="width:50%">Weaknesses</th></tr>
+      <tr>
+        <td><ul>{% for s in swot.strengths %}<li>{{ s }}</li>{% endfor %}</ul></td>
+        <td><ul>{% for w in swot.weaknesses %}<li>{{ w }}</li>{% endfor %}</ul></td>
+      </tr>
+      <tr><th>Opportunities</th><th>Threats</th></tr>
+      <tr>
+        <td><ul>{% for o in swot.opportunities %}<li>{{ o }}</li>{% endfor %}</ul></td>
+        <td><ul>{% for t in swot.threats %}<li>{{ t }}</li>{% endfor %}</ul></td>
+      </tr>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if pestel %}
+  <div class="section">
+    <h2>PESTEL Analysis</h2>
+    {% for label, items in pestel_rows %}
+    {% if items %}
+    <h3>{{ label }}</h3>
+    <ul>{% for item in items %}<li>{{ item }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if five_forces %}
+  <div class="section">
+    <h2>Porter's Five Forces</h2>
+    {% for label, text in five_forces_rows %}
+    {% if text %}<p><span class="label">{{ label }}:</span> {{ text }}</p>{% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
 
   {% if key_players %}
   <div class="section">
@@ -440,6 +508,42 @@ def _sanitize_filename(name: str) -> str:
     result = re.sub(r"[^\w\s-]", "", name).strip()
     result = re.sub(r"[-\s]+", "_", result)
     return result or "report"
+
+
+def _pestel_rows(result: MarketResearchResult) -> list[tuple[str, list[str]]]:
+    p = result.pestel
+    if p is None:
+        return []
+    return [
+        ("Political", p.political),
+        ("Economic", p.economic),
+        ("Social", p.social),
+        ("Technological", p.technological),
+        ("Environmental", p.environmental),
+        ("Legal", p.legal),
+    ]
+
+
+def _five_forces_rows(result: MarketResearchResult) -> list[tuple[str, str]]:
+    f = result.five_forces
+    if f is None:
+        return []
+    return [
+        ("Threat of new entrants", f.threat_of_new_entrants),
+        ("Supplier power", f.supplier_power),
+        ("Buyer power", f.buyer_power),
+        ("Threat of substitutes", f.threat_of_substitutes),
+        ("Competitive rivalry", f.competitive_rivalry),
+    ]
+
+
+def _competitor_line(c: object) -> str:
+    """'Name: what they offer', from whichever keys the model used."""
+    if not isinstance(c, dict):
+        return str(c)
+    name = c.get("name") or "Unnamed competitor"
+    offering = c.get("offering") or c.get("description") or ""
+    return f"{name}: {offering}" if offering else str(name)
 
 
 def write_pdf(html: str, filepath: Path) -> None:
@@ -554,16 +658,35 @@ class ReportGenerator:
         for t in report.market_analysis.market_trends:
             doc.add_paragraph(t, style="List Bullet")
 
+        if report.market_analysis.customer_segments:
+            doc.add_heading("Customer Segments", level=3)
+            for s in report.market_analysis.customer_segments:
+                doc.add_paragraph(s, style="List Bullet")
+
         doc.add_heading("3. Competitive Analysis", level=2)
-        doc.add_heading("Direct Competitors", level=3)
-        for c in report.competitive_analysis.direct_competitors:
-            name = c.get("name", str(c)) if isinstance(c, dict) else str(c)
-            desc = c.get("description", "") if isinstance(c, dict) else ""
-            doc.add_paragraph(f"{name}: {desc}", style="List Bullet")
+        for heading, competitors in [
+            ("Direct Competitors", report.competitive_analysis.direct_competitors),
+            ("Indirect Competitors", report.competitive_analysis.indirect_competitors),
+        ]:
+            if not competitors:
+                continue
+            doc.add_heading(heading, level=3)
+            for c in competitors:
+                doc.add_paragraph(_competitor_line(c), style="List Bullet")
 
         doc.add_heading("Competitive Advantages", level=3)
         for a in report.competitive_analysis.competitive_advantages:
             doc.add_paragraph(a, style="List Bullet")
+
+        if report.competitive_analysis.market_gaps:
+            doc.add_heading("Market Gaps", level=3)
+            for g in report.competitive_analysis.market_gaps:
+                doc.add_paragraph(g, style="List Bullet")
+
+        p = doc.add_paragraph()
+        run = p.add_run("Threat Assessment: ")
+        run.bold = True
+        p.add_run(report.competitive_analysis.threat_assessment)
 
         doc.add_heading("4. SWOT Analysis", level=2)
         for category, items in [
@@ -707,6 +830,11 @@ class MarketResearchReportGenerator:
             competitor_sites=result.competitor_sites,
             research_papers=result.research_papers,
             relevant_communities=result.relevant_communities,
+            swot=result.swot,
+            pestel=result.pestel,
+            pestel_rows=_pestel_rows(result),
+            five_forces=result.five_forces,
+            five_forces_rows=_five_forces_rows(result),
         )
 
         safe_name = _sanitize_filename(result.market_query)
@@ -754,6 +882,36 @@ class MarketResearchReportGenerator:
 
         doc.add_heading("Market Landscape", level=2)
         doc.add_paragraph(result.summary)
+
+        if result.swot is not None:
+            doc.add_heading("Market SWOT", level=2)
+            for category, items in [
+                ("Strengths", result.swot.strengths),
+                ("Weaknesses", result.swot.weaknesses),
+                ("Opportunities", result.swot.opportunities),
+                ("Threats", result.swot.threats),
+            ]:
+                if items:
+                    doc.add_heading(category, level=3)
+                    for item in items:
+                        doc.add_paragraph(item, style="List Bullet")
+
+        if result.pestel is not None:
+            doc.add_heading("PESTEL Analysis", level=2)
+            for label, items in _pestel_rows(result):
+                if items:
+                    doc.add_heading(label, level=3)
+                    for item in items:
+                        doc.add_paragraph(item, style="List Bullet")
+
+        if result.five_forces is not None:
+            doc.add_heading("Porter's Five Forces", level=2)
+            for label, text in _five_forces_rows(result):
+                if text:
+                    p = doc.add_paragraph()
+                    run = p.add_run(f"{label}: ")
+                    run.bold = True
+                    p.add_run(text)
 
         self._resources_to_docx(doc, "Key Players", result.key_players)
         self._resources_to_docx(doc, "Competitor Sites", result.competitor_sites)

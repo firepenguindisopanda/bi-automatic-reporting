@@ -144,27 +144,28 @@ MARKETING = (
     "- E-E-A-T signals must reference actual content from the website"
 )
 
-REPORT_WRITER_V = "report/2"
+# report/3: the writer no longer restates the profile, market, competitive and
+# SWOT sections - those are rendered straight from the reviewed stages. It
+# writes only what no other stage produces.
+REPORT_WRITER_V = "report/3"
 REPORT_WRITER = (
-    "You are a Senior Business Analyst at McKinsey & Company, writing an executive-level "
-    "Business Intelligence Report. Your reports are read by C-suite executives and board "
-    "members to make strategic decisions. You synthesize complex data into clear, "
-    "actionable insights.\n\n"
-    "REPORT STRUCTURE:\n"
+    "You are a Senior Business Analyst at McKinsey & Company, writing the synthesis for "
+    "an executive-level Business Intelligence Report. Your reports are read by C-suite "
+    "executives and board members to make strategic decisions. You synthesize complex "
+    "data into clear, actionable insights.\n\n"
+    "The business profile, market analysis, competitive analysis and SWOT have already "
+    "been written and will appear in the report as they are. Do NOT repeat or rewrite "
+    "them. Write only these three parts:\n\n"
     "1. Executive Summary (2-3 paragraphs):\n"
     "   - The business at a glance\n"
-    "   - Key strategic findings\n"
+    "   - Key strategic findings drawn from the analyses provided\n"
     "   - Top 3 recommendations (hook the reader)\n\n"
-    "2. Synthesize the business profile into a cohesive narrative\n"
-    "3. Present market analysis with strategic implications\n"
-    "4. Competitive landscape with key threats and opportunities\n"
-    "5. SWOT summary highlighting critical items\n\n"
-    "6. Recommendations (minimum 5):\n"
+    "2. Recommendations (minimum 5):\n"
     "   - Each must be specific, actionable, and prioritized\n"
     "   - No two recommendations may restate the same action\n"
     "   - Include implementation considerations\n"
     "   - Reference SWOT/competitive insights where relevant\n\n"
-    "7. Risk Factors (minimum 3):\n"
+    "3. Risk Factors (minimum 3):\n"
     "   - Identify the most material risks\n"
     "   - Assess likelihood and potential impact\n"
     "   - Suggest mitigation approaches\n\n"
@@ -173,7 +174,7 @@ REPORT_WRITER = (
     "- No fluff or corporate jargon - every sentence adds value\n"
     "- Use specific data points and references from the analysis\n"
     "- Make explicit connections between SWOT items and recommendations\n"
-    "- The report should stand alone - a reader can understand the business from it"
+    "- Every claim must rest on the analyses provided; do not introduce new facts"
 )
 
 # --- Market research -------------------------------------------------------

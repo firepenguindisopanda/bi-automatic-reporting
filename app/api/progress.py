@@ -23,8 +23,14 @@ from app.pipeline.stages import TERMINAL_JOB_STATUSES, StageStatus, stages_for
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = 1.0
+"""Used only when no change notifier is supplied."""
+FALLBACK_REREAD_SECONDS = 5.0
+"""With a notifier, re-read anyway this often - a write from outside this
+process sends no notification, and must still show up eventually."""
 HEARTBEAT_SECONDS = 15.0
 MAX_STREAM_SECONDS = 3600.0
+
+WaitForChange = Callable[[float], Awaitable[None]]
 
 
 def _parse_warnings(raw: Any) -> list[str]:
@@ -123,19 +129,28 @@ def _sse(event: str, payload: str) -> str:
 
 async def stream_progress(
     load: Callable[[], Awaitable[JobProgress | None]],
+    wait_for_change: WaitForChange | None = None,
 ) -> AsyncIterator[str]:
     """Server-sent events for one job, until it reaches a terminal state.
 
-    Emits only on change, plus a comment heartbeat so idle connections survive
-    proxy read timeouts. nginx additionally needs `proxy_buffering off`, or the
-    stream is buffered and the UI looks frozen.
+    Each event is the full progress snapshot - the same payload polling
+    returns - sent whenever it changes. A snapshot rather than per-transition
+    deltas means a client that misses an event, or reconnects, is never left
+    holding a stale view.
+
+    With ``wait_for_change`` the stream sleeps until the job is written to
+    (or ``FALLBACK_REREAD_SECONDS`` passes); without it, it polls every
+    second. A comment heartbeat keeps idle connections alive through proxy read
+    timeouts. nginx additionally needs `proxy_buffering off`, or the stream is
+    buffered and the UI looks frozen.
     """
+    loop = asyncio.get_running_loop()
+    started = loop.time()
     last_payload: str | None = None
-    waited = 0.0
-    since_heartbeat = 0.0
+    last_sent = started
 
     try:
-        while waited < MAX_STREAM_SECONDS:
+        while loop.time() - started < MAX_STREAM_SECONDS:
             progress = await load()
             if progress is None:
                 yield _sse("error", json.dumps({"detail": "Job not found"}))
@@ -145,18 +160,19 @@ async def stream_progress(
             if payload != last_payload:
                 yield _sse("progress", payload)
                 last_payload = payload
-                since_heartbeat = 0.0
+                last_sent = loop.time()
 
             if progress.status in TERMINAL_JOB_STATUSES:
                 yield _sse("done", json.dumps({"status": progress.status}))
                 return
 
-            await asyncio.sleep(POLL_INTERVAL_SECONDS)
-            waited += POLL_INTERVAL_SECONDS
-            since_heartbeat += POLL_INTERVAL_SECONDS
-            if since_heartbeat >= HEARTBEAT_SECONDS:
+            if wait_for_change is not None:
+                await wait_for_change(min(FALLBACK_REREAD_SECONDS, HEARTBEAT_SECONDS))
+            else:
+                await asyncio.sleep(POLL_INTERVAL_SECONDS)
+            if loop.time() - last_sent >= HEARTBEAT_SECONDS:
                 yield ": keepalive\n\n"
-                since_heartbeat = 0.0
+                last_sent = loop.time()
     except asyncio.CancelledError:
         # The client went away. Nothing to clean up; just stop.
         raise

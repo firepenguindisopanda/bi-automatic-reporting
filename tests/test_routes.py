@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.pipeline.stages import JobStatus
 
 
 @pytest.fixture
@@ -62,7 +63,9 @@ class TestBiStatus:
         assert resp.status_code == 200
         data = resp.json()
         assert data["job_id"] == job_id
-        assert data["status"] in ("pending", "scraping", "analyzing", "complete", "error")
+        assert data["status"] in {s.value for s in JobStatus}
+        # The full stage array, including stages that have not started.
+        assert [s["stage"] for s in data["stages"]][:2] == ["scrape", "profile"]
 
 
 class TestBiDownload:

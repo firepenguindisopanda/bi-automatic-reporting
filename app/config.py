@@ -73,10 +73,13 @@ class Settings(BaseSettings):
     critic_retry_threshold: float = 60.0
     agent_max_attempts: int = 3
 
-    # Job runner. Concurrency stays at 1 on the Pi: rendering is the memory
-    # ceiling and two concurrent renders push the container over it.
+    # Job runner. Concurrency stays at 1 on small hosts: rendering is the
+    # memory ceiling and two concurrent renders push a small container over it.
     job_concurrency: int = 1
     job_queue_max: int = 20
+    # A failed or interrupted job can be resumed from its first unfinished
+    # stage. Bounded, because each retry spends model calls.
+    max_retries_per_job: int = 2
 
     app_title: str = "Business Intelligence System"
     app_version: str = "0.2.0"
@@ -92,9 +95,9 @@ class Settings(BaseSettings):
 
     rate_limit_max_requests: int = 10
     rate_limit_window: int = 60
-    # Behind nginx every request appears to come from 127.0.0.1, which would
-    # make the rate limit global instead of per-client. Only enable this when a
-    # trusted reverse proxy is the sole ingress.
+    # Behind a reverse proxy every request appears to come from the proxy,
+    # which would make the rate limit global instead of per-client. Only enable
+    # this when a trusted reverse proxy is the sole ingress.
     trust_proxy_headers: bool = True
 
     cors_origins: str = "http://localhost:5173,http://localhost:4173"

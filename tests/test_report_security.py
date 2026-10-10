@@ -10,12 +10,13 @@ import pytest
 
 from app.email import templates
 from app.models.bi import (
-    BIReport,
     BusinessProfile,
     CompetitiveAnalysis,
     MarketAnalysis,
     MarketResearchResult,
+    ReportSynthesis,
     SWOTAnalysis,
+    build_report,
 )
 from app.report.generator import HTML_TEMPLATE, MR_HTML_TEMPLATE, write_pdf
 
@@ -37,12 +38,8 @@ def _report(text: str = INJECTED):
         competitive_advantages=[text], market_gaps=[text], threat_assessment=text,
     )
     swot = SWOTAnalysis(strengths=[text], weaknesses=[text], opportunities=[text], threats=[text])
-    report = BIReport(
-        executive_summary=text, business_profile=profile, market_analysis=market,
-        competitive_analysis=competitive, swot_analysis=swot,
-        recommendations=[text], risk_factors=[text],
-    )
-    return report, profile
+    synthesis = ReportSynthesis(executive_summary=text, recommendations=[text], risk_factors=[text])
+    return build_report(synthesis, profile, market, competitive, swot), profile
 
 
 class TestTemplateEscaping:

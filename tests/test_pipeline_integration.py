@@ -78,16 +78,8 @@ REPLIES = {
                         {"tactic": "faq", "description": "answer questions"}],
         "call_to_action": "Start a free trial",
     }),
-    "BIReport": json.dumps({
+    "ReportSynthesis": json.dumps({
         "executive_summary": "Acme Analytics serves SME e-commerce retailers. " * 20,
-        "business_profile": {
-            "company_name": "Acme Analytics", "tagline": "", "description": "",
-            "industry": "SaaS", "value_proposition": ""},
-        "market_analysis": {
-            "target_market": "SME", "market_size": "$1B", "pricing_strategy": "tiered",
-            "market_positioning": "mid-market"},
-        "competitive_analysis": {"threat_assessment": "high"},
-        "swot_analysis": {},
         "recommendations": ["r1", "r2", "r3", "r4", "r5"],
         "risk_factors": ["k1", "k2", "k3"],
     }),
@@ -97,9 +89,10 @@ REPLIES = {
 class SchemaAwareLLM:
     """Returns the reply matching whichever schema the prompt asked for."""
 
-    def __init__(self, fail_on: str | None = None) -> None:
-        self.fail_on = fail_on
+    def __init__(self, fail_on: str | set[str] | None = None) -> None:
+        self.fail_on = {fail_on} if isinstance(fail_on, str) else set(fail_on or ())
         self.calls = 0
+        self.schemas: list[str] = []
 
     async def ainvoke(self, messages: list[Any]) -> Any:
         self.calls += 1
@@ -107,8 +100,10 @@ class SchemaAwareLLM:
         # embeds earlier stages' JSON, so matching on it picks the wrong schema.
         system = str(messages[0].content) if messages else ""
         name = _identify_schema(system)
+        if name is not None:
+            self.schemas.append(name)
         reply = "" if name is None else REPLIES[name]
-        if name is not None and name == self.fail_on:
+        if name is not None and name in self.fail_on:
             reply = "not valid json at all"
 
         class Msg:
@@ -118,10 +113,10 @@ class SchemaAwareLLM:
         return Msg()
 
 
-# Most-nested schemas first: BIReport embeds BusinessProfile and MarketAnalysis,
-# so its own marker has to be tested before theirs.
+# The report synthesis is matched first: its marker is unique to it, while the
+# others could in principle appear in a richer schema.
 SCHEMA_MARKERS = (
-    ("BIReport", "risk_factors"),
+    ("ReportSynthesis", "risk_factors"),
     ("MarketingAnalysis", "geo_tactics"),
     ("CompetitiveAnalysis", "indirect_competitors"),
     ("SWOTAnalysis", "opportunities"),
@@ -189,6 +184,7 @@ async def pipeline(tmp_path, monkeypatch):
             return client
 
         p = BIPipeline(runner=AgentRunner(client_factory=factory))
+        p.llm = llm  # type: ignore[attr-defined]
         p._scraper.scrape = _const(scraped)  # type: ignore[method-assign]
         p._report_gen = StubReportGenerator(tmp_path)  # type: ignore[assignment]
         p._email_service = email or StubEmail()  # type: ignore[assignment]
@@ -495,3 +491,210 @@ class TestInterruptedRecovery:
         assert "restarted" in job["error"]
         stage = _by_slug(await p.get_stages("stale"))["profile"]
         assert stage["status"] == StageStatus.FAILED
+
+
+class TestReportAssembly:
+    """The reader gets the stage outputs that were scored, not a rewrite of them."""
+
+    async def test_report_sections_come_from_the_scored_stages(self, pipeline, tmp_path) -> None:
+        captured: dict[str, Any] = {}
+
+        class Capturing(StubReportGenerator):
+            def generate_pdf(self, report: Any, *args: Any, **kwargs: Any) -> Path:
+                captured["report"] = report
+                return super().generate_pdf()
+
+        p = pipeline()
+        p._report_gen = Capturing(tmp_path)  # type: ignore[assignment]
+        await _run(p)
+
+        report = captured["report"]
+        market = json.loads(REPLIES["MarketAnalysis"])
+        competitive = json.loads(REPLIES["CompetitiveAnalysis"])
+        synthesis = json.loads(REPLIES["ReportSynthesis"])
+        assert report.market_analysis.market_size == market["market_size"]
+        assert report.competitive_analysis.direct_competitors == competitive["direct_competitors"]
+        assert report.swot_analysis.strengths == json.loads(REPLIES["SWOTAnalysis"])["strengths"]
+        assert report.business_profile.company_name == "Acme Analytics"
+        assert report.recommendations == synthesis["recommendations"]
+        assert report.risk_factors == synthesis["risk_factors"]
+
+    async def test_report_stage_stores_only_its_synthesis(self, pipeline) -> None:
+        p = pipeline()
+        await _run(p)
+        raw = await p._store.get_stage_artifact("job1", "report")
+        assert raw is not None
+        assert set(json.loads(raw)) == {"executive_summary", "recommendations", "risk_factors"}
+
+    async def test_job_artifact_carries_the_assembled_report(self, pipeline) -> None:
+        p = pipeline()
+        await _run(p)
+        artifact = json.loads((await p.get_job("job1"))["artifact_json"])
+        assert artifact["report"]["market_analysis"]["market_size"] == "$1B-$3B"
+
+
+class TestParallelMarketing:
+    async def test_marketing_finishes_even_when_the_chain_fails(self, pipeline) -> None:
+        p = pipeline(fail_on="SWOTAnalysis")
+        await _run(p)
+        stages = _by_slug(await p.get_stages("job1"))
+        assert stages["swot"]["status"] == StageStatus.FAILED
+        assert stages["marketing"]["status"] == StageStatus.SUCCEEDED
+        assert (await p.get_job("job1"))["status"] == JobStatus.FAILED
+
+    async def test_both_branch_failures_are_recorded(self, pipeline) -> None:
+        p = pipeline(fail_on={"SWOTAnalysis", "MarketingAnalysis"})
+        await _run(p)
+        stages = _by_slug(await p.get_stages("job1"))
+        assert stages["swot"]["status"] == StageStatus.FAILED
+        assert stages["marketing"]["status"] == StageStatus.FAILED
+        assert not [s for s in stages.values() if s["status"] == StageStatus.RUNNING]
+
+
+class TestRenderFailure:
+    async def test_a_render_crash_fails_the_render_stage(self, pipeline, tmp_path) -> None:
+        class Exploding(StubReportGenerator):
+            def generate_pdf(self, *args: Any, **kwargs: Any) -> Path:
+                raise RuntimeError("font missing")
+
+        p = pipeline()
+        p._report_gen = Exploding(tmp_path)  # type: ignore[assignment]
+        await _run(p)
+
+        job = await p.get_job("job1")
+        assert job["status"] == JobStatus.FAILED
+        render = _by_slug(await p.get_stages("job1"))["render"]
+        # It used to be left "running" while the job read failed.
+        assert render["status"] == StageStatus.FAILED
+        assert "font missing" in render["error"]
+        assert render["duration_ms"] is not None
+
+
+class TestRetry:
+    async def test_resume_reuses_finished_stages(self, pipeline) -> None:
+        scrapes = {"n": 0}
+
+        async def counting_scrape(_url: str) -> ScrapedContent:
+            scrapes["n"] += 1
+            return PAGE
+
+        p = pipeline(fail_on="SWOTAnalysis")
+        p._scraper.scrape = counting_scrape  # type: ignore[method-assign]
+        await _run(p)
+        assert (await p.get_job("job1"))["status"] == JobStatus.FAILED
+
+        p.llm.fail_on = set()
+        p.llm.schemas.clear()
+        await p._store.requeue_for_retry("job1")
+        await p.run("job1", "https://acme.example.com", "user@example.com", resume=True)
+
+        assert (await p.get_job("job1"))["status"] == JobStatus.COMPLETED
+        # Only the failed stage and what depends on it ran again.
+        assert sorted(p.llm.schemas) == ["ReportSynthesis", "SWOTAnalysis"]
+        assert scrapes["n"] == 1
+        stages = _by_slug(await p.get_stages("job1"))
+        assert all(s["status"] == StageStatus.SUCCEEDED for s in stages.values())
+
+    async def test_a_rerun_stage_invalidates_what_read_it(self, pipeline) -> None:
+        p = pipeline()
+        await _run(p)
+        # Corrupt the stored market output so it cannot be reused.
+        await p._store._db.execute(
+            "UPDATE job_stages SET artifact_json = '{}' WHERE job_id = 'job1' AND stage = 'market'"
+        )
+        await p._store.update_status("job1", JobStatus.FAILED)
+        p.llm.schemas.clear()
+
+        await p.run("job1", "https://acme.example.com", "user@example.com", resume=True)
+
+        assert sorted(p.llm.schemas) == sorted(
+            ["MarketAnalysis", "CompetitiveAnalysis", "SWOTAnalysis", "ReportSynthesis"]
+        )
+
+    async def test_only_failed_or_interrupted_jobs_can_be_retried(self, pipeline) -> None:
+        from app.orchestrator.bi_pipeline import JobStateError
+
+        p = pipeline()
+        await _run(p)
+        with pytest.raises(JobStateError) as excinfo:
+            await p.retry("job1")
+        assert excinfo.value.status_code == 409
+
+    async def test_retries_are_bounded(self, pipeline, monkeypatch) -> None:
+        import app.orchestrator.runner as job_runner
+        from app.orchestrator.bi_pipeline import JobStateError
+
+        async def swallow(job_id: str, coro: Any) -> int:
+            coro.close()
+            return 0
+
+        monkeypatch.setattr(job_runner, "enqueue", swallow)
+        monkeypatch.setattr(settings, "max_retries_per_job", 1)
+        p = pipeline(fail_on="SWOTAnalysis")
+        await _run(p)
+
+        assert (await p.retry("job1"))["status"] == JobStatus.QUEUED
+        await p._store.update_status("job1", JobStatus.FAILED)
+        with pytest.raises(JobStateError) as excinfo:
+            await p.retry("job1")
+        assert excinfo.value.status_code == 429
+
+
+class TestResendGuards:
+    async def test_a_failed_resend_does_not_demote_a_delivered_job(self, pipeline) -> None:
+        p = pipeline()
+        await _run(p)
+        p._email_service = StubEmail(ok=False)  # type: ignore[assignment]
+        ok, _ = await p.resend("job1")
+        assert ok is False
+        assert (await p.get_job("job1"))["status"] == JobStatus.COMPLETED
+        assert _by_slug(await p.get_stages("job1"))["deliver"]["status"] == StageStatus.SUCCEEDED
+        assert len(await p._store.get_deliveries("job1")) == 2
+
+    async def test_resending_a_partial_job_completes_it(self, pipeline) -> None:
+        p = pipeline(email=StubEmail(ok=False))
+        await _run(p)
+        assert (await p.get_job("job1"))["status"] == JobStatus.PARTIAL
+        p._email_service = StubEmail()  # type: ignore[assignment]
+        ok, _ = await p.resend("job1")
+        assert ok is True
+        assert (await p.get_job("job1"))["status"] == JobStatus.COMPLETED
+        assert _by_slug(await p.get_stages("job1"))["deliver"]["status"] == StageStatus.SUCCEEDED
+
+    async def test_an_unfinished_job_cannot_be_resent(self, pipeline) -> None:
+        from app.orchestrator.bi_pipeline import JobStateError
+
+        p = pipeline()
+        await p.init()
+        await p._store.create_job("queued", "https://x.example.com", "u@example.com")
+        with pytest.raises(JobStateError):
+            await p.resend("queued")
+
+
+class TestQueuedRecovery:
+    async def test_queued_jobs_are_interrupted_at_startup(self, pipeline) -> None:
+        """The queue is in memory: a job waiting in it at shutdown will never run."""
+        p = pipeline()
+        await p.init()
+        await p._store.create_job("waiting", "https://x.example.com", "u@example.com")
+        assert (await p.get_job("waiting"))["status"] == JobStatus.QUEUED
+        await p.recover_interrupted()
+        assert (await p.get_job("waiting"))["status"] == JobStatus.INTERRUPTED
+
+    async def test_the_legacy_pending_spelling_is_recovered_too(self, pipeline) -> None:
+        p = pipeline()
+        await p.init()
+        await p._store.create_job("old", "https://x.example.com", "u@example.com")
+        await p._store.update_status("old", "pending")
+        assert (await p.get_job("old"))["status"] == JobStatus.QUEUED  # normalised on read
+        await p.recover_interrupted()
+        assert (await p.get_job("old"))["status"] == JobStatus.INTERRUPTED
+
+
+class TestMechanicalStageHistory:
+    async def test_mechanical_stages_find_their_own_durations(self, pipeline) -> None:
+        """They record no model; the ETA used to look them up under '' and find nothing."""
+        p = pipeline()
+        await _run(p)
+        for slug in ("scrape", "render", "deliver"):
+            assert await p._store.recent_stage_durations(slug, "", 20), slug

@@ -19,6 +19,15 @@ os.environ.setdefault("UPSTASH_REDIS_REST_URL", "")
 os.environ.setdefault("UPSTASH_REDIS_REST_TOKEN", "")
 os.environ.setdefault("EMAIL_PROVIDER", "console")
 os.environ.setdefault("SENDGRID_API_KEY", "")
+# Route tests submit to the same address many times in one session; the
+# per-recipient cap has its own tests that set it explicitly.
+os.environ.setdefault("MAX_REPORTS_PER_RECIPIENT_PER_DAY", "100000")
+os.environ.setdefault("RECIPIENT_ALLOWLIST", "")
+os.environ.setdefault("RETENTION_DAYS", "0")
+# The shared app's limiter would otherwise trip partway through the session,
+# since every TestClient request comes from the same address. The limiter has
+# its own tests against an isolated app.
+os.environ.setdefault("RATE_LIMIT_MAX_REQUESTS", "100000")
 
 from app.llm.client import LLMClient
 

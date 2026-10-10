@@ -10,7 +10,6 @@ from app.analysis import prompts
 from app.analysis.runner import AgentSpec, StageContext
 from app.config import settings
 from app.models.bi import (
-    BIReport,
     BusinessProfile,
     CompetitiveAnalysis,
     MarketAnalysis,
@@ -18,6 +17,7 @@ from app.models.bi import (
     MarketMacroAnalysis,
     MarketResources,
     MarketSynthesis,
+    ReportSynthesis,
     SWOTAnalysis,
 )
 from app.pipeline.contracts import (
@@ -124,8 +124,25 @@ def _report_prompt(ctx: StageContext) -> str:
         f"MARKET ANALYSIS:\n{m.model_dump_json(indent=2)}\n\n"
         f"COMPETITIVE ANALYSIS:\n{c.model_dump_json(indent=2)}\n\n"
         f"SWOT ANALYSIS:\n{w.model_dump_json(indent=2)}\n\n"
-        "Write a comprehensive, executive-level BI report synthesizing all the above."
+        "Write the executive summary, recommendations and risk factors for this "
+        "business, synthesizing the analyses above."
     )
+
+
+MAX_CRITIC_SOURCE_CHARS = 12000
+
+
+def _report_critic_source(ctx: StageContext) -> str:
+    """The analyses the report writer was given, compact so more of it fits."""
+    p, m = ctx.require_profile(), ctx.require_market()
+    c, w = ctx.require_competitive(), ctx.require_swot()
+    text = (
+        f"BUSINESS PROFILE: {p.model_dump_json()}\n\n"
+        f"MARKET ANALYSIS: {m.model_dump_json()}\n\n"
+        f"COMPETITIVE ANALYSIS: {c.model_dump_json()}\n\n"
+        f"SWOT ANALYSIS: {w.model_dump_json()}"
+    )
+    return text[:MAX_CRITIC_SOURCE_CHARS]
 
 
 def _macro_prompt(ctx: StageContext) -> str:
@@ -310,6 +327,7 @@ PROFILE_SPEC = AgentSpec(
     build_user_prompt=_profile_prompt,
     model=settings.agent_model_business_profile,
     prompt_version=prompts.BUSINESS_PROFILE_V,
+    max_attempts=settings.agent_max_attempts,
     contract=PROFILE_CONTRACT,
 )
 
@@ -320,6 +338,7 @@ MARKET_SPEC = AgentSpec(
     build_user_prompt=_market_prompt,
     model=settings.agent_model_market_analysis,
     prompt_version=prompts.MARKET_ANALYSIS_V,
+    max_attempts=settings.agent_max_attempts,
     contract=MARKET_CONTRACT,
 )
 
@@ -330,6 +349,7 @@ COMPETITIVE_SPEC = AgentSpec(
     build_user_prompt=_competitive_prompt,
     model=settings.agent_model_competitive_analysis,
     prompt_version=prompts.COMPETITIVE_ANALYSIS_V,
+    max_attempts=settings.agent_max_attempts,
     contract=COMPETITIVE_CONTRACT,
 )
 
@@ -340,6 +360,7 @@ SWOT_SPEC = AgentSpec(
     build_user_prompt=_swot_prompt,
     model=settings.agent_model_swot,
     prompt_version=prompts.SWOT_V,
+    max_attempts=settings.agent_max_attempts,
     contract=SWOT_CONTRACT,
 )
 
@@ -350,20 +371,23 @@ MARKETING_SPEC = AgentSpec(
     build_user_prompt=_marketing_prompt,
     model=settings.agent_model_marketing,
     prompt_version=prompts.MARKETING_V,
+    max_attempts=settings.agent_max_attempts,
     contract=MARKETING_CONTRACT,
 )
 
 REPORT_SPEC = AgentSpec(
     key="report",
-    output_model=BIReport,
+    output_model=ReportSynthesis,
     system_prompt=prompts.REPORT_WRITER,
     build_user_prompt=_report_prompt,
     model=settings.agent_model_report_writer,
     prompt_version=prompts.REPORT_WRITER_V,
+    max_attempts=settings.agent_max_attempts,
     contract=REPORT_CONTRACT,
-    # The writer restates upstream stages that were already reviewed; a second
-    # opinion here mostly re-litigates their scores.
-    critic=False,
+    # Reviewed like every other stage now that it writes only its own
+    # synthesis rather than restating stages that were already reviewed - and
+    # judged against those analyses, which are what it was given.
+    critic_source=_report_critic_source,
 )
 
 MACRO_SPEC = AgentSpec(
@@ -373,6 +397,7 @@ MACRO_SPEC = AgentSpec(
     build_user_prompt=_macro_prompt,
     model=settings.agent_model_market_research,
     prompt_version=prompts.MARKET_MACRO_V,
+    max_attempts=settings.agent_max_attempts,
     contract=MACRO_CONTRACT,
 )
 
@@ -383,6 +408,7 @@ SIZING_SPEC = AgentSpec(
     build_user_prompt=_sizing_prompt,
     model=settings.agent_model_market_research,
     prompt_version=prompts.MARKET_SIZING_V,
+    max_attempts=settings.agent_max_attempts,
     contract=SIZING_CONTRACT,
 )
 
@@ -393,6 +419,7 @@ RESOURCES_SPEC = AgentSpec(
     build_user_prompt=_resources_prompt,
     model=settings.agent_model_market_research,
     prompt_version=prompts.MARKET_RESOURCES_V,
+    max_attempts=settings.agent_max_attempts,
     contract=RESOURCES_CONTRACT,
 )
 

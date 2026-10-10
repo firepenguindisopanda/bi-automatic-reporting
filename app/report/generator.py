@@ -5,14 +5,19 @@ from pathlib import Path
 
 from docx import Document
 from docx.shared import Pt
-from jinja2 import Template
-from weasyprint import HTML as WeasyPrintHTML  # noqa: N811
+from jinja2 import Environment
 
 from app.models.bi import BIReport, BusinessProfile, MarketingAnalysis, MarketResearchResult
 
 logger = logging.getLogger(__name__)
 
-HTML_TEMPLATE = Template("""
+# Every value in these templates is model output, and the model read an
+# attacker-chosen web page. Autoescape keeps that text as text: without it, a
+# page that talks the model into emitting `<img src="file:///etc/passwd">`
+# gets markup into the PDF, and WeasyPrint dutifully fetches it.
+_JINJA = Environment(autoescape=True)
+
+HTML_TEMPLATE = _JINJA.from_string("""
 <!DOCTYPE html>
 <html>
 <head>
@@ -236,7 +241,7 @@ HTML_TEMPLATE = Template("""
 """)
 
 
-MR_HTML_TEMPLATE = Template("""
+MR_HTML_TEMPLATE = _JINJA.from_string("""
 <!DOCTYPE html>
 <html>
 <head>
@@ -437,6 +442,28 @@ def _sanitize_filename(name: str) -> str:
     return result or "report"
 
 
+def write_pdf(html: str, filepath: Path) -> None:
+    """Render HTML to a PDF file with every outbound fetch refused.
+
+    The templates reference no external resources, so any fetch can only come
+    from injected markup. WeasyPrint's default fetcher follows http(s) and
+    file:// URLs, which would make the renderer a server-side request forgery
+    and local-file read reachable from the scraped page. Autoescaping stops the
+    markup; this stops the fetch even if markup ever gets through.
+
+    Imported lazily: WeasyPrint loads Pango when imported, and importing it at
+    module load made the whole API unimportable on a machine without it.
+    """
+    from weasyprint import HTML
+    from weasyprint.urls import URLFetcher
+
+    class _RefuseAll(URLFetcher):
+        def fetch(self, url, headers=None):
+            raise ValueError(f"external resources are disabled in reports: {url[:80]}")
+
+    HTML(string=html, url_fetcher=_RefuseAll()).write_pdf(str(filepath))
+
+
 class ReportGenerator:
     def __init__(self, output_dir: str = "data/reports") -> None:
         self._output_dir = Path(output_dir)
@@ -468,7 +495,7 @@ class ReportGenerator:
         safe_name = _sanitize_filename(company or profile.company_name)
         filename = f"{safe_name}_{ts}.pdf"
         filepath = self._output_dir / filename
-        WeasyPrintHTML(string=html).write_pdf(str(filepath))
+        write_pdf(html, filepath)
         logger.info("PDF generated: %s", filepath)
         return filepath
 
@@ -685,7 +712,7 @@ class MarketResearchReportGenerator:
         safe_name = _sanitize_filename(result.market_query)
         filename = f"market_research_{safe_name}_{ts}.pdf"
         filepath = self._output_dir / filename
-        WeasyPrintHTML(string=html).write_pdf(str(filepath))
+        write_pdf(html, filepath)
         logger.info("Market research PDF generated: %s", filepath)
         return filepath
 

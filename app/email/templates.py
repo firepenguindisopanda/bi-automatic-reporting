@@ -3,7 +3,15 @@
 Styled with the same editorial tokens as the app and the PDF: warm paper, ink
 text, one rust accent, hairline rules, no gradients. Mail clients strip most
 CSS, so everything is inline and the layout is a plain single column.
+
+The company name is the only variable text, and it is model output derived
+from whatever page the submitter pointed at - attacker-controlled, in effect.
+It goes through ``display_company_name`` before it reaches a header or a body,
+and is HTML-escaped in the HTML part.
 """
+
+import html
+import re
 
 PAPER = "#FBFAF7"
 INK = "#1A1815"
@@ -21,11 +29,36 @@ SECTIONS = (
 )
 
 
+MAX_COMPANY_NAME_CHARS = 80
+FALLBACK_COMPANY_NAME = "your business"
+
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f  ]")
+# Explicit links only. A bare domain is left alone because real trading names
+# look like one - "Fly.io", "Booking.com" - and mangling those helps nobody.
+_LINKS = re.compile(r"(?:[a-z][a-z0-9+.-]*://|www\.)\S*", re.IGNORECASE)
+
+
+def display_company_name(name: str | None) -> str:
+    """A company name that is safe to put in a subject line and a body.
+
+    Strips control characters (a newline in a subject is header injection),
+    drops explicit links so the message cannot be turned into a phishing lure,
+    collapses whitespace and caps the length.
+    """
+    text = _CONTROL_CHARS.sub(" ", name or "")
+    text = _LINKS.sub(" ", text)
+    text = " ".join(text.split())
+    if len(text) > MAX_COMPANY_NAME_CHARS:
+        text = text[: MAX_COMPANY_NAME_CHARS - 1].rstrip() + "…"
+    return text or FALLBACK_COMPANY_NAME
+
+
 def report_subject(company_name: str) -> str:
-    return f"Business Intelligence Report: {company_name}"
+    return f"Business Intelligence Report: {display_company_name(company_name)}"
 
 
 def report_html(company_name: str) -> str:
+    company_name = html.escape(display_company_name(company_name))
     items = "".join(
         f'<li style="margin:0 0 6px 0;color:{INK};">{section}</li>' for section in SECTIONS
     )
@@ -63,6 +96,7 @@ def report_html(company_name: str) -> str:
 def report_text(company_name: str) -> str:
     """Plain-text alternative. Its absence hurts deliverability."""
     sections = "\n".join(f"  - {section}" for section in SECTIONS)
+    company_name = display_company_name(company_name)
     return (
         f"Your Business Intelligence report for {company_name} is ready.\n\n"
         f"The attached report covers:\n{sections}\n\n"

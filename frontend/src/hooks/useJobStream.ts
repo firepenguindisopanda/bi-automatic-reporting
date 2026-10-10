@@ -13,6 +13,8 @@ interface JobStream {
   error: string | null
   /** Re-read once, e.g. after an action that changes the job. */
   refresh: () => Promise<void>
+  /** Reconnect from scratch, e.g. after a finished job was put back in the queue. */
+  restart: () => void
 }
 
 /**
@@ -29,6 +31,9 @@ export function useJobStream(
   const [progress, setProgress] = useState<JobProgress | null>(null)
   const [connection, setConnection] = useState<Connection>('connecting')
   const [error, setError] = useState<string | null>(null)
+  // Bumped to tear the stream down and open a new one. A retried job goes from
+  // a terminal status back to queued, and the stream for it has already closed.
+  const [generation, setGeneration] = useState(0)
 
   // Held in refs so the effect below does not re-subscribe on every render.
   const sourceRef = useRef<EventSource | null>(null)
@@ -43,6 +48,8 @@ export function useJobStream(
       setError(e instanceof ApiError ? e.message : 'Could not load this job.')
     }
   }, [kind, jobId])
+
+  const restart = useCallback(() => setGeneration((g) => g + 1), [])
 
   useEffect(() => {
     if (!jobId) {
@@ -144,7 +151,7 @@ export function useJobStream(
       cancelled = true
       stop()
     }
-  }, [kind, jobId])
+  }, [kind, jobId, generation])
 
-  return { progress, connection, error, refresh }
+  return { progress, connection, error, refresh, restart }
 }

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Callout, Card, LinkButton } from '../components/ui'
-import { ApiError, api } from '../lib/api'
-import type { MarketResearchResult, MarketResource } from '../types/api'
+import { ApiError, api, safeHref } from '../lib/api'
+import type { FiveForces, MarketResearchResult, MarketResource, Pestel, Swot } from '../types/api'
 
 /** The finished research, read as a document rather than a dashboard. */
 export default function ResearchResultPage() {
   const { jobId } = useParams<{ jobId: string }>()
   const [result, setResult] = useState<MarketResearchResult | null>(null)
+  const [hasDocuments, setHasDocuments] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -15,8 +16,11 @@ export default function ResearchResultPage() {
     api
       .researchResult(jobId)
       .then((r) => {
-        if (r.result) setResult(r.result)
-        else setError(r.error ?? 'This research has no result yet.')
+        if (r.result) {
+          setResult(r.result)
+          // `partial`: the analysis is complete but the documents never rendered.
+          setHasDocuments(r.status !== 'partial')
+        } else setError(r.error ?? 'This research has no result yet.')
       })
       .catch((e: unknown) =>
         setError(e instanceof ApiError ? e.message : 'Could not load the result.'),
@@ -82,6 +86,10 @@ export default function ResearchResultPage() {
         </section>
       ) : null}
 
+      {result.swot ? <SwotGrid swot={result.swot} /> : null}
+      {result.pestel ? <PestelSection pestel={result.pestel} /> : null}
+      {result.five_forces ? <FiveForcesSection forces={result.five_forces} /> : null}
+
       <Resources title="Key players" items={result.key_players} />
       <Resources title="Competitors" items={result.competitor_sites} />
       <Resources title="Industry sources" items={result.industry_websites} />
@@ -89,17 +97,23 @@ export default function ResearchResultPage() {
       <Resources title="Research" items={result.research_papers} />
       <Resources title="Communities" items={result.relevant_communities} />
 
-      <div className="flex flex-wrap gap-3 border-t border-rule pt-6">
-        <LinkButton href={api.downloadUrl('market_research', jobId ?? '', 'pdf')}>
-          Download PDF
-        </LinkButton>
-        <LinkButton
-          href={api.downloadUrl('market_research', jobId ?? '', 'docx')}
-          variant="secondary"
-        >
-          Download Word
-        </LinkButton>
-      </div>
+      {hasDocuments ? (
+        <div className="flex flex-wrap gap-3 border-t border-rule pt-6">
+          <LinkButton href={api.downloadUrl('market_research', jobId ?? '', 'pdf')}>
+            Download PDF
+          </LinkButton>
+          <LinkButton
+            href={api.downloadUrl('market_research', jobId ?? '', 'docx')}
+            variant="secondary"
+          >
+            Download Word
+          </LinkButton>
+        </div>
+      ) : (
+        <p className="border-t border-rule pt-6 text-[15px] text-muted">
+          The PDF and Word versions could not be produced for this research.
+        </p>
+      )}
     </article>
   )
 }
@@ -162,7 +176,7 @@ function Resources({ title, items }: { title: string; items: MarketResource[] })
         {items.map((item, i) => (
           <li key={i} className="border-b border-rule py-3">
             <a
-              href={item.url}
+              href={safeHref(item.url)}
               target="_blank"
               rel="noopener noreferrer"
               className="text-[17px] text-accent no-underline hover:underline"
@@ -172,7 +186,7 @@ function Resources({ title, items }: { title: string; items: MarketResource[] })
             {/* The address was shown but not clickable, which reads as a broken
                 link rather than a caption. */}
             <a
-              href={item.url}
+              href={safeHref(item.url)}
               target="_blank"
               rel="noopener noreferrer"
               className="numeric mt-0.5 block break-all py-0.5 text-faint no-underline
@@ -190,5 +204,91 @@ function Resources({ title, items }: { title: string; items: MarketResource[] })
         ))}
       </ul>
     </section>
+  )
+}
+
+function SwotGrid({ swot }: { swot: Swot }) {
+  const quadrants: [string, string[]][] = [
+    ['Strengths', swot.strengths],
+    ['Weaknesses', swot.weaknesses],
+    ['Opportunities', swot.opportunities],
+    ['Threats', swot.threats],
+  ]
+  return (
+    <section>
+      <h2 className="eyebrow">Market SWOT</h2>
+      <div className="mt-2 grid gap-3 sm:grid-cols-2">
+        {quadrants.map(([label, items]) => (
+          <Card key={label} className="p-4">
+            <h3 className="eyebrow">{label}</h3>
+            <ul className="mt-2 space-y-1.5">
+              {items.map((item, i) => (
+                <li key={i} className="text-[15px]">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/** Label-and-entries rows, shared by the PESTEL and five-forces sections. */
+function Rows({ title, rows }: { title: string; rows: [string, string[]][] }) {
+  const present = rows.filter(([, items]) => items.some(Boolean))
+  if (present.length === 0) return null
+  return (
+    <section>
+      <h2 className="eyebrow">{title}</h2>
+      <dl className="mt-2 border-t border-rule">
+        {present.map(([label, items]) => (
+          <div key={label} className="grid gap-1 border-b border-rule py-3 sm:grid-cols-[10rem_1fr]">
+            <dt className="font-sans text-[14px] text-muted">{label}</dt>
+            <dd>
+              <ul className="space-y-1">
+                {items.filter(Boolean).map((item, i) => (
+                  <li key={i} className="max-w-[62ch] text-[15px]">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  )
+}
+
+function PestelSection({ pestel }: { pestel: Pestel }) {
+  return (
+    <Rows
+      title="PESTEL"
+      rows={[
+        ['Political', pestel.political],
+        ['Economic', pestel.economic],
+        ['Social', pestel.social],
+        ['Technological', pestel.technological],
+        ['Environmental', pestel.environmental],
+        ['Legal', pestel.legal],
+      ]}
+    />
+  )
+}
+
+function FiveForcesSection({ forces }: { forces: FiveForces }) {
+  return (
+    <Rows
+      title="Five forces"
+      rows={[
+        ['Threat of new entrants', [forces.threat_of_new_entrants]],
+        ['Supplier power', [forces.supplier_power]],
+        ['Buyer power', [forces.buyer_power]],
+        ['Threat of substitutes', [forces.threat_of_substitutes]],
+        ['Competitive rivalry', [forces.competitive_rivalry]],
+      ]}
+    />
   )
 }

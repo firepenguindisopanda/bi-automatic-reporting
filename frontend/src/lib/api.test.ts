@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse, makeProgress } from '../test/fixtures'
-import { ApiError, api, looksLikeEmail, looksLikeUrl, normalizeUrl } from './api'
+import { ApiError, api, looksLikeEmail, looksLikeUrl, normalizeUrl, safeHref } from './api'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -154,5 +154,19 @@ describe('input helpers', () => {
     expect(looksLikeEmail('me@acme.c')).toBe(false)
     expect(looksLikeEmail('me @acme.com')).toBe(false)
     expect(looksLikeEmail('acme.com')).toBe(false)
+  })
+})
+
+describe('safeHref', () => {
+  it('passes plain web links through', () => {
+    expect(safeHref('https://example.com/a?b=1')).toBe('https://example.com/a?b=1')
+    expect(safeHref('http://example.com')).toBe('http://example.com/')
+  })
+
+  it('refuses every other scheme, and junk', () => {
+    expect(safeHref('javascript:alert(1)')).toBeUndefined()
+    expect(safeHref('data:text/html,<script>alert(1)</script>')).toBeUndefined()
+    expect(safeHref('file:///etc/passwd')).toBeUndefined()
+    expect(safeHref('not a url')).toBeUndefined()
   })
 })

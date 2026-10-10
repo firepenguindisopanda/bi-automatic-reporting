@@ -3,6 +3,7 @@ import type {
   JobProgress,
   MarketResearchResultResponse,
   ResendResponse,
+  RetryResponse,
   SubmitResponse,
 } from '../types/api'
 
@@ -76,6 +77,12 @@ export const api = {
   resend: (jobId: string) =>
     request<ResendResponse>(`/api/bi/${jobId}/resend`, { method: 'POST' }),
 
+  retry: (kind: 'bi' | 'market_research', jobId: string) =>
+    request<RetryResponse>(
+      kind === 'bi' ? `/api/bi/${jobId}/retry` : `/api/market-research/${jobId}/retry`,
+      { method: 'POST' },
+    ),
+
   models: () => request<AgentModels>('/api/bi/models'),
 
   downloadUrl: (kind: 'bi' | 'market_research', jobId: string, format: 'pdf' | 'docx') =>
@@ -103,6 +110,22 @@ export function looksLikeUrl(input: string): boolean {
     return parsed.hostname.includes('.') && parsed.hostname.length > 3
   } catch {
     return false
+  }
+}
+
+/**
+ * An href that can only navigate to a web page.
+ *
+ * Resource URLs are model output. React 19 blocks `javascript:` URLs, but a
+ * `data:` or other scheme would still render as a live link, so anything that
+ * is not plain http(s) is shown as text instead.
+ */
+export function safeHref(url: string): string | undefined {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : undefined
+  } catch {
+    return undefined
   }
 }
 

@@ -19,7 +19,7 @@ export default function JobPage() {
   const [params] = useSearchParams()
   const kind = params.get('kind') === 'market_research' ? 'market_research' : 'bi'
 
-  const { progress, connection, error, refresh } = useJobStream(kind, jobId)
+  const { progress, connection, error, refresh, restart } = useJobStream(kind, jobId)
   const { jobs } = useRecentJobs()
   const remembered = jobs.find((j) => j.jobId === jobId)
 
@@ -58,7 +58,7 @@ export default function JobPage() {
 
       <StageTimeline stages={progress.stages} />
 
-      <Outcome progress={progress} kind={kind} onChanged={refresh} />
+      <Outcome progress={progress} kind={kind} onChanged={refresh} onRequeued={restart} />
     </div>
   )
 }
@@ -67,10 +67,12 @@ function Outcome({
   progress,
   kind,
   onChanged,
+  onRequeued,
 }: {
   progress: JobProgress
   kind: 'bi' | 'market_research'
   onChanged: () => Promise<void>
+  onRequeued: () => void
 }) {
   if (progress.status === 'completed') {
     const research = kind === 'market_research'
@@ -92,6 +94,29 @@ function Outcome({
           </p>
         ) : null}
         <Downloads kind={kind} jobId={progress.job_id} />
+        <StartAnother />
+      </Card>
+    )
+  }
+
+  if (progress.status === 'partial' && kind === 'market_research') {
+    // For research, `partial` means the analysis finished and the documents
+    // did not render - there is nothing to download, but everything to read.
+    return (
+      <Card className="p-5">
+        <p className="text-[18px]">Research ready, but the documents didn&rsquo;t render</p>
+        <p className="mt-1 text-[15px] text-muted">
+          {progress.error ?? 'The PDF and Word files could not be produced.'} The findings
+          themselves are complete.
+        </p>
+        <p className="mt-3">
+          <Link
+            to={`/research/${progress.job_id}/result`}
+            className="inline-flex min-h-6 items-center font-sans text-[15px] text-accent underline underline-offset-4"
+          >
+            Read the findings
+          </Link>
+        </p>
         <StartAnother />
       </Card>
     )
@@ -128,7 +153,9 @@ function Outcome({
           <p className="mt-2 text-[15px] text-muted">
             That address points inside a private network, so it wasn&rsquo;t fetched.
           </p>
-        ) : null}
+        ) : (
+          <RetryButton kind={kind} jobId={progress.job_id} onRequeued={onRequeued} />
+        )}
         <StartAnother />
       </Card>
     )
@@ -176,6 +203,47 @@ function ResendButton({ jobId, onDone }: { jobId: string; onDone: () => Promise<
       </Button>
       {state === 'failed' ? (
         <p className="mt-2 font-sans text-[14px] text-negative">{detail}</p>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * Resume from the first stage that did not finish. Stages that succeeded keep
+ * their stored output, so a retry costs only what is left.
+ */
+function RetryButton({
+  kind,
+  jobId,
+  onRequeued,
+}: {
+  kind: 'bi' | 'market_research'
+  jobId: string
+  onRequeued: () => void
+}) {
+  const [state, setState] = useState<'idle' | 'sending' | 'failed'>('idle')
+  const [detail, setDetail] = useState('')
+
+  const retry = async () => {
+    setState('sending')
+    try {
+      await api.retry(kind, jobId)
+      onRequeued()
+    } catch (e) {
+      setState('failed')
+      setDetail(e instanceof ApiError ? e.message : 'Could not reach the server.')
+    }
+  }
+
+  return (
+    <div className="mt-4">
+      <Button variant="secondary" onClick={retry} disabled={state === 'sending'}>
+        {state === 'sending' ? 'Resuming…' : 'Resume from where it stopped'}
+      </Button>
+      {state === 'failed' ? (
+        <p role="alert" className="mt-2 font-sans text-[14px] text-negative">
+          {detail}
+        </p>
       ) : null}
     </div>
   )

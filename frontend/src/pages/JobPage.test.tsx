@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, api } from '../lib/api'
-import { installFakeEventSource } from '../test/fakeEventSource'
+import { FakeEventSource, installFakeEventSource } from '../test/fakeEventSource'
 import { makeProgress, makeStage } from '../test/fixtures'
 import type { JobProgress } from '../types/api'
 import JobPage from './JobPage'
@@ -151,5 +151,66 @@ describe('JobPage', () => {
     expect(await screen.findByText('Job not available')).toBeTruthy()
     expect(screen.getByText('This job no longer exists.')).toBeTruthy()
     expect(link('Start a new analysis').getAttribute('href')).toBe('/')
+  })
+
+  it('offers to resume a failed job, and reconnects once it is queued again', async () => {
+    const user = userEvent.setup()
+    renderJob(
+      makeProgress({
+        status: 'failed',
+        stages: [makeStage({ status: 'failed', error: 'The model timed out.' })],
+      }),
+    )
+    const retrySpy = vi
+      .spyOn(api, 'retry')
+      .mockResolvedValue({ job_id: 'job-123', status: 'queued' })
+    const streamsBefore = FakeEventSource.instances.length
+
+    await user.click(await screen.findByRole('button', { name: 'Resume from where it stopped' }))
+
+    expect(retrySpy).toHaveBeenCalledWith('bi', 'job-123')
+    // The finished job's stream had closed; a resumed one needs a new stream.
+    expect(FakeEventSource.instances.length).toBe(streamsBefore + 1)
+  })
+
+  it('explains a resume the server refuses', async () => {
+    const user = userEvent.setup()
+    renderJob(makeProgress({ status: 'interrupted', error: 'The server restarted.' }))
+    vi.spyOn(api, 'retry').mockRejectedValue(
+      new ApiError('This job has already been retried 2 times', 429),
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Resume from where it stopped' }))
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'This job has already been retried 2 times',
+    )
+  })
+
+  it('does not offer to resume a blocked address', async () => {
+    renderJob(
+      makeProgress({
+        status: 'failed',
+        stages: [makeStage({ status: 'failed', error: 'Refused.', error_kind: 'blocked' })],
+      }),
+    )
+    expect(await screen.findByText(/points inside a private network/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Resume from where it stopped' })).toBeNull()
+  })
+
+  it('on partial research, links the findings and offers no downloads', async () => {
+    renderJob(
+      makeProgress({
+        kind: 'market_research',
+        status: 'partial',
+        error: 'The analysis is complete but the documents could not be rendered: pango missing',
+      }),
+      '/jobs/job-123?kind=market_research',
+    )
+
+    expect(await screen.findByText('Research ready, but the documents didn’t render')).toBeTruthy()
+    expect(link('Read the findings').getAttribute('href')).toBe('/research/job-123/result')
+    expect(screen.queryByRole('link', { name: 'Download PDF' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Try sending again' })).toBeNull()
   })
 })

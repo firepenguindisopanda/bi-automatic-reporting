@@ -57,6 +57,11 @@ export interface ResendResponse {
   detail: string
 }
 
+export interface RetryResponse {
+  job_id: string
+  status: JobStatus
+}
+
 export interface MarketResource {
   name: string
   url: string
@@ -80,6 +85,34 @@ export interface MarketResearchResult {
   competitor_sites: MarketResource[]
   research_papers: MarketResource[]
   relevant_communities: MarketResource[]
+  /** Carried through from the macro and sizing stages. Absent on older results. */
+  pestel?: Pestel | null
+  five_forces?: FiveForces | null
+  swot?: Swot | null
+}
+
+export interface Pestel {
+  political: string[]
+  economic: string[]
+  social: string[]
+  technological: string[]
+  environmental: string[]
+  legal: string[]
+}
+
+export interface FiveForces {
+  threat_of_new_entrants: string
+  supplier_power: string
+  buyer_power: string
+  threat_of_substitutes: string
+  competitive_rivalry: string
+}
+
+export interface Swot {
+  strengths: string[]
+  weaknesses: string[]
+  opportunities: string[]
+  threats: string[]
 }
 
 export interface MarketResearchResultResponse {

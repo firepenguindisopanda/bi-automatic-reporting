@@ -33,14 +33,29 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npx tsc --noEmit
+      # tsconfig.json is solution-style (files: []), so `tsc --noEmit` checks
+      # nothing; build mode type-checks the app, tests, configs and e2e specs.
+      - run: npx tsc -b
       - run: npm run lint
+      - run: npm test
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: frontend/test-results/
+          retention-days: 7
 
   design-rules:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # No gradients, small radii, two shadows, tokens over hex literals.
+      # No gradients, radii 4-6px, two shadows, tokens over colour literals.
       - run: ./scripts/check-design-rules.sh
+      # Proves every rule still catches what it bans, against temp fixtures.
+      - run: ./scripts/check-design-rules.sh --self-test

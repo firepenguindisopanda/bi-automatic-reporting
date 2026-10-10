@@ -185,7 +185,7 @@ export function QualityMark({ score, label }: { score: number; label: string }) 
         <span
           key={i}
           aria-hidden="true"
-          className={cx('h-2.5 w-1 rounded-[1px]', i < filled ? tone : 'bg-rule-strong')}
+          className={cx('h-2.5 w-1', i < filled ? tone : 'bg-rule-strong')}
         />
       ))}
     </span>

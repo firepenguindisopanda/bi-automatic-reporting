@@ -51,6 +51,10 @@ export function useJobStream(
     }
 
     let cancelled = false
+    // The first read races the stream. It is the oldest view of the job, so it
+    // must never overwrite a newer one: a stale "running" landing after the
+    // final frame would leave the page stuck with the stream already closed.
+    let firstReadSuperseded = false
     setConnection('connecting')
 
     const stop = () => {
@@ -76,6 +80,7 @@ export function useJobStream(
       const tick = async () => {
         try {
           const next = await api.progress(kind, jobId)
+          firstReadSuperseded = true
           accept(next)
         } catch (e) {
           if (e instanceof ApiError && e.status === 404) {
@@ -93,9 +98,14 @@ export function useJobStream(
     // Load once immediately so the page is never blank while the stream opens.
     void api
       .progress(kind, jobId)
-      .then(accept)
+      .then((next) => {
+        if (!firstReadSuperseded) accept(next)
+      })
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.status === 404 && !cancelled) {
+          // Nothing will ever arrive for a job that does not exist; without
+          // this the stream errors later and flips the page into polling.
+          stop()
           setConnection('closed')
           setError('This job no longer exists.')
         }
@@ -106,8 +116,12 @@ export function useJobStream(
 
     source.addEventListener('progress', (event) => {
       try {
-        accept(JSON.parse((event as MessageEvent).data) as JobProgress)
-        if (!cancelled && !pollRef.current) setConnection('live')
+        const next = JSON.parse((event as MessageEvent).data) as JobProgress
+        firstReadSuperseded = true
+        accept(next)
+        // accept() closes the stream once the job settles; only a stream that
+        // is still open counts as live, or a finished job would read as one.
+        if (!cancelled && sourceRef.current === source) setConnection('live')
       } catch {
         // A malformed frame is not worth tearing the stream down for.
       }

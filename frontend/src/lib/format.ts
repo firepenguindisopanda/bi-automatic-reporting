@@ -2,10 +2,12 @@
 export function duration(ms: number | null | undefined): string {
   if (ms === null || ms === undefined) return '-'
   if (ms < 1000) return `${ms}ms`
-  const seconds = ms / 1000
-  if (seconds < 60) return `${seconds.toFixed(1)}s`
-  const minutes = Math.floor(seconds / 60)
-  return `${minutes}m ${Math.round(seconds % 60)}s`
+  // Round before choosing the unit, so 59.96s reads "1m 0s" rather than
+  // "60.0s", and 119.6s reads "2m 0s" rather than "1m 60s".
+  const tenths = Math.round(ms / 100) / 10
+  if (tenths < 60) return `${tenths.toFixed(1)}s`
+  const total = Math.round(ms / 1000)
+  return `${Math.floor(total / 60)}m ${total % 60}s`
 }
 
 /** Coarser phrasing for a running total, where tenths would be noise. */

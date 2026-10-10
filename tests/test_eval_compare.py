@@ -99,7 +99,7 @@ class TestRepeats:
 
     def test_a_single_run_summary_reproduces_the_recorded_baseline(self):
         """Format-1 keys must not move: the shipped baseline was written from this run."""
-        summary = summarise(stored("rebaseline-run3-post-repair.json"))
+        summary = summarise(stored("model-google-gemma-4-31b-it.json"))
         baseline = load_baseline(ROOT / "evals" / "baseline.json")
         for key in ("overall", "per_stage", "per_stage_confidence", "per_case", "metric_health"):
             assert summary[key] == baseline[key], key

@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Models, chosen 2026-10-10 by evals.models across all 16 BI eval cases
-# (evals/results/models-2026-10-10.md): every stage on one candidate, the critic
+# (tasks/evidence/models-2026-10-10.md): every stage on one candidate, the critic
 # fixed on Nemotron 3 Super with its full page window (critic/2), re-runs off so
 # a weak first answer could not hide.
 #

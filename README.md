@@ -49,7 +49,7 @@ cd frontend && npm install && npm run dev
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `NVIDIA_API_KEY` | ✅ | - | NVIDIA NIM API key |
-| `AGENT_MODEL_*` | - | `google/gemma-4-31b-it` | Per-stage models; defaults chosen by the eval sweep (`evals/results/models-2026-10-10.md`) |
+| `AGENT_MODEL_*` | - | `google/gemma-4-31b-it` | Per-stage models; defaults chosen by the eval sweep (`tasks/evidence/models-2026-10-10.md`) |
 | `AGENT_FALLBACK_MODEL` | - | `nvidia/nemotron-3-super-120b-a12b` | Where a stage goes when its model cannot answer; empty turns failover off |
 | `AGENT_MODEL_CRITIC` | - | `nvidia/nemotron-3-super-120b-a12b` | The reviewer that scores each stage |
 | `EMAIL_PROVIDER` | - | `smtp` | `smtp`, `resend`, `sendgrid`, `console`, `file` |

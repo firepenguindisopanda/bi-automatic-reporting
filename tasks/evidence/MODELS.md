@@ -77,3 +77,58 @@ hours while 13 other models answered normally in the same second. No
 and reportedly does not grant increases. The documented remedy is client-side
 failover, which **this app does not have** — `WORKHORSE_MODEL` backs five of six
 BI stages, so one throttled model stops every job while `DEEP_MODEL` sits idle.
+
+---
+
+# Model choice, 2026-10-10
+
+## Liveness
+
+`models-listed-2026-10-10.json`: `GET /v1/models` listed 80 entries.
+`model-liveness-2026-10-10.json`: of 48 general chat candidates, 11 answered a
+small JSON request. Most of the rest returned 404; `kimi-k2.6` (listed) was gone,
+`nemotron-3-nano-omni` returned 503, `deepseek-v4.1-flash` timed out.
+`ising-calibration` and `poolside/laguna` answer but are special-purpose
+(quantum calibration, coding) and were not considered.
+
+## The sweep
+
+Every BI stage of all 16 eval cases on one model at a time, critic fixed on
+`nvidia/nemotron-3-super-120b-a12b`, `CRITIC_RETRY_THRESHOLD=0`:
+
+```bash
+CRITIC_RETRY_THRESHOLD=0 uv run python -m evals.run --model <model> --label model-<slug>
+uv run python -m evals.models evals/results/model-*.json
+```
+
+Full tables: `tasks/evidence/models-2026-10-10.md`.
+
+| model | ok | quality | median s/stage (with critic) |
+|---|---|---|---|
+| google/gemma-4-31b-it | 96/96 | 85.5 | 63 |
+| nvidia/nemotron-3-super-120b-a12b | 96/96 | 82.3 | 32 |
+| moonshotai/kimi-k3 | 96/96 | 79.1 | 67 |
+| nvidia/nemotron-3-ultra-550b-a55b | 95/96 | 77.3 | 87 |
+| openai/gpt-oss-20b (previous) | 84/96 | 68.3 | 44 |
+
+Dropped part-way: DeepSeek V4.1 Flash (504 on every call), GLM 5.3 (50-215 s a
+stage, ran out of tokens mid-JSON).
+
+Market research suite, `--repeat 3`: Gemma 85.8 against gpt-oss-20b 62.0.
+
+## Re-runs are worth their time
+
+Gemma with re-runs below 60 against re-runs off (`retry60-gemma.md`): market
+critic 56.9 -> 70.1, competitive 55.2 -> 70.6, SWOT 62.9 -> 69.9, every score
+under 40 gone but one, for about 30 s more per re-run stage. The threshold stays
+at 60.
+
+## Before reading these numbers against older ones
+
+The critic used to see 4,000 characters of the page; analysts see up to 15,000.
+It scored correct facts from further down as fabricated - Kimi K3's Valcrest
+profile went from 52 to 95 once it could see them. Every confidence number here
+is critic/2, with the full window; older ones are not comparable.
+
+`model-google-gemma-4-31b-it.json` is the run `evals/baseline.json` was recorded
+from.

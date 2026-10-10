@@ -1,0 +1,370 @@
+[
+ {
+  "model": "01-ai/yi-large",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '23bd454d-b225-49a3-8118-582a62fc51b8': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "ai21labs/jamba-1.5-large-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.3,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '6497fc2b-7ff8-4019-8946-123dccbfc863': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "aisingapore/sea-lion-7b-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.2,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '02f84bf4-c1a1-489b-a9de-ac3e8dcdec14': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "databricks/dbrx-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.3,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '3d6c2ff8-8bfc-4d10-8fd0-b7337288e869': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "deepseek-ai/deepseek-v4.1-flash",
+  "ok": false,
+  "s": 90.2,
+  "error": "ReadTimeout: "
+ },
+ {
+  "model": "google/codegemma-1.1-7b",
+  "ok": false,
+  "status": 404,
+  "s": 0.3,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function 'e2d298c5-204e-4213-b921-9f492cc9011b': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "google/codegemma-7b",
+  "ok": false,
+  "status": 404,
+  "s": 0.3,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '7dfc10a8-3cc4-448e-97c1-2213308dc222': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "google/gemma-2b",
+  "ok": false,
+  "status": 404,
+  "s": 0.3,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '04174188-f742-4069-9e72-d77c2b77d3cb': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "google/gemma-3-12b-it",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function 'ee47df99-c92b-4dc9-b3a7-f3fb0f087b73': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "google/gemma-3-4b-it",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function 'c322f327-55a3-4af3-a91f-c757e2b8b135': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "google/gemma-4-31b-it",
+  "ok": true,
+  "s": 3.4,
+  "json_ok": true,
+  "finish": "stop",
+  "reasoning": false,
+  "completion_tokens": 51,
+  "content": "```json\n{\n  \"company\": \"Valcrest\",\n  \"industry\": \"Software\",\n  \"offerings\": [\n    \"payroll software\",\n    \"tax calculation and form filing\"\n  ]\n}\n```"
+ },
+ {
+  "model": "google/recurrentgemma-2b",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '2f495340-a99f-4b4b-89bd-1beb003dd896': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "ibm/granite-3.0-3b-a800m-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '67324577-3f91-4aa6-b750-97468262530d': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "ibm/granite-3.0-8b-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '5a24a4f0-2d59-46b3-ac65-42307f2633d1': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "ibm/granite-34b-code-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '4df48b4f-e3c5-4ade-82c7-c06b65e25d18': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "ibm/granite-8b-code-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function 'af7b6f03-f615-4c5f-86c6-388bd35cede0': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "meta/llama2-70b",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '2fddadfb-7e76-4c8a-9b82-f7d3fab94471': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "meta/muse-glimmer-30b",
+  "ok": true,
+  "s": 65.2,
+  "json_ok": true,
+  "finish": "stop",
+  "reasoning": true,
+  "completion_tokens": 694,
+  "content": "{\"company\":\"Valcrest\",\"industry\":\"Payroll Software\",\"offerings\":[\"Calculates NIS, health surcharge and PAYE\",\"Fills NI 184 and NI 187 forms, prints payslips\"]}"
+ },
+ {
+  "model": "microsoft/phi-3.5-moe-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function 'e6cab982-62f4-481e-9a7a-3dedb87dbd01': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "mistralai/codestral-22b-instruct-v0.1",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '9a10b012-e6df-46fd-83b2-700dcbc75814': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "mistralai/mistral-7b-instruct-v0.3",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function 'cd89bd68-13e3-47a9-861e-9a62e6e14b05': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "mistralai/mistral-large",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '767b5b9a-3f9d-4c1d-86e8-fa861988cee7': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "mistralai/mistral-large-2-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '7fadd4de-e22a-48e4-90e9-f02ef14a74b9': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "mistralai/mixtral-8x22b-v0.1",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '39655fc1-9ebc-4b24-963e-6915ea6680de': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "moonshotai/kimi-k2.6",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '23d4f03a-b8a6-4adb-a183-7daa083a09cc': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "moonshotai/kimi-k3",
+  "ok": true,
+  "s": 2.8,
+  "json_ok": true,
+  "finish": "stop",
+  "reasoning": true,
+  "completion_tokens": 74,
+  "content": "{\"company\": \"Valcrest\", \"industry\": \"Payroll software\", \"offerings\": [\"Payroll software calculating NIS, health surcharge and PAYE for Trinidad and Tobago businesses\", \"Filling NI 184 and NI 187 forms"
+ },
+ {
+  "model": "nv-mistralai/mistral-nemo-12b-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function 'f8c05193-d2e2-4f0f-bb4d-7ad70070002b': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "nvidia/ising-calibration-1.5-31b",
+  "ok": true,
+  "s": 3.4,
+  "json_ok": true,
+  "finish": "stop",
+  "reasoning": false,
+  "completion_tokens": 85,
+  "content": "```json\n{\n  \"company\": \"Valcrest\",\n  \"industry\": \"Software\",\n  \"offerings\": [\n    \"Payroll software for Trinidad and Tobago businesses\",\n    \"Calculates NIS, health surcharge and PAYE\",\n    \"Fills NI "
+ },
+ {
+  "model": "nvidia/llama-3.1-nemotron-51b-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '5beba52c-65a9-4f46-8cd9-656689a1b205': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "nvidia/llama-3.1-nemotron-70b-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '9b96341b-9791-4db9-a00d-4e43aa192a39': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '84bf12ff-edbd-4435-baea-0fa6a7453d2e': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "nvidia/llama3-chatqa-1.5-70b",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '46594287-38b9-481c-a37f-baa02f2d3ba1': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "nvidia/mistral-nemo-minitron-8b-8k-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '5aa06dd2-0a02-4a5d-be4c-bf88e956965d': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+  "ok": false,
+  "status": 503,
+  "s": 0.1,
+  "error": "{\"error\":{\"message\":\"ResourceExhausted: Worker local total request limit reached (16/16)\",\"type\":\"Service Unavailable\",\"code\":503}}"
+ },
+ {
+  "model": "nvidia/nemotron-3-super-120b-a12b",
+  "ok": true,
+  "s": 3.2,
+  "json_ok": true,
+  "finish": "stop",
+  "reasoning": true,
+  "completion_tokens": 437,
+  "content": "{\n  \"company\": \"Valcrest\",\n  \"industry\": \"Payroll software\",\n  \"offerings\": [\n    \"Calculates NIS, health surcharge and PAYE\",\n    \"Fills NI 184 and NI 187 forms\",\n    \"Prints payslips\"\n  ]\n}"
+ },
+ {
+  "model": "nvidia/nemotron-3-ultra-550b-a55b",
+  "ok": true,
+  "s": 15.5,
+  "json_ok": true,
+  "finish": "stop",
+  "reasoning": true,
+  "completion_tokens": 466,
+  "content": "{\n  \"company\": \"Valcrest\",\n  \"industry\": \"Payroll software\",\n  \"offerings\": [\n    \"Payroll calculation (NIS, health surcharge, PAYE)\",\n    \"Form filling (NI 184, NI 187) and payslip printing\"\n  ]\n}"
+ },
+ {
+  "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+  "ok": true,
+  "s": 47.7,
+  "json_ok": false,
+  "finish": "length",
+  "reasoning": true,
+  "completion_tokens": 1024,
+  "content": "Here's a thinking process:\n\n1.  **Analyze the Request:**\n   - User wants JSON output only\n   - JSON structure: `{\"company\": string, \"industry\": string, \"offerings\": [string, string]}`\n   - Input text:"
+ },
+ {
+  "model": "nvidia/nemotron-4-340b-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function 'b0fcd392-e905-4ab4-8eb9-aeae95c30b37': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "nvidia/nemotron-nano-3-30b-a3b",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '2b2dcd47-c858-425a-9c04-4cacf2eac993': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "openai/gpt-oss-20b",
+  "ok": true,
+  "s": 5.9,
+  "json_ok": true,
+  "finish": "stop",
+  "reasoning": true,
+  "completion_tokens": 343,
+  "content": "{\"company\":\"Valcrest\",\"industry\":\"Payroll software\",\"offerings\":[\"Payroll calculation and tax compliance\",\"Payslip generation\"]}"
+ },
+ {
+  "model": "poolside/laguna-xs-2.1",
+  "ok": true,
+  "s": 5.5,
+  "json_ok": true,
+  "finish": "stop",
+  "reasoning": false,
+  "completion_tokens": 60,
+  "content": "{\"company\": \"Valcrest\", \"industry\": \"Payroll Software\", \"offerings\": [\"NIS calculation\", \"Health surcharge calculation\", \"PAYE calculation\", \"NI 184 form filling\", \"NI 187 form filling\", \"Payslip prin"
+ },
+ {
+  "model": "writer/palmyra-creative-122b",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '00bdd0a7-e38f-4423-9007-c4d8730a3f78': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "writer/palmyra-fin-70b-32k",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '316490c6-f1ed-41f9-9da8-3fa9e885653b': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "writer/palmyra-med-70b",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function 'aab71274-5281-4941-b0b8-20f339d1fc7e': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "writer/palmyra-med-70b-32k",
+  "ok": false,
+  "status": 404,
+  "s": 0.1,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function 'd6faa974-3591-49a4-963d-97221d074b2e': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ },
+ {
+  "model": "z-ai/glm-5.3",
+  "ok": true,
+  "s": 29.8,
+  "json_ok": true,
+  "finish": "stop",
+  "reasoning": true,
+  "completion_tokens": 475,
+  "content": "{\"company\": \"Valcrest\", \"industry\": \"payroll software\", \"offerings\": [\"Calculates NIS, health surcharge and PAYE\", \"Fills NI 184 and NI 187 forms and prints payslips\"]}"
+ },
+ {
+  "model": "z-ai/glm-5.3-flash",
+  "ok": true,
+  "s": 40.3,
+  "json_ok": true,
+  "finish": "stop",
+  "reasoning": true,
+  "completion_tokens": 371,
+  "content": "{\"company\": \"Valcrest\", \"industry\": \"payroll software\", \"offerings\": [\"Calculates NIS, health surcharge and PAYE\", \"Fills NI 184 and NI 187 forms\", \"Prints payslips\"]}"
+ },
+ {
+  "model": "zyphra/zamba2-7b-instruct",
+  "ok": false,
+  "status": 404,
+  "s": 0.2,
+  "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '8378ffb2-51b0-4140-9684-dda1889373e6': Not found for account 'sKtoQDtpVdLpTKulIRW16bKpUTgY8Y4y9HhH4EBcd8o'"
+ }
+]

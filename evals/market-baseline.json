@@ -1,0 +1,99 @@
+{
+  "format": 2,
+  "overall": 95.0,
+  "per_stage": {
+    "macro": 100.0,
+    "sizing": 100.0,
+    "resources": 85.0
+  },
+  "per_stage_confidence": {
+    "macro": 89.0,
+    "sizing": 52.7,
+    "resources": 88.3
+  },
+  "per_case": {
+    "self-hosted-cicd": 95.0
+  },
+  "metric_health": {
+    "completeness": {
+      "n": 9,
+      "distinct": 1,
+      "mean": 100.0,
+      "dead": true
+    },
+    "confidence": {
+      "n": 9,
+      "distinct": 8,
+      "mean": 76.7,
+      "dead": false
+    }
+  },
+  "cells": {
+    "self-hosted-cicd": {
+      "macro": {
+        "scores": [
+          100.0,
+          100.0,
+          100.0
+        ],
+        "completeness": [
+          100.0,
+          100.0,
+          100.0
+        ],
+        "confidence": [
+          93.0,
+          82.0,
+          92.0
+        ],
+        "mean": 100.0,
+        "stdev": 0.0,
+        "confidence_mean": 89.0,
+        "confidence_stdev": 6.08
+      },
+      "sizing": {
+        "scores": [
+          100.0,
+          100.0,
+          100.0
+        ],
+        "completeness": [
+          100.0,
+          100.0,
+          100.0
+        ],
+        "confidence": [
+          58.0,
+          45.0,
+          55.0
+        ],
+        "mean": 100.0,
+        "stdev": 0.0,
+        "confidence_mean": 52.67,
+        "confidence_stdev": 6.81
+      },
+      "resources": {
+        "scores": [
+          85.0,
+          85.0,
+          85.0
+        ],
+        "completeness": [
+          100.0,
+          100.0,
+          100.0
+        ],
+        "confidence": [
+          78.0,
+          92.0,
+          95.0
+        ],
+        "mean": 85.0,
+        "stdev": 0.0,
+        "confidence_mean": 88.33,
+        "confidence_stdev": 9.07
+      }
+    }
+  },
+  "suite": "market"
+}

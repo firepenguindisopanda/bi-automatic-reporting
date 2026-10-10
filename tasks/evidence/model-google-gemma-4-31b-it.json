@@ -1,0 +1,2688 @@
+{
+  "repeats": 1,
+  "models": {
+    "profile": "google/gemma-4-31b-it",
+    "market": "google/gemma-4-31b-it",
+    "competitive": "google/gemma-4-31b-it",
+    "swot": "google/gemma-4-31b-it",
+    "marketing": "google/gemma-4-31b-it",
+    "report": "google/gemma-4-31b-it"
+  },
+  "critic": "nvidia/nemotron-3-super-120b-a12b",
+  "critic_retry_threshold": 0.0,
+  "summary": {
+    "format": 2,
+    "overall": 99.9,
+    "per_stage": {
+      "profile": 100.0,
+      "market": 100.0,
+      "competitive": 100.0,
+      "swot": 100.0,
+      "marketing": 99.4,
+      "report": 100.0
+    },
+    "per_stage_confidence": {
+      "profile": 92.9,
+      "market": 56.9,
+      "competitive": 55.2,
+      "swot": 62.9,
+      "marketing": 83.1,
+      "report": 93.7
+    },
+    "per_case": {
+      "stripe": 100.0,
+      "ghost": 100.0,
+      "eleventy": 100.0,
+      "linear": 100.0,
+      "basecamp": 100.0,
+      "flyio": 100.0,
+      "govuk": 100.0,
+      "valcrest": 100.0,
+      "riomed": 100.0,
+      "asawright": 100.0,
+      "angostura": 100.0,
+      "tormach": 100.0,
+      "pilot": 100.0,
+      "tartine": 98.5,
+      "harvestright": 100.0,
+      "allbirds": 100.0
+    },
+    "metric_health": {
+      "completeness": {
+        "n": 96,
+        "distinct": 2,
+        "mean": 99.9,
+        "dead": false
+      },
+      "confidence": {
+        "n": 92,
+        "distinct": 21,
+        "mean": 74.3,
+        "dead": false
+      }
+    },
+    "cells": {
+      "stripe": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            78.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 78.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            78.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 78.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            78.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 78.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            93.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 93.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        }
+      },
+      "ghost": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            73.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 73.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            58.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 58.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            82.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 82.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        }
+      },
+      "eleventy": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            45.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 45.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            88.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 88.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            85.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 85.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            93.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 93.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            85.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 85.0,
+          "confidence_stdev": null
+        }
+      },
+      "linear": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            58.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 58.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            22.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 22.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            55.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 55.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            60.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 60.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            93.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 93.0,
+          "confidence_stdev": null
+        }
+      },
+      "basecamp": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            85.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 85.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            82.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 82.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": null,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            90.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 90.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            93.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 93.0,
+          "confidence_stdev": null
+        }
+      },
+      "flyio": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            35.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 35.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            58.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 58.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            75.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 75.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            88.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 88.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            92.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 92.0,
+          "confidence_stdev": null
+        }
+      },
+      "govuk": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            93.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 93.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            35.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 35.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            45.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 45.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            45.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 45.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            38.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 38.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            93.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 93.0,
+          "confidence_stdev": null
+        }
+      },
+      "valcrest": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            82.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 82.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            45.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 45.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            78.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 78.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        }
+      },
+      "riomed": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            42.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 42.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            35.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 35.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            35.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 35.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": null,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        }
+      },
+      "asawright": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            93.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 93.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            55.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 55.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": null,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            48.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 48.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        }
+      },
+      "angostura": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            78.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 78.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            55.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 55.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            85.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 85.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            78.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 78.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            78.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 78.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        }
+      },
+      "tormach": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            78.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 78.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            45.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 45.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            45.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 45.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            92.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 92.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            93.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 93.0,
+          "confidence_stdev": null
+        }
+      },
+      "pilot": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            55.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 55.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            82.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 82.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            78.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 78.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": null,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        }
+      },
+      "tartine": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            88.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 88.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            45.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 45.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            45.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 45.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            55.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 55.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            90.9
+          ],
+          "completeness": [
+            90.9
+          ],
+          "confidence": [
+            73.0
+          ],
+          "mean": 90.9,
+          "stdev": null,
+          "confidence_mean": 73.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        }
+      },
+      "harvestright": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            92.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 92.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            45.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 45.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            30.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 30.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            45.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 45.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        }
+      },
+      "allbirds": {
+        "profile": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            93.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 93.0,
+          "confidence_stdev": null
+        },
+        "market": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            45.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 45.0,
+          "confidence_stdev": null
+        },
+        "competitive": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            30.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 30.0,
+          "confidence_stdev": null
+        },
+        "swot": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            62.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 62.0,
+          "confidence_stdev": null
+        },
+        "marketing": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            78.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 78.0,
+          "confidence_stdev": null
+        },
+        "report": {
+          "scores": [
+            100.0
+          ],
+          "completeness": [
+            100.0
+          ],
+          "confidence": [
+            95.0
+          ],
+          "mean": 100.0,
+          "stdev": null,
+          "confidence_mean": 95.0,
+          "confidence_stdev": null
+        }
+      }
+    },
+    "suite": "bi"
+  },
+  "cases": [
+    {
+      "case": "stripe",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 60403,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 29749,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 93295,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 37961,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 93.0,
+          "duration_ms": 124630,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 66713,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "ghost",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 17918,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 73.0,
+          "duration_ms": 114675,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 58.0,
+          "duration_ms": 56044,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 82.0,
+          "duration_ms": 66089,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 158954,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 59102,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "eleventy",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 26776,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 131677,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 88.0,
+          "duration_ms": 68097,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 85.0,
+          "duration_ms": 62258,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 93.0,
+          "duration_ms": 156030,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 85.0,
+          "duration_ms": 84778,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "linear",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 22631,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 58.0,
+          "duration_ms": 23916,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 22.0,
+          "duration_ms": 38027,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 55.0,
+          "duration_ms": 64957,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 60.0,
+          "duration_ms": 107809,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 93.0,
+          "duration_ms": 53236,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "basecamp",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 40918,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 85.0,
+          "duration_ms": 31131,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 82.0,
+          "duration_ms": 47260,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": null,
+          "duration_ms": 46327,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 90.0,
+          "duration_ms": 87238,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 93.0,
+          "duration_ms": 111699,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "flyio",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 36316,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 35.0,
+          "duration_ms": 56817,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 58.0,
+          "duration_ms": 75347,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 75.0,
+          "duration_ms": 92612,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 88.0,
+          "duration_ms": 107080,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 92.0,
+          "duration_ms": 115152,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "govuk",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 93.0,
+          "duration_ms": 72618,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 35.0,
+          "duration_ms": 67773,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 86583,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 87061,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 38.0,
+          "duration_ms": 105455,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 93.0,
+          "duration_ms": 75024,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "valcrest",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 22614,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 82.0,
+          "duration_ms": 23283,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 43868,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 62137,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 73317,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 95523,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "riomed",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 30156,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 42.0,
+          "duration_ms": 43062,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 35.0,
+          "duration_ms": 50341,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 35.0,
+          "duration_ms": 54235,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": null,
+          "duration_ms": 117452,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 71932,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "asawright",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 93.0,
+          "duration_ms": 40568,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 55.0,
+          "duration_ms": 46455,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": null,
+          "duration_ms": 39244,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 48.0,
+          "duration_ms": 63432,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 88822,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 100175,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "angostura",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 49108,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 55.0,
+          "duration_ms": 40707,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 85.0,
+          "duration_ms": 57039,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 76542,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 113829,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 69712,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "tormach",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 42955,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 42258,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 64359,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 55868,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 92.0,
+          "duration_ms": 81325,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 93.0,
+          "duration_ms": 75833,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "pilot",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 24486,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 55.0,
+          "duration_ms": 37095,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 82.0,
+          "duration_ms": 73059,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 63925,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": null,
+          "duration_ms": 95881,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 107488,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "tartine",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 88.0,
+          "duration_ms": 45186,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 39602,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 50063,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 55.0,
+          "duration_ms": 56725,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 90.9,
+          "confidence": 73.0,
+          "duration_ms": 93002,
+          "attempts": 1,
+          "warnings": [
+            "personas entries 2 have fewer than 2 pain_points"
+          ],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 102822,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "harvestright",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 92.0,
+          "duration_ms": 54765,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 32700,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 30.0,
+          "duration_ms": 47913,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 45321,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 72012,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 69926,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    },
+    {
+      "case": "allbirds",
+      "stages": [
+        {
+          "stage": "profile",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 93.0,
+          "duration_ms": 45067,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "market",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 45.0,
+          "duration_ms": 37598,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "competitive",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 30.0,
+          "duration_ms": 63192,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "swot",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 62.0,
+          "duration_ms": 87017,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "marketing",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 78.0,
+          "duration_ms": 84036,
+          "attempts": 1,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        },
+        {
+          "stage": "report",
+          "ok": true,
+          "completeness": 100.0,
+          "confidence": 95.0,
+          "duration_ms": 74943,
+          "attempts": 2,
+          "warnings": [],
+          "assertion_failures": [],
+          "error": null
+        }
+      ],
+      "run": 1
+    }
+  ]
+}

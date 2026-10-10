@@ -31,10 +31,13 @@ export default function Layout() {
 
       <header className="border-b border-rule">
         <div className={`mx-auto flex ${width} items-center gap-4 px-5 py-4 sm:gap-6`}>
-          <NavLink to="/" className="shrink-0 text-[19px] tracking-tight no-underline">
-            {/* The full name needs room; on a phone the initials carry it. */}
-            <span className="sm:hidden">BI</span>
-            <span className="hidden sm:inline">Business Intelligence</span>
+          {/* The rust rule is the brand's mark, as on the report cover and email. */}
+          <NavLink
+            to="/"
+            className="shrink-0 border-l-2 border-accent pl-2.5 text-[19px] leading-6 tracking-tight
+                       no-underline"
+          >
+            Rubric
           </NavLink>
 
           <nav className="flex shrink-0 gap-4 font-sans text-[13px] sm:gap-5">

@@ -19,6 +19,13 @@ os.environ.setdefault("UPSTASH_REDIS_REST_URL", "")
 os.environ.setdefault("UPSTASH_REDIS_REST_TOKEN", "")
 os.environ.setdefault("EMAIL_PROVIDER", "console")
 os.environ.setdefault("SENDGRID_API_KEY", "")
+os.environ.setdefault("RESEND_API_KEY", "")
+# An SMTP provider built with no host falls back to SMTP_HOST, and its verify()
+# logs in: with a real .env, a test would sign in to the real mail server.
+os.environ.setdefault("SMTP_HOST", "")
+os.environ.setdefault("SMTP_USERNAME", "")
+os.environ.setdefault("SMTP_PASSWORD", "")
+os.environ.setdefault("PUBLIC_BASE_URL", "")
 # Route tests submit to the same address many times in one session; the
 # per-recipient cap has its own tests that set it explicitly.
 os.environ.setdefault("MAX_REPORTS_PER_RECIPIENT_PER_DAY", "100000")

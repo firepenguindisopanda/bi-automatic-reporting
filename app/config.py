@@ -130,7 +130,7 @@ class Settings(BaseSettings):
     # submitter names the recipient, so without these the service relays mail
     # to any address on demand.
     #
-    # recipient_allowlist: comma-separated addresses and/or domains
+    # recipient_allowlist: addresses and/or domains, separated by commas or semicolons
     # ("me@example.com, @example.org"). Empty allows any recipient.
     recipient_allowlist: str = ""
     max_reports_per_recipient_per_day: int = 5

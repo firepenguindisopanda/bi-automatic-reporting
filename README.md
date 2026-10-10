@@ -60,7 +60,7 @@ cd frontend && npm install && npm run dev
 | `CRITIC_RETRY_THRESHOLD` | - | `60` | Below this, a stage re-runs once |
 | `JOB_CONCURRENCY` | - | `1` | Jobs run at once (keep at 1 on a small host) |
 | `MAX_RETRIES_PER_JOB` | - | `2` | Resumes allowed for one failed/interrupted job |
-| `RECIPIENT_ALLOWLIST` | - | empty | Addresses/domains reports may go to; empty allows any |
+| `RECIPIENT_ALLOWLIST` | - | empty | Addresses/domains reports may go to, separated by commas or semicolons; empty allows any |
 | `MAX_REPORTS_PER_RECIPIENT_PER_DAY` | - | `5` | Per-address cap across all jobs and resends |
 | `MAX_DELIVERIES_PER_JOB` | - | `3` | Sends allowed for one report, resends included |
 | `RETENTION_DAYS` | - | `0` | Delete finished jobs and report files after this many days; `0` keeps all |

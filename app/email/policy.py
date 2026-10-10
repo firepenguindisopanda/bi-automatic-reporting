@@ -12,6 +12,7 @@ Three limits close it down without adding accounts:
   - a cap on delivery attempts per job, so resend cannot be looped.
 """
 
+import re
 from dataclasses import dataclass
 
 from app.config import settings
@@ -46,11 +47,19 @@ class Allowlist:
         return address in self.addresses or domain in self.domains
 
 
+_SEPARATORS = re.compile(r"[,;\s]+")
+
+
 def parse_allowlist(raw: str) -> Allowlist:
-    """``"me@example.com, @example.org, example.net"`` -> addresses and domains."""
+    """``"me@example.com, @example.org; example.net"`` -> addresses and domains.
+
+    Commas, semicolons and whitespace all separate entries. Splitting on commas
+    alone turned ``a@x.com;b@y.com`` into one address that matched nobody, so a
+    natural way to write the list silently refused every recipient.
+    """
     addresses: set[str] = set()
     domains: set[str] = set()
-    for entry in (e.strip().lower() for e in raw.split(",")):
+    for entry in (e.strip().lower() for e in _SEPARATORS.split(raw)):
         if not entry:
             continue
         if entry.startswith("@"):

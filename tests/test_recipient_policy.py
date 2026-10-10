@@ -37,6 +37,12 @@ class TestAllowlist:
         assert allow.permits("other@example.net")
         assert not allow.permits("anyone@example.net")
 
+    @pytest.mark.parametrize("raw", ["a@x.com;b@y.com", "a@x.com, b@y.com", "a@x.com b@y.com", " a@x.com ;; b@y.com "])
+    def test_commas_semicolons_and_spaces_all_separate_entries(self, raw: str) -> None:
+        allow = parse_allowlist(raw)
+        assert allow.permits("a@x.com") and allow.permits("b@y.com")
+        assert not allow.permits("c@x.com")
+
     def test_a_domain_does_not_match_its_lookalike(self) -> None:
         assert not parse_allowlist("@example.org").permits("x@evil-example.org")
 

@@ -1,5 +1,6 @@
 import logging
 import mimetypes
+import re
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -30,6 +31,15 @@ logger = logging.getLogger(__name__)
 # Endpoints that start real work, and so are worth limiting. Everything else
 # (status polling, downloads) is cheap and stays unlimited.
 RATE_LIMITED_PATHS = frozenset({"/api/bi/submit", "/api/market-research/submit"})
+# Per-job actions that spend model calls or send mail. Resend was unlimited,
+# which let anyone holding a job id mail its recipient in a loop.
+_RATE_LIMITED_ACTIONS = re.compile(r"^/api/(?:bi|market-research)/[^/]+/(?:resend|retry)$")
+
+
+def is_rate_limited(method: str, path: str) -> bool:
+    return method == "POST" and (
+        path in RATE_LIMITED_PATHS or _RATE_LIMITED_ACTIONS.match(path) is not None
+    )
 
 _upstash_client: httpx.AsyncClient | None = None
 
@@ -72,7 +82,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._last_prune = 0.0
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        if request.method == "POST" and request.url.path in RATE_LIMITED_PATHS:
+        if is_rate_limited(request.method, request.url.path):
             if not await self._check(client_key(request)):
                 return JSONResponse(
                     status_code=429,
@@ -87,19 +97,25 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return self._check_memory(key)
 
     async def _check_upstash(self, key: str) -> bool:
-        redis_key = f"rl:{key}"
+        # A fixed window keyed by its own start. The old key was `rl:{caller}`
+        # with an EXPIRE sent only after the first INCR: if that one EXPIRE was
+        # lost, the key never expired and the caller was locked out for good.
+        # Here a lost EXPIRE costs a stale key, never a lockout, because the
+        # next window counts under a different key.
+        bucket = int(time.time() // self.window)
+        redis_key = f"rl:{key}:{bucket}"
         headers = {"Authorization": f"Bearer {self._upstash_token}"}
         client = _get_upstash_client()
         try:
-            resp = await client.post(f"{self._upstash_url}/INCR/{redis_key}", headers=headers)
+            resp = await client.post(
+                f"{self._upstash_url}/pipeline",
+                headers=headers,
+                json=[["INCR", redis_key], ["EXPIRE", redis_key, str(self.window * 2)]],
+            )
             resp.raise_for_status()
-            count = int(resp.json().get("result", 0))
-            if count == 1:
-                await client.post(
-                    f"{self._upstash_url}/EXPIRE/{redis_key}/{self.window}", headers=headers
-                )
+            count = int(resp.json()[0].get("result", 0))
             return count <= self.max_requests
-        except (httpx.HTTPError, ValueError, KeyError) as e:
+        except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError, AttributeError) as e:
             # Fail open: a rate limiter outage must not take the service down.
             logger.warning("Upstash rate limit check failed, allowing request: %s", e)
             return True

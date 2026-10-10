@@ -282,6 +282,24 @@ class JobStore:
             "SELECT * FROM deliveries WHERE job_id = ? ORDER BY id", job_id,
         )
 
+    async def count_jobs_for_recipient(self, email: str, hours: int) -> int:
+        """BI jobs addressed to ``email`` created in the last ``hours``."""
+        row = await self._db.fetchrow(
+            f"SELECT COUNT(*) AS n FROM jobs WHERE LOWER(email) = LOWER(?) "
+            f"AND created_at >= {self._db.ago_expr(hours)}",
+            email,
+        )
+        return int(row["n"]) if row else 0
+
+    async def count_deliveries_to_recipient(self, email: str, hours: int) -> int:
+        """Send attempts to ``email`` in the last ``hours``, across every job."""
+        row = await self._db.fetchrow(
+            f"SELECT COUNT(*) AS n FROM deliveries WHERE LOWER(to_email) = LOWER(?) "
+            f"AND created_at >= {self._db.ago_expr(hours)}",
+            email,
+        )
+        return int(row["n"]) if row else 0
+
     async def create_market_research_job(self, job_id: str, market_query: str) -> dict[str, str]:
         await self._db.execute(
             "INSERT INTO market_research_jobs (job_id, market_query, status) VALUES (?, ?, ?)",

@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, Response, StreamingResponse
 from app.analysis.specs import BI_SPECS
 from app.api.progress import build_progress, stream_progress
 from app.config import settings
+from app.email.policy import DeliveryRefusedError
 from app.models.bi import (
     BISubmitRequest,
     BISubmitResponse,
@@ -49,7 +50,7 @@ def _queue_full(exc: QueueFullError) -> HTTPException:
         status_code=503, detail=str(exc), headers={"Retry-After": QUEUE_FULL_RETRY_AFTER}
     )
 
-def _refused(exc: JobStateError) -> HTTPException:
+def _refused(exc: DeliveryRefusedError | JobStateError) -> HTTPException:
     return HTTPException(status_code=exc.status_code, detail=exc.message)
 
 
@@ -63,6 +64,8 @@ async def bi_submit(body: BISubmitRequest) -> BISubmitResponse:
         job = await _bi_pipeline.submit(url=body.url, email=body.email)
     except QueueFullError as e:
         raise _queue_full(e) from None
+    except DeliveryRefusedError as e:
+        raise _refused(e) from None
     return BISubmitResponse(
         job_id=job["job_id"],
         status="processing",
@@ -203,7 +206,7 @@ async def bi_resend(job_id: str) -> ResendResponse:
     """Send a finished report again. Limited per job and per recipient."""
     try:
         ok, detail = await _bi_pipeline.resend(job_id)
-    except JobStateError as e:
+    except (DeliveryRefusedError, JobStateError) as e:
         raise _refused(e) from None
     return ResendResponse(job_id=job_id, sent=ok, detail=detail)
 

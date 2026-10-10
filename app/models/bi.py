@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from pydantic import BaseModel, BeforeValidator, Field
+from pydantic import BaseModel, BeforeValidator, EmailStr, Field
 
 
 def _flatten_market_size(value: Any) -> Any:
@@ -177,7 +177,8 @@ def build_report(
 
 class BISubmitRequest(BaseModel):
     url: str = Field(min_length=5, max_length=2000)
-    email: str = Field(min_length=5, max_length=500)
+    # Validated as an address, not just a string: this is where mail is sent.
+    email: EmailStr = Field(max_length=254)
 
 
 class BISubmitResponse(BaseModel):

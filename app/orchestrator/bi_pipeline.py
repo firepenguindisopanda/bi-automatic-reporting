@@ -50,6 +50,7 @@ from app.analysis.specs import (
     SWOT_SPEC,
 )
 from app.config import settings
+from app.email.policy import DAY_HOURS, DeliveryRefusedError, check_recipient_allowed
 from app.email.service import EmailService
 from app.models.bi import (
     AnalysisArtifact,
@@ -138,8 +139,9 @@ class BIPipeline:
     # --- Submission ----------------------------------------------------------
 
     async def submit(self, url: str, email: str) -> dict[str, str]:
-        """Queue a job."""
+        """Queue a job. Raises DeliveryRefusedError when the recipient is not allowed."""
         await self._store.init()
+        await self._check_recipient(email)
         # The id doubles as the only credential for a job's report, progress
         # and resend, so it carries the full 122 random bits of a UUID4.
         job_id = uuid.uuid4().hex
@@ -153,6 +155,16 @@ class BIPipeline:
             await self._store.delete_job(job_id)
             raise
         return job_data
+
+    async def _check_recipient(self, email: str) -> None:
+        check_recipient_allowed(email)
+        recent = await self._store.count_jobs_for_recipient(email, DAY_HOURS)
+        cap = settings.max_reports_per_recipient_per_day
+        if recent >= cap:
+            raise DeliveryRefusedError(
+                f"That address has already been sent {cap} reports in the last 24 hours. "
+                "Try again tomorrow."
+            )
 
     async def retry(self, job_id: str) -> dict[str, str]:
         """Resume a failed or interrupted job from its first unfinished stage."""
@@ -182,7 +194,7 @@ class BIPipeline:
     # --- Delivery ------------------------------------------------------------
 
     async def resend(self, job_id: str) -> tuple[bool, str]:
-        """Send a finished job's report again. Raises JobStateError."""
+        """Send a finished job's report again. Raises DeliveryRefusedError or JobStateError."""
         await self._store.init()
         job = await self._store.get_job(job_id)
         if job is None:
@@ -194,6 +206,18 @@ class BIPipeline:
             raise JobStateError("The report file is no longer available", 410)
         if job_id in self._resending:
             raise JobStateError("This report is already being sent")
+
+        sent_for_job = len(await self._store.get_deliveries(job_id))
+        if sent_for_job >= settings.max_deliveries_per_job:
+            raise DeliveryRefusedError(
+                f"This report has already been sent {sent_for_job} times, the most allowed."
+            )
+        recent = await self._store.count_deliveries_to_recipient(job["email"], DAY_HOURS)
+        if recent >= settings.max_reports_per_recipient_per_day:
+            raise DeliveryRefusedError(
+                "That address has reached its limit of reports for the last 24 hours. "
+                "Try again tomorrow."
+            )
 
         self._resending.add(job_id)
         try:

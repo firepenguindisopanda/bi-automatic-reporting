@@ -661,6 +661,25 @@ class TestResendGuards:
         assert (await p.get_job("job1"))["status"] == JobStatus.COMPLETED
         assert _by_slug(await p.get_stages("job1"))["deliver"]["status"] == StageStatus.SUCCEEDED
 
+    async def test_resend_is_capped_per_job(self, pipeline, monkeypatch) -> None:
+        from app.email.policy import DeliveryRefusedError
+
+        monkeypatch.setattr(settings, "max_deliveries_per_job", 2)
+        p = pipeline()
+        await _run(p)
+        assert (await p.resend("job1"))[0] is True
+        with pytest.raises(DeliveryRefusedError):
+            await p.resend("job1")
+
+    async def test_resend_is_capped_per_recipient(self, pipeline, monkeypatch) -> None:
+        from app.email.policy import DeliveryRefusedError
+
+        monkeypatch.setattr(settings, "max_reports_per_recipient_per_day", 1)
+        p = pipeline()
+        await _run(p)
+        with pytest.raises(DeliveryRefusedError):
+            await p.resend("job1")
+
     async def test_an_unfinished_job_cannot_be_resent(self, pipeline) -> None:
         from app.orchestrator.bi_pipeline import JobStateError
 

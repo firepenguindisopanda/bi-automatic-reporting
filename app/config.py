@@ -120,6 +120,16 @@ class Settings(BaseSettings):
     smtp_security: str = "starttls"
     smtp_timeout: int = 30
 
+    # Outbound mail abuse limits. Nothing authenticates the submitter, and the
+    # submitter names the recipient, so without these the service relays mail
+    # to any address on demand.
+    #
+    # recipient_allowlist: comma-separated addresses and/or domains
+    # ("me@example.com, @example.org"). Empty allows any recipient.
+    recipient_allowlist: str = ""
+    max_reports_per_recipient_per_day: int = 5
+    max_deliveries_per_job: int = 3
+
     sendgrid_api_key: str = ""
     resend_api_key: str = ""
     report_output_dir: str = "reports"

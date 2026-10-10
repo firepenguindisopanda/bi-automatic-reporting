@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from starlette.requests import Request
 
 from app.config import settings
-from app.main import RATE_LIMITED_PATHS, RateLimitMiddleware, client_key
+from app.main import RATE_LIMITED_PATHS, RateLimitMiddleware, client_key, is_rate_limited
 
 
 def _request(headers: dict[str, str], peer: str = "127.0.0.1") -> Request:
@@ -131,3 +131,33 @@ class TestMemoryStore:
 
         clock["t"] += 61
         assert mw._check_memory("a") is True
+
+
+class TestLimitedActions:
+    """Per-job actions spend model calls or send mail, so they are limited too."""
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/api/bi/submit",
+            "/api/market-research/submit",
+            "/api/bi/abc123/resend",
+            "/api/bi/abc123/retry",
+            "/api/market-research/abc123/retry",
+        ],
+    )
+    def test_work_starting_posts_are_limited(self, path: str) -> None:
+        assert is_rate_limited("POST", path)
+
+    @pytest.mark.parametrize(
+        ("method", "path"),
+        [
+            ("GET", "/api/bi/progress/abc123"),
+            ("GET", "/api/bi/download/abc123"),
+            ("GET", "/api/bi/abc123/resend"),
+            ("POST", "/api/bi/brief/abc123"),
+            ("POST", "/api/bi/a/b/resend"),
+        ],
+    )
+    def test_reads_and_other_posts_are_not(self, method: str, path: str) -> None:
+        assert not is_rate_limited(method, path)

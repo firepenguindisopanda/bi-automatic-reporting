@@ -20,16 +20,17 @@
 </div>
 {%- endmacro %}
 
+{#- Lists skip blank entries: a model sometimes returns "" as an item. -#}
 {% macro dash_list(items) -%}
-<ul class="dash-list">{% for item in items %}<li>{{ item }}</li>{% endfor %}</ul>
+<ul class="dash-list">{% for item in items or [] if item and item.strip() %}<li>{{ item }}</li>{% endfor %}</ul>
 {%- endmacro %}
 
 {% macro num_list(items) -%}
-<ol class="num-list">{% for item in items %}<li><span class="n">{{ "%02d" % loop.index }}</span>{{ item }}</li>{% endfor %}</ol>
+<ol class="num-list">{% for item in items or [] if item and item.strip() %}<li><span class="n">{{ "%02d" % loop.index }}</span>{{ item }}</li>{% endfor %}</ol>
 {%- endmacro %}
 
 {% macro chips(items) -%}
-<div class="chips">{% for item in items %}<span class="chip">{{ item }}</span>{% endfor %}</div>
+<div class="chips">{% for item in items or [] if item and item.strip() %}<span class="chip">{{ item }}</span>{% endfor %}</div>
 {%- endmacro %}
 
 {#- A 2x2 grid. `cells` is four (label, letter, tone, items) tuples. -#}
@@ -38,11 +39,12 @@
   {% for row in cells|batch(2) %}
   <tr>
     {% for label, letter, tone, items in row %}
+    {% set kept = (items or [])|select|map("trim")|select|list %}
     <td class="q-{{ tone }}">
       <div class="q-head"><span class="letter">{{ letter }}</span><span class="label">{{ label }}</span></div>
       <div class="q-body">
-        {% if items %}<ul>{% for item in items %}<li>{{ item }}</li>{% endfor %}</ul>
-        {% else %}<p class="muted small">Nothing noted.</p>{% endif %}
+        {% if kept %}<ul>{% for item in kept %}<li>{{ item }}</li>{% endfor %}</ul>
+        {% else %}<p class="muted small">Not covered in this analysis.</p>{% endif %}
       </div>
     </td>
     {% endfor %}

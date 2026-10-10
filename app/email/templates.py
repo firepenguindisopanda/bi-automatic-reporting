@@ -108,9 +108,9 @@ class ReportDigest:
         return cls(
             company_name=profile.company_name,
             summary=_first_paragraph(report.executive_summary),
-            recommendations=tuple(report.recommendations),
+            recommendations=tuple(r for r in report.recommendations if r.strip()),
             competitors=len(competitive.direct_competitors) + len(competitive.indirect_competitors),
-            risks=len(report.risk_factors),
+            risks=sum(1 for r in report.risk_factors if r.strip()),
             score=score,
             source_url=source_url or profile.website,
             report_url=report_url,

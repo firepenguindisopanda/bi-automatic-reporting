@@ -306,7 +306,7 @@
 {# ---------------------------------------------------------------- 10 #}
 <section class="chapter" id="faq">
   {{ chapter_head("10", "Questions people ask", "What prospects search for, answered the way the site should answer them.") }}
-  {% for item in marketing.faq %}
+  {% for item in marketing.faq if item.question %}
   <div class="faq block"><div class="q">{{ item.question }}</div><p>{{ item.answer }}</p></div>
   {% endfor %}
 </section>

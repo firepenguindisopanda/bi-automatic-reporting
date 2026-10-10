@@ -121,6 +121,11 @@ def paragraphs(text: str) -> list[str]:
     return parts
 
 
+def _kept(items: list[str]) -> list[str]:
+    """Entries with something in them. Models sometimes return "" as an item."""
+    return [item for item in items if item and item.strip()]
+
+
 def _competitors(report: BIReport) -> list[tuple[str, str, str]]:
     """(name, Direct/Indirect, offering) rows, from whichever keys the model used."""
     rows = []
@@ -183,8 +188,8 @@ def render_bi_html(
         competitive=report.competitive_analysis,
         competitors=_competitors(report),
         swot=report.swot_analysis,
-        recommendations=report.recommendations,
-        risk_factors=report.risk_factors,
+        recommendations=_kept(report.recommendations),
+        risk_factors=_kept(report.risk_factors),
         marketing=marketing,
     )
 
@@ -197,9 +202,9 @@ def render_research_html(result: MarketResearchResult, *, generated: datetime | 
         ),
         summary_paragraphs=paragraphs(result.executive_summary),
         landscape_paragraphs=paragraphs(result.summary),
-        key_insights=result.key_insights,
-        recommendations=result.recommendations,
-        risks_and_assumptions=result.risks_and_assumptions,
+        key_insights=_kept(result.key_insights),
+        recommendations=_kept(result.recommendations),
+        risks_and_assumptions=_kept(result.risks_and_assumptions),
         market_size=result.market_size,
         sizing=market_tiers(result.market_size),
         growth_rate=result.growth_rate,

@@ -185,6 +185,20 @@ class TestPdfDesign:
         assert "<circle" not in html
         assert "$1B-$3B globally" in html
 
+    def test_blank_items_from_the_model_are_dropped(self) -> None:
+        """A model returned "" as a sixth recommendation; it printed as a bare "06"."""
+        report, profile = _report()
+        report.recommendations.append("  ")
+        report.swot_analysis.threats[:] = ["", " "]
+        html = render_bi_html(report, profile)
+        recs = html.split('<ol class="recs">', 1)[1].split("</ol>", 1)[0]
+        assert recs.count("<li>") == 4
+        assert '<div class="v">4</div>' in html  # the recommendations figure
+        assert "Not covered in this analysis." in html
+
+        digest = ReportDigest.from_report(report, profile)
+        assert len(digest.recommendations) == 4
+
     def test_research_cover_is_branded(self) -> None:
         from app.models.bi import MarketResearchResult
 

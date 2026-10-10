@@ -66,10 +66,11 @@ class FakeDurationStore:
     def __init__(self, durations: dict[str, list[int]] | None = None) -> None:
         self.durations = durations or {}
 
-    async def recent_stage_durations(
-        self, stage: str, model: str, limit: int = 20
-    ) -> list[int]:
-        return self.durations.get(stage, [])
+    async def recent_durations(
+        self, wanted: list[tuple[str, str]], limit: int = 20
+    ) -> dict[str, list[int]]:
+        self.calls = getattr(self, "calls", 0) + 1
+        return {stage: self.durations.get(stage, []) for stage, _ in wanted}
 
 
 class TestETA:
@@ -104,10 +105,16 @@ class TestETA:
 
     async def test_lookup_failure_does_not_raise(self) -> None:
         class Broken:
-            async def recent_stage_durations(self, *a: Any, **k: Any) -> list[int]:
+            async def recent_durations(self, *a: Any, **k: Any) -> dict[str, list[int]]:
                 raise RuntimeError("db down")
 
         assert await estimate_remaining_ms(Broken(), "bi", []) is None
+
+    async def test_history_is_read_in_one_lookup(self) -> None:
+        """Nine sequential queries per progress update made a remote database lag."""
+        store = FakeDurationStore({s.slug: [1000, 1000, 1000] for s in BI_STAGES})
+        await estimate_remaining_ms(store, "bi", [])
+        assert store.calls == 1
 
     async def test_failed_stages_are_not_counted_as_still_to_come(self) -> None:
         """A stage that broke is not going to run again."""
@@ -130,10 +137,10 @@ class TestTerminalJobsHaveNoETA:
         async def get_stages(self, job_id: str) -> list[dict[str, Any]]:
             return [{"stage": "scrape", "status": "failed", "duration_ms": 5}]
 
-        async def recent_stage_durations(
-            self, stage: str, model: str, limit: int = 20
-        ) -> list[int]:
-            return [1000, 1000, 1000]
+        async def recent_durations(
+            self, wanted: list[tuple[str, str]], limit: int = 20
+        ) -> dict[str, list[int]]:
+            return {stage: [1000, 1000, 1000] for stage, _ in wanted}
 
     @pytest.mark.parametrize(
         "status", ["failed", "interrupted", "completed", "partial"]

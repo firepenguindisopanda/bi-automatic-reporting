@@ -444,7 +444,20 @@ class AgentRunner:
         replaces the original only when it scores strictly higher - a
         replacement nobody checked is not an improvement. A critic failure
         never loses a result.
+
+        The recorded duration is the whole of it: both runs and every review.
+        It used to cover only the run that was kept, so a stage that spent a
+        minute being reviewed and re-run reported twenty seconds - the job page
+        showed a third of the real elapsed time, and the ETA learned from it.
         """
+        started = time.monotonic()
+        result = await self._run_with_review(spec, ctx)
+        result.metrics.duration_ms = ms_since(started)
+        return result
+
+    async def _run_with_review[T: BaseModel](
+        self, spec: AgentSpec[T], ctx: StageContext
+    ) -> StageResult[T]:
         result = await self.run(spec, ctx)
         if self._critic is None or not spec.critic:
             return result

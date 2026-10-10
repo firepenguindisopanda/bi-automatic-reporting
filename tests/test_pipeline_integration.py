@@ -710,6 +710,26 @@ class TestQueuedRecovery:
         assert (await p.get_job("old"))["status"] == JobStatus.INTERRUPTED
 
 
+class TestDurationHistory:
+    async def test_one_lookup_returns_each_stage_for_its_own_model(self, pipeline) -> None:
+        p = pipeline()
+        await p.init()
+        store = p._store
+        for i, (stage, model, ms) in enumerate([
+            ("profile", "model-a", 100), ("profile", "model-a", 200), ("profile", "model-a", 300),
+            ("profile", "model-b", 999), ("render", None, 50),
+        ]):
+            await store.start_stage(f"j{i}", "bi", stage, 1)
+            await store.finish_stage(f"j{i}", stage, StageStatus.SUCCEEDED, model=model, duration_ms=ms)
+
+        got = await store.recent_durations([("profile", "model-a"), ("render", "")], limit=2)
+
+        # Newest two of model-a only; model-b is another model's history.
+        assert sorted(got["profile"]) == [200, 300]
+        assert got["render"] == [50]
+        assert await store.recent_durations([]) == {}
+
+
 class TestMechanicalStageHistory:
     async def test_mechanical_stages_find_their_own_durations(self, pipeline) -> None:
         """They record no model; the ETA used to look them up under '' and find nothing."""

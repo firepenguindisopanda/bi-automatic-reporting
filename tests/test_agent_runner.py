@@ -321,6 +321,21 @@ class TestCritic:
         rendered = " ".join(str(m.content) for m in llm.calls[1])
         assert "competitor names look invented" in rendered
 
+    async def test_duration_covers_the_reviews_and_the_rerun(self) -> None:
+        """It used to cover only the kept run, a third of a reviewed stage's real time."""
+        import time as clock
+
+        class SlowCritic(FakeCritic):
+            async def review(self, spec: Any, ctx: Any, value: Any) -> Any:
+                clock.sleep(0.06)  # asyncio.sleep is stubbed out in this module
+                return await super().review(spec, ctx, value)
+
+        critic = SlowCritic([30.0, 40.0], ["too generic"])
+        runner, _ = make_runner([VALID], critic=critic)
+        result = await runner.run_with_review(spec(critic=True), StageContext())
+        assert critic.calls == 2
+        assert result.metrics.duration_ms >= 120
+
     async def test_critic_failure_keeps_the_result(self) -> None:
         critic = FakeCritic(0, [], fail=True)
         runner, _ = make_runner([VALID], critic=critic)

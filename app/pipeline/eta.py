@@ -23,9 +23,9 @@ SAMPLE_WINDOW = 20
 
 
 class _DurationSource(Protocol):
-    async def recent_stage_durations(
-        self, stage: str, model: str, limit: int = 20
-    ) -> list[int]: ...
+    async def recent_durations(
+        self, wanted: list[tuple[str, str]], limit: int = 20
+    ) -> dict[str, list[int]]: ...
 
 
 def _models_by_stage(kind: str) -> dict[str, str]:
@@ -51,21 +51,18 @@ async def estimate_remaining_ms(
         in (StageStatus.SUCCEEDED, StageStatus.SKIPPED, StageStatus.FAILED)
     }
     models = _models_by_stage(kind)
-
-    samples: dict[str, list[int]] = {}
-    for stage in stages_for(kind):
-        if stage.slug in finished:
-            continue
-        try:
-            samples[stage.slug] = await store.recent_stage_durations(
-                stage.slug, models.get(stage.slug, ""), SAMPLE_WINDOW
-            )
-        except Exception:  # noqa: BLE001 - an estimate is never worth failing a request
-            logger.debug("Duration lookup failed for %s", stage.slug, exc_info=True)
-            samples[stage.slug] = []
-
-    if not samples:
+    pending = [stage.slug for stage in stages_for(kind) if stage.slug not in finished]
+    if not pending:
         return 0
+
+    # One lookup for every unfinished stage; see JobStore.recent_durations.
+    try:
+        samples = await store.recent_durations(
+            [(slug, models.get(slug, "")) for slug in pending], SAMPLE_WINDOW
+        )
+    except Exception:  # noqa: BLE001 - an estimate is never worth failing a request
+        logger.debug("Duration lookup failed", exc_info=True)
+        return None
 
     observed = [d for durations in samples.values() for d in durations]
     if len(observed) < MIN_SAMPLES:

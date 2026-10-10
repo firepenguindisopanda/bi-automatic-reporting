@@ -215,23 +215,43 @@ class JobStore:
         )
         return row.get("artifact_json") if row else None
 
-    async def recent_stage_durations(self, stage: str, model: str, limit: int = 20) -> list[int]:
-        """Durations of recent successful runs, newest first. Powers the ETA.
+    async def recent_durations(
+        self, wanted: list[tuple[str, str]], limit: int = 20
+    ) -> dict[str, list[int]]:
+        """Recent successful durations for several (stage, model) pairs at once.
 
-        Mechanical stages (scrape, render, deliver) record no model, which is
-        stored as NULL. They are asked for with ``model=""``, and ``model = ''``
-        never matches NULL - so those stages never found their own history and
-        the estimate vanished once only they were left to run.
+        One query instead of one per stage. The ETA asks for every unfinished
+        stage on every progress update, and against a database ~175ms away that
+        was nine sequential round trips - live progress lagged two seconds
+        behind the job.
+
+        Mechanical stages (scrape, render, deliver) record no model, stored as
+        NULL, and are asked for with ``model=""``; COALESCE makes the two meet.
         """
-        model_clause = "model IS NULL" if not model else "model = ?"
-        args: tuple[Any, ...] = (stage, limit) if not model else (stage, model, limit)
+        if not wanted:
+            return {}
+        stages = sorted({stage for stage, _ in wanted})
+        marks = ", ".join("?" for _ in stages)
         rows = await self._db.fetch(
-            f"SELECT duration_ms FROM job_stages WHERE stage = ? AND {model_clause} "
-            "AND status = 'succeeded' AND duration_ms IS NOT NULL "
-            "ORDER BY id DESC LIMIT ?",
-            *args,
+            "SELECT stage, model, duration_ms FROM ("
+            " SELECT stage, model, duration_ms, ROW_NUMBER() OVER ("
+            "  PARTITION BY stage, COALESCE(model, '') ORDER BY id DESC) AS rn"
+            " FROM job_stages"
+            " WHERE status = 'succeeded' AND duration_ms IS NOT NULL"
+            f" AND stage IN ({marks})"
+            ") recent WHERE rn <= ?",
+            *stages, limit,
         )
-        return [int(r["duration_ms"]) for r in rows]
+        model_for = dict(wanted)
+        durations: dict[str, list[int]] = {stage: [] for stage, _ in wanted}
+        for row in rows:
+            if (row.get("model") or "") == model_for[row["stage"]]:
+                durations[row["stage"]].append(int(row["duration_ms"]))
+        return durations
+
+    async def recent_stage_durations(self, stage: str, model: str, limit: int = 20) -> list[int]:
+        """Durations of recent successful runs of one (stage, model)."""
+        return (await self.recent_durations([(stage, model)], limit))[stage]
 
     async def mark_interrupted_jobs(self) -> int:
         """Settle jobs a previous process left unfinished. Called at startup.

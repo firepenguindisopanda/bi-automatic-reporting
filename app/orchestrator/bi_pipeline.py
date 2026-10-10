@@ -50,7 +50,7 @@ from app.analysis.specs import (
     SWOT_SPEC,
 )
 from app.config import settings
-from app.email.policy import DAY_HOURS, DeliveryRefusedError, check_recipient_allowed
+from app.email.policy import DAY_HOURS, DeliveryRefusedError, check_recipient_allowed, is_owner
 from app.email.service import EmailService
 from app.email.templates import ReportDigest
 from app.models.bi import (
@@ -160,6 +160,8 @@ class BIPipeline:
 
     async def _check_recipient(self, email: str) -> None:
         check_recipient_allowed(email)
+        if is_owner(email):
+            return
         recent = await self._store.count_jobs_for_recipient(email, DAY_HOURS)
         cap = settings.max_reports_per_recipient_per_day
         if recent >= cap:
@@ -209,23 +211,27 @@ class BIPipeline:
         if job_id in self._resending:
             raise JobStateError("This report is already being sent")
 
-        sent_for_job = len(await self._store.get_deliveries(job_id))
-        if sent_for_job >= settings.max_deliveries_per_job:
-            raise DeliveryRefusedError(
-                f"This report has already been sent {sent_for_job} times, the most allowed."
-            )
-        recent = await self._store.count_deliveries_to_recipient(job["email"], DAY_HOURS)
-        if recent >= settings.max_reports_per_recipient_per_day:
-            raise DeliveryRefusedError(
-                "That address has reached its limit of reports for the last 24 hours. "
-                "Try again tomorrow."
-            )
+        if not is_owner(job["email"]):
+            await self._check_resend_caps(job_id, job["email"])
 
         self._resending.add(job_id)
         try:
             return await self._resend(job, pdf_path)
         finally:
             self._resending.discard(job_id)
+
+    async def _check_resend_caps(self, job_id: str, email: str) -> None:
+        sent_for_job = len(await self._store.get_deliveries(job_id))
+        if sent_for_job >= settings.max_deliveries_per_job:
+            raise DeliveryRefusedError(
+                f"This report has already been sent {sent_for_job} times, the most allowed."
+            )
+        recent = await self._store.count_deliveries_to_recipient(email, DAY_HOURS)
+        if recent >= settings.max_reports_per_recipient_per_day:
+            raise DeliveryRefusedError(
+                "That address has reached its limit of reports for the last 24 hours. "
+                "Try again tomorrow."
+            )
 
     async def _resend(self, job: dict[str, Any], pdf_path: Path) -> tuple[bool, str]:
         job_id = job["job_id"]

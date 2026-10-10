@@ -43,7 +43,7 @@
 - **No em dashes in anything a reader sees.** House style for the brand: template copy uses none, and
   model text passes through `without_em_dashes` (the Jinja `finalize` hook and the email helpers).
 - **Every send passes the recipient policy** (`app/email/policy.py`): allowlist, per-recipient daily
-  cap, per-job delivery cap. Submit, resend and retry are rate limited (`is_rate_limited` in `app/main.py`).
+  cap, per-job delivery cap. `OWNER_EMAILS` are exempt from all three, never from the rate limit. Submit, resend and retry are rate limited (`is_rate_limited` in `app/main.py`).
 - **A job's terminal status is written last.** Stage writes are flushed first, so a client that stops
   at the terminal status has seen every stage. Delivery returns the status; it does not write it.
 - **No stage is left `running`.** `StageError` names its stage; anything else goes through

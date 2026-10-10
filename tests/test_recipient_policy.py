@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import settings
-from app.email.policy import parse_allowlist
+from app.email.policy import is_owner, parse_allowlist
 from app.main import app
 
 
@@ -105,6 +105,42 @@ class TestSubmitPolicy:
         assert client.post(
             "/api/bi/submit", json={"url": "https://example.com", "email": _unique_email()}
         ).status_code == 200
+
+
+class TestOwners:
+    """OWNER_EMAILS: the people running the deployment test without a ration."""
+
+    def test_empty_names_nobody(self, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "owner_emails", "")
+        assert not is_owner("anyone@example.com")
+
+    def test_addresses_and_domains(self, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "owner_emails", "me@example.com; @mine.example")
+        assert is_owner("ME@example.com")
+        assert is_owner("anyone@mine.example")
+        assert not is_owner("you@example.com")
+
+    def test_owner_is_not_capped(self, client: TestClient, monkeypatch) -> None:
+        email = _unique_email()
+        monkeypatch.setattr(settings, "max_reports_per_recipient_per_day", 1)
+        monkeypatch.setattr(settings, "owner_emails", email)
+        for _ in range(3):
+            ok = client.post("/api/bi/submit", json={"url": "https://example.com", "email": email})
+            assert ok.status_code == 200
+
+    def test_owner_passes_an_allowlist_that_omits_them(self, client: TestClient, monkeypatch) -> None:
+        email = _unique_email("owner.example")
+        monkeypatch.setattr(settings, "recipient_allowlist", "@allowed.example")
+        monkeypatch.setattr(settings, "owner_emails", email)
+        ok = client.post("/api/bi/submit", json={"url": "https://example.com", "email": email})
+        assert ok.status_code == 200
+
+    def test_others_are_still_capped(self, client: TestClient, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "max_reports_per_recipient_per_day", 1)
+        monkeypatch.setattr(settings, "owner_emails", "someone-else@example.com")
+        email = _unique_email()
+        assert client.post("/api/bi/submit", json={"url": "https://example.com", "email": email}).status_code == 200
+        assert client.post("/api/bi/submit", json={"url": "https://example.com", "email": email}).status_code == 429
 
 
 class TestJobActions:

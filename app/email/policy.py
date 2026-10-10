@@ -10,6 +10,10 @@ Three limits close it down without adding accounts:
   - an optional allowlist of addresses or domains,
   - a cap on reports per recipient per day, counted across all jobs,
   - a cap on delivery attempts per job, so resend cannot be looped.
+
+OWNER_EMAILS names the people who run the deployment. They are always allowed
+and neither cap applies to them: the caps protect strangers' inboxes, and an
+owner testing reports against their own inbox is not that.
 """
 
 import re
@@ -71,7 +75,15 @@ def parse_allowlist(raw: str) -> Allowlist:
     return Allowlist(frozenset(addresses), frozenset(domains))
 
 
+def is_owner(email: str) -> bool:
+    """Whether ``email`` is in OWNER_EMAILS. An empty setting names nobody."""
+    owners = parse_allowlist(settings.owner_emails)
+    return not owners.open and owners.permits(email)
+
+
 def check_recipient_allowed(email: str) -> None:
     """Raise DeliveryRefusedError (403) when an allowlist is set and excludes ``email``."""
+    if is_owner(email):
+        return
     if not parse_allowlist(settings.recipient_allowlist).permits(email):
         raise DeliveryRefusedError("This service is not accepting reports for that address.", 403)

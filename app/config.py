@@ -148,6 +148,10 @@ class Settings(BaseSettings):
     recipient_allowlist: str = ""
     max_reports_per_recipient_per_day: int = 5
     max_deliveries_per_job: int = 3
+    # The people who run this deployment: always allowed as recipients, and exempt
+    # from both caps above, so testing is not rationed. Same format as the allowlist.
+    # The rate limit on submit/resend/retry still applies to them.
+    owner_emails: str = ""
 
     sendgrid_api_key: str = ""
     resend_api_key: str = ""

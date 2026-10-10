@@ -63,6 +63,7 @@ cd frontend && npm install && npm run dev
 | `RECIPIENT_ALLOWLIST` | - | empty | Addresses/domains reports may go to, separated by commas or semicolons; empty allows any |
 | `MAX_REPORTS_PER_RECIPIENT_PER_DAY` | - | `5` | Per-address cap across all jobs and resends |
 | `MAX_DELIVERIES_PER_JOB` | - | `3` | Sends allowed for one report, resends included |
+| `OWNER_EMAILS` | - | empty | Your own addresses: always allowed, exempt from both caps above (same format as the allowlist) |
 | `RETENTION_DAYS` | - | `0` | Delete finished jobs and report files after this many days; `0` keeps all |
 | `FROM_EMAIL` | - | `reports@bisystem.com` | Sender email |
 | `FROM_NAME` | - | brand name | Display name on the From line |

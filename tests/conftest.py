@@ -30,6 +30,7 @@ os.environ.setdefault("PUBLIC_BASE_URL", "")
 # per-recipient cap has its own tests that set it explicitly.
 os.environ.setdefault("MAX_REPORTS_PER_RECIPIENT_PER_DAY", "100000")
 os.environ.setdefault("RECIPIENT_ALLOWLIST", "")
+os.environ.setdefault("OWNER_EMAILS", "")
 os.environ.setdefault("RETENTION_DAYS", "0")
 # The shared app's limiter would otherwise trip partway through the session,
 # since every TestClient request comes from the same address. The limiter has

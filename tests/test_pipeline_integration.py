@@ -697,6 +697,15 @@ class TestResendGuards:
         with pytest.raises(DeliveryRefusedError):
             await p.resend("job1")
 
+    async def test_an_owner_can_resend_past_both_caps(self, pipeline, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "max_deliveries_per_job", 1)
+        monkeypatch.setattr(settings, "max_reports_per_recipient_per_day", 1)
+        monkeypatch.setattr(settings, "owner_emails", "user@example.com")
+        p = pipeline()
+        await _run(p)
+        for _ in range(3):
+            assert (await p.resend("job1"))[0] is True
+
     async def test_resend_is_capped_per_recipient(self, pipeline, monkeypatch) -> None:
         from app.email.policy import DeliveryRefusedError
 

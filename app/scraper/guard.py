@@ -1,9 +1,10 @@
 """Outbound URL policy for the scraper.
 
-The scraper fetches user-supplied URLs from inside the deployment network. On
-the Raspberry Pi that network also hosts Jenkins and other services on
-localhost, and Tailscale peers on the carrier-grade NAT range - so an unguarded
-fetch is a server-side request forgery primitive. Every URL is checked here
+The scraper fetches user-supplied URLs from inside the deployment network,
+which can host other services on localhost, a database on the private network,
+a cloud metadata endpoint on link-local, and Tailscale peers on the
+carrier-grade NAT range - so an unguarded fetch is a server-side request
+forgery primitive. Every URL is checked here
 before a request is made, and again for each redirect hop.
 
 Known limitation: the hostname is resolved for validation and resolved again by

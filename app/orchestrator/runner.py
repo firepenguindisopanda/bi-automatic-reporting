@@ -5,8 +5,11 @@ meant unbounded concurrency and a task the garbage collector was free to drop
 mid-flight. Jobs now go through a queue served by a fixed number of long-lived
 workers whose references are held for the life of the process.
 
-Concurrency defaults to 1. On a Raspberry Pi the rendering step is the memory
+Concurrency defaults to 1. On a small host the rendering step is the memory
 ceiling, and two of them at once is what pushes the container over it.
+
+The queue lives in this process. A job still waiting in it when the process
+stops is settled as interrupted at the next startup, and can be retried.
 """
 
 import asyncio

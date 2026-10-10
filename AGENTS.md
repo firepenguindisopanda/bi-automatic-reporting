@@ -4,49 +4,73 @@
 
 | Field | Value |
 |-------|-------|
-| Type | Python |
-| Framework | FastAPI |
-| Python Version | 3.13+ |
+| Type | Python backend + React frontend |
+| Backend | FastAPI, Python 3.13+, managed with uv (`pyproject.toml` + `uv.lock`) |
+| Frontend | React 19, TypeScript, Vite 8, Tailwind CSS v4 (`frontend/`) |
+| LLM | NVIDIA NIM via `langchain_nvidia_ai_endpoints` (async only) |
+| Storage | PostgreSQL (`DATABASE_URL`) or SQLite (`JOBS_DB`) |
 
-## Critical Bug - `invoke_structured` returns None
+## Where things live
 
-### Symptoms
-`LLMClient.invoke_structured()` intermittently returns `None` (~60-80% failure rate) when called as the **2nd agent** in a pipeline inside a `ThreadPoolExecutor` + `new_event_loop` + `run_until_complete` context.
+| Path | What |
+|------|------|
+| `app/pipeline/stages.py` | The stage registry: slugs, order, labels, job/stage statuses. The only stage list. |
+| `app/analysis/specs.py` | One `AgentSpec` per LLM stage: model, prompt, output model, contract, critic source. |
+| `app/analysis/prompts.py` | System prompts, each with a `*_V` version recorded on every stage row. |
+| `app/analysis/runner.py` | `AgentRunner`: repair ladder, transport retries, truncation flag, critic re-run. |
+| `app/analysis/critic.py` | The LLM critic (confidence score). |
+| `app/pipeline/contracts.py` | Deterministic completeness scoring. Scored, never enforced. |
+| `app/orchestrator/bi_pipeline.py` | BI job: scrape, analyse, assemble, render, deliver; retry/resume; resend. |
+| `app/orchestrator/market_research.py` | Market research job: macro, sizing, resources, render. |
+| `app/orchestrator/stage_recorder.py` | Ordered, buffered stage writes. |
+| `app/orchestrator/schema.py` | Base DDL plus numbered `MIGRATIONS`. |
+| `app/api/routes.py`, `app/api/progress.py` | HTTP API and the SSE stream. |
+| `app/pipeline/events.py` | In-process change notifier that wakes SSE streams. |
+| `app/email/policy.py` | Recipient allowlist and send caps. |
+| `app/report/generator.py` | PDF (WeasyPrint) and DOCX rendering. |
+| `evals/` | Offline eval harness: saved fixtures, real agents, baseline comparison. |
 
-### Root Cause
-`langchain_nvidia_ai_endpoints` ChatNVIDIA's `with_structured_output` combined with sync `.invoke()` inside a TPE thread running via `run_until_complete` causes httpx connection pool mixing between threads. The API returns HTTP 200 with a **truncated response body** (~4KB instead of ~11KB) that `with_structured_output`'s JSON parser cannot parse, returning `None`.
+## Invariants - keep these true
 
-### Details
-- **Only happens with sync `.invoke()`** - async `.ainvoke()` works 100% reliably.
-- **Model-specific**: MarketAnalysisAgent as 2nd call fails ~80%; BusinessProfileAgent as 2nd call never fails.
-- **Not a prompt length issue**: hardcoded long prompts still fail; short prompts succeed.
-- **Only in TPE context**: same code on main thread works 100%.
-- **Not deterministic**: httpx connection pool race condition - intermittent, suggests a timing/connection-reuse issue.
+- **The report is assembled from scored stages.** The report writer returns only `ReportSynthesis`
+  (executive summary, recommendations, risks). `build_report()` combines it with the profile,
+  market, competitive and SWOT stage outputs. Never let a stage re-generate another stage's section.
+- **Model output is untrusted.** It comes from a page the submitter chose. Report templates
+  autoescape (`Environment(autoescape=True)`), WeasyPrint renders through a fetcher that refuses
+  every URL (`write_pdf`), and email text goes through `display_company_name` and `html.escape`.
+- **Every send passes the recipient policy** (`app/email/policy.py`): allowlist, per-recipient daily
+  cap, per-job delivery cap. Submit, resend and retry are rate limited (`is_rate_limited` in `app/main.py`).
+- **A job's terminal status is written last.** Stage writes are flushed first, so a client that stops
+  at the terminal status has seen every stage. Delivery returns the status; it does not write it.
+- **No stage is left `running`.** `StageError` names its stage; anything else goes through
+  `recorder.fail_running()`.
+- **Bump a prompt's `*_V` whenever its text changes**, so eval results stay attributable.
+- **Schema changes are new `Migration` entries**, idempotent, never edits to old ones.
+- **Single process.** The job queue and the SSE notifier live in memory. Startup recovery marks every
+  unfinished job interrupted; with more than one process that would interrupt live jobs.
 
-### Fix Applied - Full Async Pipeline
-- Added `analyze_async` / `write_async` to all 6 agents (`app/analysis/agents.py`) using `ainvoke_structured`.
-- Added `_run_async` pipeline runner in `app/orchestrator/bi_pipeline.py` using `asyncio.create_task`.
-- Old sync methods (`analyze`, `write`, `run`, `run_with_progress`) kept as fallback.
-- Removed debug logging from `app/llm/client.py:invoke_structured`.
+## Running things
 
-### Implementation Detail - Raw Invoke + JSON Schema
-- `ainvoke_structured` bypasses `with_structured_output` entirely; uses raw `.ainvoke()` with system prompt containing the expected JSON schema + an inline example
-- `_build_example_schema()` generates the example from the Pydantic model's `model_json_schema()`:
-  - Resolves `$ref` to inline defs
-  - Resolves `anyOf` (nullable fields like `brand_personality`, `eeat`) and picks the non-null branch
-  - Max depth 3; deeper fields show `"..."` to keep prompt short
-- `_parse_json_response()` finds all JSON objects in the raw response and returns the last valid one (handles schema-echoing by the model)
-- **Key insight**: Llama 3.1 8B follows the example schema literally - if the example shows `"<string>"` for a nested Object field, it outputs a string instead of a nested JSON object. So the example must exactly match the desired output structure.
+```bash
+uv sync                                        # install from uv.lock
+uv run pytest tests/ -q                        # never calls a model
+uv run ruff check . && uv run mypy app evals
+cd frontend && npm ci && npx tsc -b && npm run lint && npm test && npm run build
+./scripts/check-design-rules.sh
+uv run python -m evals.run --stages profile --repeat 3   # real model calls - costs quota
+```
 
-### Key Files
-- `app/llm/client.py` - `invoke_structured` (sync, problematic) and `ainvoke_structured` (async, safe)
-- `app/analysis/agents.py` - All 6 agent classes, each with sync `analyze` + async `analyze_async`
-- `app/orchestrator/bi_pipeline.py` - `_run_async` creates tasks, `_run` uses TPE (deprecated path)
-- `app/routes/status.py` `app/routes/analyze.py` - API endpoints
+- After changing dependencies: `uv lock`, then re-export `requirements.txt` (command in README.md).
+  CI fails if either is stale.
+- WeasyPrint needs Pango/Cairo. It is imported lazily, so the API and tests import without it;
+  only PDF rendering (and two tests, which skip) needs it. On Windows, run those in Docker.
+- Tests isolate themselves via env defaults in `tests/conftest.py` (in-memory SQLite, console email,
+  high rate and recipient limits). Keep new tests off the network and off real models.
 
-### Testing
-- `tests/test_analysis_agent.py` (async agent tests)
-- `tests/test_bi_pipeline.py` (pipeline tests)
-- `tests/repro_thread_loop.py` (repro - needs NVIDIA API key)
-- `tests/repro_pipeline_direct.py` (direct pipeline repro)
-- Run: `uv run pytest tests/ -v`
+## History worth knowing
+
+- The sync `.invoke()` path was removed: ChatNVIDIA returned truncated bodies when called from
+  worker threads. Everything is `ainvoke`, and structured output is parsed from raw JSON replies
+  (`build_json_messages` / `parse_json_response`), not `with_structured_output`.
+- Models were swapped on 2026-08-26 when NVIDIA retired the originals; see the note in `app/config.py`.
+  Prompts were tuned on the retired model.

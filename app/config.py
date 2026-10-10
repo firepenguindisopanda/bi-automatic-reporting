@@ -81,6 +81,12 @@ class Settings(BaseSettings):
     # stage. Bounded, because each retry spends model calls.
     max_retries_per_job: int = 2
 
+    # Finished jobs, their stage rows and their report files are deleted after
+    # this many days without an update. 0 (the default) keeps everything:
+    # deletion is opted into, never something an upgrade starts doing.
+    retention_days: int = 0
+    retention_sweep_hours: int = 6
+
     app_title: str = "Business Intelligence System"
     app_version: str = "0.2.0"
 

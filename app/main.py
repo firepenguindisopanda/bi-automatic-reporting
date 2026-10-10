@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import mimetypes
 import re
@@ -18,6 +19,7 @@ from starlette.types import ASGIApp
 from app.api.routes import _bi_pipeline, router
 from app.config import settings
 from app.llm.client import close_all
+from app.orchestrator.retention import retention_loop
 from app.orchestrator.runner import start_workers, stop_workers
 
 logging.basicConfig(
@@ -160,7 +162,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     if interrupted:
         logger.info("Marked %d interrupted job(s) from a previous run", interrupted)
     await start_workers()
+    sweeper = asyncio.create_task(retention_loop(_bi_pipeline._store), name="retention")
     yield
+    sweeper.cancel()
     await stop_workers()
     await _bi_pipeline.close()
     if _upstash_client is not None:

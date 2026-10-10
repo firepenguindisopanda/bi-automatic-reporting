@@ -355,3 +355,48 @@ class JobStore:
         )
         await self._db.commit()
         job_events.notify(job_id)
+
+    # --- Retention ---------------------------------------------------------
+
+    async def report_paths_in_use(self) -> list[str]:
+        """Every report file a surviving job still points at."""
+        paths: list[str] = []
+        for table in ("jobs", "market_research_jobs"):
+            rows = await self._db.fetch(
+                f"SELECT pdf_path, docx_path FROM {table} "
+                "WHERE pdf_path IS NOT NULL OR docx_path IS NOT NULL"
+            )
+            paths.extend(str(p) for r in rows for p in (r.get("pdf_path"), r.get("docx_path")) if p)
+        return paths
+
+    async def purge_finished_before(self, days: int) -> list[str]:
+        """Delete finished jobs untouched for ``days``; return their report paths.
+
+        Only terminal jobs go. The caller deletes the files - the database is
+        cleared first so a crash midway leaves orphan files, which the sweep
+        also catches, rather than rows pointing at files that are gone.
+        """
+        cutoff = self._db.ago_expr(days * 24)
+        terminal = ", ".join(
+            f"'{s}'" for s in ("completed", "complete", "partial", "failed", "interrupted")
+        )
+        paths: list[str] = []
+        for table in ("jobs", "market_research_jobs"):
+            rows = await self._db.fetch(
+                f"SELECT job_id, pdf_path, docx_path FROM {table} "
+                f"WHERE status IN ({terminal}) AND updated_at < {cutoff}"
+            )
+            if not rows:
+                continue
+            ids = [str(r["job_id"]) for r in rows]
+            paths.extend(str(p) for r in rows for p in (r.get("pdf_path"), r.get("docx_path")) if p)
+            for start in range(0, len(ids), 200):
+                chunk = ids[start : start + 200]
+                marks = ", ".join("?" for _ in chunk)
+                for child in ("job_stages", "deliveries", "briefs"):
+                    if table == "market_research_jobs" and child != "job_stages":
+                        continue
+                    await self._db.execute(f"DELETE FROM {child} WHERE job_id IN ({marks})", *chunk)
+                await self._db.execute(f"DELETE FROM {table} WHERE job_id IN ({marks})", *chunk)
+            await self._db.commit()
+        return paths
